@@ -1,0 +1,22 @@
+{
+  "name": "provider-map",
+  "version": "1.0.0",
+  "description": "Florida provider footprint map comparing AdventHealth and Orlando Health.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "directory": "node src/sources/directory.js",
+    "adventhealth": "node scripts/capture-ah-directory.mjs",
+    "data": "node scripts/build-data.mjs",
+    "build:provider-map": "node src/render.js",
+    "build:slot-times": "node src/slot-times/render.js",
+    "build": "node src/render.js && node src/slot-times/render.js",
+    "all": "node src/sources/directory.js && node scripts/build-data.mjs && node src/render.js && node src/slot-times/render.js",
+    "geometry": "bash scripts/build-geometry.sh",
+    "fonts": "node scripts/embed-fonts.mjs",
+    "test": "node --test --test-isolation=none"
+  }
+}

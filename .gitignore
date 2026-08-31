@@ -1,0 +1,4 @@
+.DS_Store
+# public/*.html is the deliverable — committed so it travels with the repo
+data/raw/
+node_modules/
