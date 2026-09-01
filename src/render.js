@@ -247,8 +247,10 @@ select.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family
 .mapbox{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;container-type:inline-size}
 @container (min-width:680px) and (max-width:819px){.controls{flex-wrap:nowrap}.controls>.cap,.fgroup>.cap{display:none}}
 @container (min-width:820px){.controls{flex-wrap:nowrap}}
-.mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc}
-svg{display:block;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
+.mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
+svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
+#map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}
+svg.zooming path.z,svg.drag path.z{pointer-events:none;transition:none;shape-rendering:optimizeSpeed}
 #land{fill:#e6e2dc;stroke:#cdd8df;stroke-width:.6;vector-effect:non-scaling-stroke}
 #coast{fill:none;stroke:#000;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
 path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fill-opacity .45s ease}
@@ -260,10 +262,10 @@ path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fil
 .lay.draw path.z{fill-opacity:0;stroke-dasharray:1;stroke-dashoffset:1;animation:drawin .5s ease forwards;transition:none}
 path.z:hover{stroke:#000;stroke-width:1.8}
 path.z.sel{stroke:#000;stroke-width:2.8}
-.zoomctl{position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;border:2px solid #000;background:#fff}
+.zoomctl{position:absolute;z-index:3;left:12px;bottom:12px;display:flex;flex-direction:column;border:2px solid #000;background:#fff}
 .zoomctl button{width:30px;height:30px;border:0;background:#fff;font-size:17px;cursor:pointer;color:var(--chrome);font-family:var(--mono)}
 .zoomctl button+button{border-top:2px solid #000}.zoomctl button:hover{background:var(--accent-tint)}
-.hint{position:absolute;right:12px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;color:var(--mute);background:rgba(245,241,232,.93);border:1px solid #000;padding:3px 7px}
+.hint{position:absolute;z-index:3;right:12px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;color:var(--mute);background:rgba(245,241,232,.93);border:1px solid #000;padding:3px 7px}
 .side{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow:hidden}
 .cbody{padding:12px 14px}
 .tpanel .panel-band{padding:6px 14px}.tpanel .panel-band h2{font-size:12px}
@@ -348,6 +350,7 @@ __LOGOVARS__
   </div>
   <div class="mapwrap">
    <svg viewBox="__VIEWBOX__" id="map" class="g-zip" aria-label="Florida provider map"><defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><rect width="25" height="25" fill="#c6d3dc"></rect><path d="M25 0H0V25" fill="none" stroke="#a6bac8" stroke-width="1"></path></pattern><pattern id="tie-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#b3284e"></rect><rect x="4" width="4" height="8" fill="#1a6ba3"></rect></pattern></defs><rect id="sea" x="-3000" y="-3000" width="7000" height="7000" fill="url(#grid)"></rect><g id="vp"></g></svg>
+   <canvas id="map-raster" width="__W__" height="__H__" aria-hidden="true"></canvas>
    <div class="zoomctl"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">&minus;</button><button id="zreset" title="Reset" style="font-size:12px">&#8634;</button></div>
    <div class="hint">Scroll to zoom &middot; drag to pan &middot; click for providers</div>
   </div>
@@ -438,7 +441,7 @@ function scales(){const zs=L().paths.map(p=>val(p.k)).filter(Boolean);
  return {ah:quantiles(zs.map(v=>v.ah),5),oh:quantiles(zs.map(v=>v.oh),5),diff:quantiles(zs.map(v=>Math.abs(v.ah-v.oh)),5)};}
 function paint(){const thr=scales();
  document.querySelectorAll("#lay-"+gran+" path.z").forEach(p=>p.setAttribute("fill",colorFor(p.getAttribute("data-k"),thr)));
- totals(); updateColorKey(); updateMapLabels();}
+ totals(); updateColorKey(); updateMapLabels(); queueRaster();}
 function setNum(id,val){const el=document.getElementById(id);if(!el)return;const s=val.toLocaleString();const ch=el.textContent!==s;el.textContent=s;if(ch)slideY(el);}
 function totals(){const headline=providerHeadline(L().data,{locationMode,gran,specialty});
  setNum("tot-ah",headline.ah); setNum("tot-oh",headline.oh);
@@ -464,6 +467,7 @@ function updateMapLabels(){const s=specialty?(L().data.specialties.find(x=>x.nam
 function showProviders(k){selected=k;
  document.querySelectorAll("path.z.sel").forEach(p=>p.classList.remove("sel"));
  const pel=document.querySelector('#lay-'+gran+' path.z[data-k="'+cssq(k)+'"]'); if(pel)pel.classList.add("sel");
+ queueRaster();
  let list=(L().roster[k]||[]).slice(); if(specialty) list=list.filter(x=>x.s===specialty);
  if(view!=="diff") list=list.filter(x=>x.y===view);
  const counts=val(k)||{ah:0,oh:0};
@@ -480,6 +484,36 @@ function showProviders(k){selected=k;
 const cssq=(s)=>String(s).replace(/"/g,'\\"');
 
 const svg=document.getElementById("map"), vp=document.getElementById("vp");
+const raster=document.getElementById("map-raster"), rctx=raster.getContext("2d",{alpha:true});
+const RASTER_OK=!!rctx&&typeof Path2D==="function";
+let rasterPaths=null,rasterReady=false,rasterQueued=false,rasterActive=false;
+let mapFrame={left:0,top:0,s:1,ox:0,oy:0};
+function ensureRasterPaths(){if(rasterPaths||!RASTER_OK)return;
+ rasterPaths={
+  county:PATHS.county.map(p=>new Path2D(p.d)),
+  zip:PATHS.zip.map(p=>new Path2D(p.d)),
+  outline:new Path2D(OUTLINES.county),
+ };}
+function rasterTiePattern(){const tile=document.createElement("canvas");tile.width=8;tile.height=8;const t=tile.getContext("2d");
+ t.fillStyle="#b3284e";t.fillRect(0,0,4,8);t.fillStyle="#1a6ba3";t.fillRect(4,0,4,8);
+ const pattern=rctx.createPattern(tile,"repeat");if(pattern&&pattern.setTransform&&typeof DOMMatrix==="function")pattern.setTransform(new DOMMatrix().rotate(45));return pattern;}
+function drawRaster(){if(!RASTER_OK)return;ensureRasterPaths();
+ const dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));raster.width=Math.round(W*dpr);raster.height=Math.round(H*dpr);
+ rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,W,H);rctx.lineJoin="round";
+ rctx.fillStyle=NODATA;rctx.strokeStyle="#cdd8df";rctx.lineWidth=.6;rctx.fill(rasterPaths.outline);rctx.stroke(rasterPaths.outline);
+ const nodes=[...document.querySelectorAll("#lay-"+gran+" path.z")],paths=rasterPaths[gran],tie=rasterTiePattern();let selectedPath=null;
+ rctx.strokeStyle="#000";rctx.lineWidth=gran==="zip"?.4:.9;
+ paths.forEach((path,i)=>{const node=nodes[i],fill=node?node.getAttribute("fill"):NODATA;rctx.fillStyle=fill===TIE_FILL?(tie||NODATA):(fill||NODATA);rctx.fill(path);rctx.stroke(path);if(node&&node.classList.contains("sel"))selectedPath=path;});
+ if(selectedPath){rctx.strokeStyle="#000";rctx.lineWidth=2.8;rctx.stroke(selectedPath);}
+ rctx.strokeStyle="#000";rctx.lineWidth=2;rctx.stroke(rasterPaths.outline);rasterReady=true;}
+function queueRaster(){if(!RASTER_OK)return;rasterReady=false;if(rasterActive)endRasterMotion();if(rasterQueued)return;rasterQueued=true;
+ const run=()=>{rasterQueued=false;drawRaster();};if(window.requestIdleCallback)window.requestIdleCallback(run,{timeout:120});else requestAnimationFrame(run);}
+function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};
+ raster.style.left=mapFrame.ox+"px";raster.style.top=mapFrame.oy+"px";raster.style.width=W*s+"px";raster.style.height=H*s+"px";if(rasterActive)applyRasterZoom();}
+function applyRasterZoom(){raster.style.transform="translate("+(Z.x*mapFrame.s)+"px,"+(Z.y*mapFrame.s)+"px) scale("+Z.k+")";}
+function beginRasterMotion(){svg.classList.add("zooming");if(!rasterReady)return;syncMapFrame();rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";applyRasterZoom();}
+function endRasterMotion(){vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");vp.style.visibility="";
+ if(rasterActive){raster.style.opacity="0";rasterActive=false;}svg.classList.remove("zooming");}
 const layerHTML=(name)=>PATHS[name].map(p=>'<path class="z" pathLength="1" fill="'+NODATA+'" data-k="'+p.k.replace(/"/g,"&quot;")+'" d="'+p.d+'"></path>').join("");
 const VISIBLE_SYSTEMS=()=>view==="diff"?ACTIVE:ACTIVE.filter(k=>k===view);
 const SYSLIST=()=>VISIBLE_SYSTEMS().map(k=>SYS[k]).join(" and ");
@@ -547,26 +581,27 @@ document.getElementById("m-all").onclick=()=>setLocationMode("all");document.get
 // zoom + pan — Z is what's drawn, T is where we're heading; each frame eases Z
 // toward T so wheel/trackpad zoom glides and the +/-/reset buttons animate.
 let Z={k:1,x:0,y:0}, T={k:1,x:0,y:0}, raf=null;
-function applyZoom(){vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
-function tick(){const a=0.2;
+function applyZoom(){if(rasterActive)applyRasterZoom();else vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
+function tick(){const a=0.34;
  Z.k+=(T.k-Z.k)*a; Z.x+=(T.x-Z.x)*a; Z.y+=(T.y-Z.y)*a;
- if(Math.abs(T.k-Z.k)<0.0015&&Math.abs(T.x-Z.x)<0.06&&Math.abs(T.y-Z.y)<0.06){Z.k=T.k;Z.x=T.x;Z.y=T.y;raf=null;applyZoom();return;}
+ if(Math.abs(T.k-Z.k)<0.0025&&Math.abs(T.x-Z.x)<0.12&&Math.abs(T.y-Z.y)<0.12){Z.k=T.k;Z.x=T.x;Z.y=T.y;raf=null;endRasterMotion();return;}
  applyZoom(); raf=requestAnimationFrame(tick);}
-function animate(){if(!raf)raf=requestAnimationFrame(tick);}
+function animate(){if(!raf){beginRasterMotion();raf=requestAnimationFrame(tick);}}
 // The svg fits its box with preserveAspectRatio=meet, so the viewBox is scaled
 // uniformly and centered (letterboxed). Map screen px -> viewBox coords through
 // that same scale/offset, or zoom-to-cursor and pan drift.
 function fitScale(r){return Math.min(r.width/W,r.height/H);}
-function svgPt(cx,cy){const r=svg.getBoundingClientRect(),s=fitScale(r);const ox=(r.width-W*s)/2,oy=(r.height-H*s)/2;return [(cx-r.left-ox)/s,(cy-r.top-oy)/s];}
+function svgPt(cx,cy){return [(cx-mapFrame.left-mapFrame.ox)/mapFrame.s,(cy-mapFrame.top-mapFrame.oy)/mapFrame.s];}
 function zoomAt(mx,my,f){const nk=Math.max(1,Math.min(60,T.k*f)); T.x=mx-(mx-T.x)*(nk/T.k); T.y=my-(my-T.y)*(nk/T.k); T.k=nk; if(T.k<=1.001){T.k=1;T.x=0;T.y=0;} animate();}
 svg.addEventListener("wheel",e=>{e.preventDefault();const [mx,my]=svgPt(e.clientX,e.clientY);let dy=e.deltaY;if(e.deltaMode===1)dy*=16;else if(e.deltaMode===2)dy*=100;dy=Math.max(-140,Math.min(140,dy));tip.style.opacity=0;zoomAt(mx,my,Math.exp(-dy*0.0019));},{passive:false});
 document.getElementById("zin").onclick=()=>zoomAt(W/2,H/2,1.5);
 document.getElementById("zout").onclick=()=>zoomAt(W/2,H/2,1/1.5);
 document.getElementById("zreset").onclick=()=>{T={k:1,x:0,y:0};animate();};
-let drag=null,moved=false;
-svg.addEventListener("mousedown",e=>{if(raf){cancelAnimationFrame(raf);raf=null;}Z.k=T.k;Z.x=T.x;Z.y=T.y;drag={cx:e.clientX,cy:e.clientY,ox:T.x,oy:T.y};moved=false;svg.classList.add("drag");});
-window.addEventListener("mousemove",e=>{if(!drag)return;const s=fitScale(svg.getBoundingClientRect());const dx=e.clientX-drag.cx,dy=e.clientY-drag.cy;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;T.x=Z.x=drag.ox+dx/s;T.y=Z.y=drag.oy+dy/s;applyZoom();tip.style.opacity=0;});
-window.addEventListener("mouseup",()=>{drag=null;svg.classList.remove("drag");});
+let drag=null,moved=false,dragRaf=null,dragEvent=null;
+function moveDrag(){dragRaf=null;if(!drag||!dragEvent)return;const e=dragEvent;dragEvent=null;const dx=e.clientX-drag.cx,dy=e.clientY-drag.cy;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;T.x=Z.x=drag.ox+dx/drag.s;T.y=Z.y=drag.oy+dy/drag.s;applyZoom();tip.style.opacity=0;}
+svg.addEventListener("mousedown",e=>{if(raf){cancelAnimationFrame(raf);raf=null;}Z.k=T.k;Z.x=T.x;Z.y=T.y;beginRasterMotion();applyZoom();drag={cx:e.clientX,cy:e.clientY,ox:T.x,oy:T.y,s:mapFrame.s};moved=false;svg.classList.add("drag");});
+window.addEventListener("mousemove",e=>{if(!drag)return;dragEvent=e;if(!dragRaf)dragRaf=requestAnimationFrame(moveDrag);});
+window.addEventListener("mouseup",()=>{if(!drag)return;if(dragRaf){cancelAnimationFrame(dragRaf);dragRaf=null;moveDrag();}drag=null;dragEvent=null;svg.classList.remove("drag");endRasterMotion();});
 svg.addEventListener("click",e=>{if(moved)return;const t=e.target.closest("path.z");if(t)showProviders(t.getAttribute("data-k"));});
 
 // hover tooltip
@@ -595,7 +630,8 @@ if(SOLO){
  if(bl){bl.style.backgroundImage="var(--"+SOLO+"-logo-img)";bl.setAttribute("aria-label",SYS[SOLO]);}
  document.title=SYS[SOLO]+" Provider Map";
 }
-drawLayer();
+drawLayer();syncMapFrame();
+if(typeof ResizeObserver==="function")new ResizeObserver(syncMapFrame).observe(svg);else window.addEventListener("resize",syncMapFrame);
 </script>`;
 
 function main() { const r = render(); console.log(`wrote public/provider-map.html — ${r.counties} counties + ${r.zips} ZIPs, ${(r.bytes / 1e6).toFixed(2)} MB`); }

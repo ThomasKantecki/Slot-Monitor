@@ -83,6 +83,24 @@ test("desktop filters compact into one row when the map panel is wide enough", (
   assert.match(src, /select\.control\{[^}]*width:104px;max-width:104px/);
 });
 
+test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /id="map-raster"/);
+  assert.match(src, /function beginRasterMotion\(\)/);
+  assert.match(src, /raster\.style\.transform=/);
+  assert.match(src, /requestAnimationFrame\(moveDrag\)/);
+  const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
+  assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
+});
+
+test("generated provider-map client script parses", () => {
+  const html = readFileSync(new URL("../public/provider-map.html", import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+  const client = scripts.at(-1)?.[1] ?? "";
+  assert.ok(client.length > 0);
+  assert.doesNotThrow(() => new Function(client));
+});
+
 // Regression guard. The single-system branch removes DOM nodes (#tot-ah,
 // #v-diff, #leadcap, the other system's toggle). Any code that looks one of
 // those up WITHOUT a null check throws, and because the throw happens inside
