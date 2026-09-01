@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dragExceededThreshold, escapeScriptJson, motionRasterTransform, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
+import { boundsIntersect, dragExceededThreshold, escapeScriptJson, motionRasterTransform, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -98,6 +98,7 @@ test("desktop filters compact into one row when the map panel is wide enough", (
 test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /id="map-raster"/);
+  assert.match(src, /id="map-raster-detail"/);
   assert.match(src, /function beginRasterMotion\(\)/);
   assert.match(src, /raster\.style\.transform=/);
   assert.match(src, /requestAnimationFrame\(moveDrag\)/);
@@ -105,15 +106,17 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
   assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
 });
 
-test("drag rendering uses a sharp viewport raster at every zoom", () => {
+test("drag rendering uses a cached base raster and clipped sharp detail raster", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
-  assert.doesNotMatch(src, /RASTER_ZOOM_LIMIT/);
-  assert.match(src, /const RASTER_DPR=2/);
+  assert.match(src, /const BASE_RASTER_DPR=3,DETAIL_RASTER_DPR=2,BASE_ZOOM_LIMIT=2\.5/);
+  assert.match(src, /function drawBaseRaster\(\)/);
+  assert.match(src, /function applyBaseRasterZoom\(\)/);
   assert.match(src, /const cssW=Math\.ceil\(mapFrame\.w\+pad\*2\),cssH=Math\.ceil\(mapFrame\.h\+pad\*2\)/);
-  assert.match(src, /rctx\.lineWidth=\(gran==="zip"\?\.4:\.9\)\/scale/);
+  assert.match(src, /boundsIntersect\(entry\.b,bounds\)/);
+  assert.match(src, /ctx\.lineWidth=\(gran==="zip"\?\.4:\.9\)\/scale/);
   assert.match(src, /function rasterRefreshNeeded\(t\)/);
-  assert.match(src, /if\(rasterRefreshNeeded\(t\)\)\{drawRaster\(\);return;\}/);
-  assert.match(src, /if\(raster\.width!==pixelW\)raster\.width=pixelW/);
+  assert.match(src, /if\(rasterRefreshNeeded\(t\)\)\{drawDetailRaster\(\);return;\}/);
+  assert.match(src, /if\(detailRaster\.width!==pixelW\)detailRaster\.width=pixelW/);
   assert.doesNotMatch(src, /shape-rendering:optimizeSpeed/);
 });
 
@@ -130,6 +133,12 @@ test("motion raster transform tracks pan and zoom without repainting each frame"
     x: -260,
     y: -245,
   });
+});
+
+test("detail raster bounds include visible overlaps and exclude distant geometry", () => {
+  assert.equal(boundsIntersect([0, 0, 10, 10], [5, 5, 15, 15]), true);
+  assert.equal(boundsIntersect([0, 0, 10, 10], [10, 10, 20, 20]), true);
+  assert.equal(boundsIntersect([0, 0, 10, 10], [11, 0, 20, 10]), false);
 });
 
 test("a county click does not enter drag mode until real pointer movement", () => {

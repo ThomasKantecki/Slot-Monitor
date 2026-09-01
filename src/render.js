@@ -47,6 +47,17 @@ function geomToD(geometry, fit) {
   });
   return d;
 }
+function geomBounds(geometry, fit) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  eachRing(geometry, (ring) => {
+    for (const [lon, lat] of ring) {
+      const [x, y] = fit.project(lon, lat), px = Number(fit.tx(x)), py = Number(fit.ty(y));
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    }
+  });
+  return [minX, minY, maxX, maxY];
+}
 export function escapeScriptJson(value) {
   const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
   return JSON.stringify(value)
@@ -111,6 +122,9 @@ export function motionRasterTransform(current, snapshot, frame) {
     y: currentY - scale * snapshotY + padShift,
   };
 }
+export function boundsIntersect(a, b) {
+  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+}
 // ── Data contract ───────────────────────────────────────────────────────────
 // Everything under data/ that isn't geometry comes from the data pipeline.
 // Whatever gets built to replace it has to emit exactly these shapes:
@@ -172,8 +186,8 @@ export function render() {
   const logoVars = `:root{${ahLogo ? `--ah-logo-img:url(data:image/png;base64,${ahLogo});` : ""}${ohLogo ? `--oh-logo-img:url(data:image/png;base64,${ohLogo});` : ""}}`;
 
   const fit = computeFit(countyGeo.features); // frame the whole state
-  const cPaths = countyGeo.features.map((f) => ({ k: f.properties.name, d: geomToD(f.geometry, fit) }));
-  const zPaths = zipGeo.features.map((f) => ({ k: f.properties.zip, d: geomToD(f.geometry, fit) }));
+  const cPaths = countyGeo.features.map((f) => ({ k: f.properties.name, d: geomToD(f.geometry, fit), b: geomBounds(f.geometry, fit) }));
+  const zPaths = zipGeo.features.map((f) => ({ k: f.properties.zip, d: geomToD(f.geometry, fit), b: geomBounds(f.geometry, fit) }));
   const outlineD = (g) => (g.geometries ?? (g.features ?? []).map((f) => f.geometry)).map((gm) => geomToD(gm, fit)).join("");
   const outlines = { county: outlineD(countyOutline) };
 
@@ -193,6 +207,7 @@ export function render() {
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
     .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__MOTION_RASTER_FUNCTION__", motionRasterTransform.toString())
+    .replace("__BOUNDS_INTERSECT_FUNCTION__", boundsIntersect.toString())
     .replace("__LOGOVARS__", logoVars)
     .replace("__FONTS__", fontsCss)
     .replace("__VIEWBOX__", `0 0 ${W} ${H}`)
@@ -267,7 +282,7 @@ select.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family
 @container (min-width:820px){.controls{flex-wrap:nowrap}}
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
-#map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0;will-change:transform;image-rendering:auto}
+#map-raster,#map-raster-detail{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0;will-change:transform;image-rendering:auto}
 svg.zooming path.z,svg.drag path.z{pointer-events:none;transition:none}
 #land{fill:#e6e2dc;stroke:#cdd8df;stroke-width:.6;vector-effect:non-scaling-stroke}
 #coast{fill:none;stroke:#000;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
@@ -369,6 +384,7 @@ __LOGOVARS__
   <div class="mapwrap">
    <svg viewBox="__VIEWBOX__" id="map" class="g-zip" aria-label="Florida provider map"><defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><rect width="25" height="25" fill="#c6d3dc"></rect><path d="M25 0H0V25" fill="none" stroke="#a6bac8" stroke-width="1"></path></pattern><pattern id="tie-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#b3284e"></rect><rect x="4" width="4" height="8" fill="#1a6ba3"></rect></pattern></defs><rect id="sea" x="-3000" y="-3000" width="7000" height="7000" fill="url(#grid)"></rect><g id="vp"></g></svg>
    <canvas id="map-raster" width="__W__" height="__H__" aria-hidden="true"></canvas>
+   <canvas id="map-raster-detail" width="__W__" height="__H__" aria-hidden="true"></canvas>
    <div class="zoomctl"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">&minus;</button><button id="zreset" title="Reset" style="font-size:12px">&#8634;</button></div>
    <div class="hint">Scroll to zoom &middot; drag to pan &middot; click for providers</div>
   </div>
@@ -424,6 +440,7 @@ const DATASETS={
 __HEADLINE_FUNCTIONS__
 __DRAG_THRESHOLD_FUNCTION__
 __MOTION_RASTER_FUNCTION__
+__BOUNDS_INTERSECT_FUNCTION__
 const CTY=J("cty"), OUTLINES=J("outlines");
 const NAVY=["#cfe0ee","#8dbcdb","#4c92c3","#1a6ba3","#00436f"];
 const RED=["#f1d2da","#e199ab","#cf5a79","#b3284e","#83091f"];
@@ -504,43 +521,57 @@ function showProviders(k){selected=k;
 const cssq=(s)=>String(s).replace(/"/g,'\\"');
 
 const svg=document.getElementById("map"), vp=document.getElementById("vp");
-const raster=document.getElementById("map-raster"), rctx=raster.getContext("2d",{alpha:true});
-const RASTER_OK=!!rctx&&typeof Path2D==="function";
-const RASTER_DPR=2, RASTER_PAD_MIN=128, RASTER_PAD_MAX=256;
-let rasterPaths=null,rasterReady=false,rasterQueued=false,rasterActive=false,rasterSnapshot=null;
+const raster=document.getElementById("map-raster"),rctx=raster.getContext("2d",{alpha:true});
+const detailRaster=document.getElementById("map-raster-detail"),dctx=detailRaster.getContext("2d",{alpha:true});
+const RASTER_OK=!!rctx&&!!dctx&&typeof Path2D==="function";
+const BASE_RASTER_DPR=3,DETAIL_RASTER_DPR=2,BASE_ZOOM_LIMIT=2.5,DETAIL_PAD_MIN=128,DETAIL_PAD_MAX=256;
+let rasterPaths=null,baseReady=false,rasterQueued=false,rasterActive=false,rasterMode="",rasterSnapshot=null;
 let mapFrame={left:0,top:0,w:W,h:H,s:1,ox:0,oy:0};
 function ensureRasterPaths(){if(rasterPaths||!RASTER_OK)return;
  rasterPaths={
-  county:PATHS.county.map(p=>new Path2D(p.d)),
-  zip:PATHS.zip.map(p=>new Path2D(p.d)),
+  county:PATHS.county.map(p=>({path:new Path2D(p.d),b:p.b})),
+  zip:PATHS.zip.map(p=>({path:new Path2D(p.d),b:p.b})),
   outline:new Path2D(OUTLINES.county),
  };}
-function rasterTiePattern(){const tile=document.createElement("canvas");tile.width=8;tile.height=8;const t=tile.getContext("2d");
+function rasterNodes(){const lay=document.getElementById("lay-"+gran);return lay.__rasterPaths||(lay.__rasterPaths=[...lay.querySelectorAll("path.z")]);}
+function rasterTiePattern(ctx){const tile=document.createElement("canvas");tile.width=8;tile.height=8;const t=tile.getContext("2d");
  t.fillStyle="#b3284e";t.fillRect(0,0,4,8);t.fillStyle="#1a6ba3";t.fillRect(4,0,4,8);
- const pattern=rctx.createPattern(tile,"repeat");if(pattern&&pattern.setTransform&&typeof DOMMatrix==="function")pattern.setTransform(new DOMMatrix().rotate(45));return pattern;}
-function drawRaster(){if(!RASTER_OK)return false;ensureRasterPaths();if(!rasterPaths)return false;
- const pad=Math.max(RASTER_PAD_MIN,Math.min(RASTER_PAD_MAX,Math.round(Math.min(mapFrame.w,mapFrame.h)*.35)));
- const cssW=Math.ceil(mapFrame.w+pad*2),cssH=Math.ceil(mapFrame.h+pad*2),dpr=RASTER_DPR;
- const pixelW=Math.round(cssW*dpr),pixelH=Math.round(cssH*dpr);if(raster.width!==pixelW)raster.width=pixelW;if(raster.height!==pixelH)raster.height=pixelH;
- raster.style.left=(-pad)+"px";raster.style.top=(-pad)+"px";raster.style.width=cssW+"px";raster.style.height=cssH+"px";
- rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,cssW,cssH);
- const scale=mapFrame.s*Z.k,tx=pad+mapFrame.ox+mapFrame.s*Z.x,ty=pad+mapFrame.oy+mapFrame.s*Z.y;
- rctx.setTransform(dpr*scale,0,0,dpr*scale,dpr*tx,dpr*ty);rctx.lineJoin="round";
- rctx.fillStyle=NODATA;rctx.strokeStyle="#cdd8df";rctx.lineWidth=.6/scale;rctx.fill(rasterPaths.outline);rctx.stroke(rasterPaths.outline);
- const lay=document.getElementById("lay-"+gran),nodes=lay.__rasterPaths||(lay.__rasterPaths=[...lay.querySelectorAll("path.z")]),paths=rasterPaths[gran],tie=rasterTiePattern();let selectedPath=null;
- rctx.strokeStyle="#000";rctx.lineWidth=(gran==="zip"?.4:.9)/scale;
- paths.forEach((path,i)=>{const node=nodes[i],fill=node?node.getAttribute("fill"):NODATA;rctx.fillStyle=fill===TIE_FILL?(tie||NODATA):(fill||NODATA);rctx.fill(path);rctx.stroke(path);if(node&&node.classList.contains("sel"))selectedPath=path;});
- if(selectedPath){rctx.strokeStyle="#000";rctx.lineWidth=2.8/scale;rctx.stroke(selectedPath);}
- rctx.strokeStyle="#000";rctx.lineWidth=2/scale;rctx.stroke(rasterPaths.outline);
- rasterSnapshot={k:Z.k,x:Z.x,y:Z.y,pad};raster.style.transform="none";rasterReady=true;return true;}
-function queueRaster(){if(!RASTER_OK)return;rasterReady=false;if(rasterActive)endRasterMotion();if(rasterQueued)return;rasterQueued=true;
- const run=()=>{rasterQueued=false;ensureRasterPaths();rasterReady=!!rasterPaths;};if(window.requestIdleCallback)window.requestIdleCallback(run,{timeout:120});else requestAnimationFrame(run);}
-function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,w:r.width,h:r.height,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};if(rasterActive)drawRaster();}
+ const pattern=ctx.createPattern(tile,"repeat");if(pattern&&pattern.setTransform&&typeof DOMMatrix==="function")pattern.setTransform(new DOMMatrix().rotate(45));return pattern;}
+function drawRasterShapes(ctx,scale,visible){ctx.lineJoin="round";
+ ctx.fillStyle=NODATA;ctx.strokeStyle="#cdd8df";ctx.lineWidth=.6/scale;ctx.fill(rasterPaths.outline);ctx.stroke(rasterPaths.outline);
+ const nodes=rasterNodes(),paths=rasterPaths[gran],items=visible||paths.map((entry,i)=>[entry,i]),tie=rasterTiePattern(ctx);let selectedPath=null;
+ ctx.strokeStyle="#000";ctx.lineWidth=(gran==="zip"?.4:.9)/scale;
+ items.forEach(([entry,i])=>{const node=nodes[i],fill=node?node.getAttribute("fill"):NODATA;ctx.fillStyle=fill===TIE_FILL?(tie||NODATA):(fill||NODATA);ctx.fill(entry.path);ctx.stroke(entry.path);if(node&&node.classList.contains("sel"))selectedPath=entry.path;});
+ if(selectedPath){ctx.strokeStyle="#000";ctx.lineWidth=2.8/scale;ctx.stroke(selectedPath);}
+ ctx.strokeStyle="#000";ctx.lineWidth=2/scale;ctx.stroke(rasterPaths.outline);}
+function positionBaseRaster(){raster.style.left=mapFrame.ox+"px";raster.style.top=mapFrame.oy+"px";raster.style.width=(W*mapFrame.s)+"px";raster.style.height=(H*mapFrame.s)+"px";}
+function drawBaseRaster(){if(!RASTER_OK)return false;ensureRasterPaths();if(!rasterPaths)return false;
+ const dpr=BASE_RASTER_DPR,pixelW=W*dpr,pixelH=H*dpr;if(raster.width!==pixelW)raster.width=pixelW;if(raster.height!==pixelH)raster.height=pixelH;positionBaseRaster();
+ rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,W,H);drawRasterShapes(rctx,1);raster.style.transform="none";baseReady=true;return true;}
+function detailViewBounds(pad){const scale=mapFrame.s*Z.k;return [(-pad-mapFrame.ox-mapFrame.s*Z.x)/scale,(-pad-mapFrame.oy-mapFrame.s*Z.y)/scale,(mapFrame.w+pad-mapFrame.ox-mapFrame.s*Z.x)/scale,(mapFrame.h+pad-mapFrame.oy-mapFrame.s*Z.y)/scale];}
+function drawDetailRaster(){if(!RASTER_OK)return false;ensureRasterPaths();if(!rasterPaths)return false;
+ const pad=Math.max(DETAIL_PAD_MIN,Math.min(DETAIL_PAD_MAX,Math.round(Math.min(mapFrame.w,mapFrame.h)*.35)));
+ const cssW=Math.ceil(mapFrame.w+pad*2),cssH=Math.ceil(mapFrame.h+pad*2),dpr=DETAIL_RASTER_DPR;
+ const pixelW=Math.round(cssW*dpr),pixelH=Math.round(cssH*dpr);if(detailRaster.width!==pixelW)detailRaster.width=pixelW;if(detailRaster.height!==pixelH)detailRaster.height=pixelH;
+ detailRaster.style.left=(-pad)+"px";detailRaster.style.top=(-pad)+"px";detailRaster.style.width=cssW+"px";detailRaster.style.height=cssH+"px";
+ dctx.setTransform(dpr,0,0,dpr,0,0);dctx.clearRect(0,0,cssW,cssH);
+ const scale=mapFrame.s*Z.k,tx=pad+mapFrame.ox+mapFrame.s*Z.x,ty=pad+mapFrame.oy+mapFrame.s*Z.y,bounds=detailViewBounds(pad),visible=[];
+ rasterPaths[gran].forEach((entry,i)=>{if(boundsIntersect(entry.b,bounds))visible.push([entry,i]);});
+ dctx.setTransform(dpr*scale,0,0,dpr*scale,dpr*tx,dpr*ty);drawRasterShapes(dctx,scale,visible);
+ rasterSnapshot={k:Z.k,x:Z.x,y:Z.y,pad};detailRaster.style.transform="none";return true;}
+function showRaster(mode){rasterMode=mode;rasterActive=true;raster.style.opacity=mode==="base"?"1":"0";detailRaster.style.opacity=mode==="detail"?"1":"0";vp.style.visibility="hidden";}
+function applyBaseRasterZoom(){positionBaseRaster();raster.style.transform="translate("+(mapFrame.s*Z.x)+"px,"+(mapFrame.s*Z.y)+"px) scale("+Z.k+")";}
+function activateBaseRaster(){if(!baseReady&&!drawBaseRaster())return false;applyBaseRasterZoom();showRaster("base");return true;}
+function activateDetailRaster(){if(!drawDetailRaster())return false;showRaster("detail");return true;}
+function queueRaster(){if(!RASTER_OK)return;baseReady=false;if(rasterActive)endRasterMotion();if(rasterQueued)return;rasterQueued=true;
+ const run=()=>{rasterQueued=false;drawBaseRaster();};if(window.requestIdleCallback)window.requestIdleCallback(run,{timeout:180});else requestAnimationFrame(run);}
+function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,w:r.width,h:r.height,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};positionBaseRaster();if(rasterActive){if(rasterMode==="base")applyBaseRasterZoom();else drawDetailRaster();}}
 function rasterRefreshNeeded(t){if(!rasterSnapshot)return true;const pad=rasterSnapshot.pad,guard=24,left=-pad+t.x,top=-pad+t.y,right=left+t.scale*(mapFrame.w+pad*2),bottom=top+t.scale*(mapFrame.h+pad*2);return t.scale>1.25||left>-guard||top>-guard||right<mapFrame.w+guard||bottom<mapFrame.h+guard;}
-function applyRasterZoom(){const t=motionRasterTransform(Z,rasterSnapshot,mapFrame);if(rasterRefreshNeeded(t)){drawRaster();return;}raster.style.transform="translate("+t.x+"px,"+t.y+"px) scale("+t.scale+")";}
-function beginRasterMotion(){svg.classList.add("zooming");if(!RASTER_OK)return;syncMapFrame();if(!rasterReady){ensureRasterPaths();rasterReady=!!rasterPaths;}if(!drawRaster())return;rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";}
+function applyRasterZoom(){if(rasterMode==="base"){if(Z.k>BASE_ZOOM_LIMIT){if(drawDetailRaster())showRaster("detail");else applyBaseRasterZoom();}else applyBaseRasterZoom();return;}
+ if(Z.k<=BASE_ZOOM_LIMIT){if(activateBaseRaster())return;}const t=motionRasterTransform(Z,rasterSnapshot,mapFrame);if(rasterRefreshNeeded(t)){drawDetailRaster();return;}detailRaster.style.transform="translate("+t.x+"px,"+t.y+"px) scale("+t.scale+")";}
+function beginRasterMotion(){svg.classList.add("zooming");if(!RASTER_OK)return;syncMapFrame();if(Z.k<=BASE_ZOOM_LIMIT)activateBaseRaster();else activateDetailRaster();}
 function endRasterMotion(){vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");vp.style.visibility="";
- if(rasterActive){raster.style.opacity="0";raster.style.transform="none";rasterActive=false;rasterSnapshot=null;}svg.classList.remove("zooming");}
+ if(rasterActive){raster.style.opacity="0";detailRaster.style.opacity="0";raster.style.transform="none";detailRaster.style.transform="none";rasterActive=false;rasterMode="";rasterSnapshot=null;}svg.classList.remove("zooming");}
 const layerHTML=(name)=>PATHS[name].map(p=>'<path class="z" pathLength="1" fill="'+NODATA+'" data-k="'+p.k.replace(/"/g,"&quot;")+'" d="'+p.d+'"></path>').join("");
 const VISIBLE_SYSTEMS=()=>view==="diff"?ACTIVE:ACTIVE.filter(k=>k===view);
 const SYSLIST=()=>VISIBLE_SYSTEMS().map(k=>SYS[k]).join(" and ");
