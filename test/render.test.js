@@ -80,6 +80,12 @@ test("nonzero ties use a red-and-blue striped map fill", () => {
   assert.match(src, /red and blue striped areas are equal/);
 });
 
+test("selected ZIP and county borders override their base stroke widths", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /#lay-zip path\.z\.sel,#lay-county path\.z\.sel\{stroke:#000;stroke-width:2\.8\}/);
+  assert.match(src, /#lay-zip path\.z:hover,#lay-county path\.z:hover\{stroke:#000;stroke-width:1\.8\}/);
+});
+
 test("desktop filters compact into one row when the map panel is wide enough", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /container-type:inline-size/);

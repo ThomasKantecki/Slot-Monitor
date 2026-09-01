@@ -99,8 +99,8 @@ path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fil
 .g-county #lay-zip{display:none}
 @keyframes drawin{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 .lay.draw path.z{fill-opacity:0;stroke-dasharray:1;stroke-dashoffset:1;animation:drawin .5s ease forwards;transition:none}
-path.z:hover{stroke:#000;stroke-width:1.8}
-path.z.sel{stroke:#000;stroke-width:2.8}
+#lay-zip path.z:hover,#lay-county path.z:hover{stroke:#000;stroke-width:1.8}
+#lay-zip path.z.sel,#lay-county path.z.sel{stroke:#000;stroke-width:2.8}
 .zoomctl{position:absolute;z-index:3;left:12px;bottom:12px;display:flex;flex-direction:column;border:2px solid #000;background:#fff}
 .zoomctl button{width:30px;height:30px;border:0;background:#fff;font-size:17px;cursor:pointer;color:var(--chrome);font-family:var(--mono)}
 .zoomctl button+button{border-top:2px solid #000}.zoomctl button:hover{background:var(--accent-tint)}
