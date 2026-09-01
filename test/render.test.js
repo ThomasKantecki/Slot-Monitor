@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { boundsIntersect, dragExceededThreshold, escapeScriptJson, motionRasterTransform, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
+import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -105,7 +105,6 @@ test("Primary Only includes an accessible multiple-location explanation", () => 
 test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /id="map-raster"/);
-  assert.match(src, /id="map-raster-detail"/);
   assert.match(src, /function beginRasterMotion\(\)/);
   assert.match(src, /raster\.style\.transform=/);
   assert.match(src, /requestAnimationFrame\(moveDrag\)/);
@@ -113,39 +112,13 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
   assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
 });
 
-test("drag rendering uses a cached base raster and clipped sharp detail raster", () => {
+test("zoom and drag reuse one cached raster without high-resolution redraws", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
-  assert.match(src, /const BASE_RASTER_DPR=3,DETAIL_RASTER_DPR=2,BASE_ZOOM_LIMIT=2\.5/);
-  assert.match(src, /function drawBaseRaster\(\)/);
-  assert.match(src, /function applyBaseRasterZoom\(\)/);
-  assert.match(src, /const cssW=Math\.ceil\(mapFrame\.w\+pad\*2\),cssH=Math\.ceil\(mapFrame\.h\+pad\*2\)/);
-  assert.match(src, /boundsIntersect\(entry\.b,bounds\)/);
-  assert.match(src, /ctx\.lineWidth=\(gran==="zip"\?\.4:\.9\)\/scale/);
-  assert.match(src, /function rasterRefreshNeeded\(t\)/);
-  assert.match(src, /if\(rasterRefreshNeeded\(t\)\)\{drawDetailRaster\(\);return;\}/);
-  assert.match(src, /if\(detailRaster\.width!==pixelW\)detailRaster\.width=pixelW/);
-  assert.doesNotMatch(src, /shape-rendering:optimizeSpeed/);
-});
-
-test("motion raster transform tracks pan and zoom without repainting each frame", () => {
-  const frame = { s: 0.5, ox: 10, oy: 20 };
-  const snapshot = { k: 2, x: -220, y: -90, pad: 200 };
-  assert.deepEqual(motionRasterTransform({ k: 2, x: -200, y: -100 }, snapshot, frame), {
-    scale: 1,
-    x: 10,
-    y: -5,
-  });
-  assert.deepEqual(motionRasterTransform({ k: 4, x: -300, y: -150 }, { ...snapshot, x: -100, y: -50 }, frame), {
-    scale: 2,
-    x: -260,
-    y: -245,
-  });
-});
-
-test("detail raster bounds include visible overlaps and exclude distant geometry", () => {
-  assert.equal(boundsIntersect([0, 0, 10, 10], [5, 5, 15, 15]), true);
-  assert.equal(boundsIntersect([0, 0, 10, 10], [10, 10, 20, 20]), true);
-  assert.equal(boundsIntersect([0, 0, 10, 10], [11, 0, 20, 10]), false);
+  assert.match(src, /const dpr=Math\.min\(2,Math\.max\(1,window\.devicePixelRatio\|\|1\)\)/);
+  assert.match(src, /const run=\(\)=>\{rasterQueued=false;drawRaster\(\);\}/);
+  assert.match(src, /function beginRasterMotion\(\)\{svg\.classList\.add\("zooming"\);if\(!rasterReady\)return/);
+  assert.match(src, /shape-rendering:optimizeSpeed/);
+  assert.doesNotMatch(src, /map-raster-detail|drawDetailRaster|BASE_ZOOM_LIMIT|boundsIntersect|motionRasterTransform/);
 });
 
 test("a county click does not enter drag mode until real pointer movement", () => {
