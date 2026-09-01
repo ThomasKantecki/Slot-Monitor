@@ -55,8 +55,14 @@ test("map color key lives in the totals card without a separate lead legend", ()
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.doesNotMatch(src, /class="panel lpanel"|id="legend"|id="legtitle"/);
   assert.match(src, /id="map-key"/);
-  assert.match(src, /Redder: Orlando Health/);
-  assert.match(src, /Bluer: AdventHealth/);
+  assert.match(src, />Orlando Health<\/span>/);
+  assert.match(src, />AdventHealth<\/span>/);
+});
+
+test("map color key keeps all three comparison labels on one row", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /\.map-key\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(3,max-content\)[^}]*white-space:nowrap/);
+  assert.match(src, /id="key-tie"[^>]*>[\s\S]*?<span>Equal<\/span>/);
 });
 
 test("company view filters and refreshes the provider index", () => {
@@ -71,7 +77,7 @@ test("nonzero ties use a red-and-blue striped map fill", () => {
   assert.match(src, /id="tie-stripes"/);
   assert.match(src, /const TIE_FILL="url\(#tie-stripes\)"/);
   assert.match(src, /if\(d===0\) return TIE_FILL/);
-  assert.match(src, /Striped: equal/);
+  assert.match(src, /red and blue striped areas are equal/);
 });
 
 test("desktop filters compact into one row when the map panel is wide enough", () => {

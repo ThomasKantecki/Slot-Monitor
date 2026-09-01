@@ -59,10 +59,10 @@ button,input,select{font:inherit;color:inherit}
 .tnum.ah{color:var(--ah)}.tnum.oh{color:var(--oh)}
 .tsub{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:4px;letter-spacing:.02em}
 .tdiv{height:2px;background:#000;margin:8px 0}
-.map-key{display:flex;align-items:center;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;border-top:1px solid var(--cream-90);margin-top:7px;padding-top:6px;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.1;color:var(--faint);letter-spacing:.01em}
-.map-key-item{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.map-key{display:grid;grid-template-columns:repeat(3,max-content);align-items:center;justify-content:space-between;column-gap:4px;white-space:nowrap;border-top:1px solid var(--cream-90);margin-top:7px;padding-top:6px;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.1;color:var(--faint);letter-spacing:.01em}
+.map-key-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .map-key-item[hidden]{display:none}
-.map-key-swatch{display:inline-block;width:20px;height:7px;border:1px solid rgba(0,0,0,.3);flex:none}
+.map-key-swatch{display:inline-block;width:16px;height:7px;border:1px solid rgba(0,0,0,.3);flex:none}
 .map-key-item.ah .map-key-swatch{background:linear-gradient(90deg,#cfe0ee,#00436f)}
 .map-key-item.oh .map-key-swatch{background:linear-gradient(90deg,#f1d2da,#83091f)}
 .map-key-item.tie .map-key-swatch{background:repeating-linear-gradient(135deg,#b3284e 0 3px,#1a6ba3 3px 6px)}
@@ -202,9 +202,9 @@ a{color:var(--accent-deep)}
     <div class="tdiv"></div>
     <div class="trow"><span class="tlogo oh" role="img" aria-label="Orlando Health"></span><span class="tnum oh" id="tot-oh">0</span></div>
     <div class="map-key" id="map-key" aria-label="Map color key">
-     <span class="map-key-item oh" id="key-oh"><i class="map-key-swatch" aria-hidden="true"></i><span id="key-oh-label">Redder: Orlando Health</span></span>
-     <span class="map-key-item tie" id="key-tie"><i class="map-key-swatch" aria-hidden="true"></i><span>Striped: equal</span></span>
-     <span class="map-key-item ah" id="key-ah"><i class="map-key-swatch" aria-hidden="true"></i><span id="key-ah-label">Bluer: AdventHealth</span></span>
+     <span class="map-key-item oh" id="key-oh"><i class="map-key-swatch" aria-hidden="true"></i><span id="key-oh-label">Orlando Health</span></span>
+     <span class="map-key-item tie" id="key-tie"><i class="map-key-swatch" aria-hidden="true"></i><span>Equal</span></span>
+     <span class="map-key-item ah" id="key-ah"><i class="map-key-swatch" aria-hidden="true"></i><span id="key-ah-label">AdventHealth</span></span>
     </div>
    </div>
   </section>
@@ -329,8 +329,8 @@ function totals(){const headline=providerHeadline(L().data,{locationMode,gran,sp
 function updateColorKey(){const ah=document.getElementById("key-ah"),oh=document.getElementById("key-oh"),tie=document.getElementById("key-tie");
  if(view==="diff"){
   ah.hidden=!ACTIVE.includes("ah");oh.hidden=!ACTIVE.includes("oh");tie.hidden=false;
-  document.getElementById("key-ah-label").textContent="Bluer: AdventHealth";
-  document.getElementById("key-oh-label").textContent="Redder: Orlando Health";
+  document.getElementById("key-ah-label").textContent="AdventHealth";
+  document.getElementById("key-oh-label").textContent="Orlando Health";
   document.getElementById("map-key").setAttribute("aria-label","Redder areas favor Orlando Health; red and blue striped areas are equal; bluer areas favor AdventHealth");
  }else{
   const isAh=view==="ah";ah.hidden=!isAh;oh.hidden=isAh;tie.hidden=true;
