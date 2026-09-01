@@ -270,6 +270,11 @@ ${SUITE_NAV_STYLES}
 .filter-pill{padding:4px 6px;border:2px solid #000;background:#fff;color:var(--mute);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.035em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
 .filter-pill:hover{color:var(--ink);background:var(--accent-tint)}
 .filter-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--navy)}
+.location-help{position:relative;display:inline-flex;align-items:center;margin-left:2px;flex:none}
+.location-info{display:inline-grid;place-items:center;width:16px;height:16px;padding:0;border:1.5px solid #000;border-radius:50%!important;background:#fff;color:var(--mute);font-family:var(--mono);font-size:9px;font-weight:800;line-height:1;cursor:help}
+.location-info:hover,.location-info:focus-visible{background:var(--accent-tint);color:var(--ink)}
+.location-tip{position:absolute;z-index:30;top:calc(100% + 7px);right:0;width:250px;max-width:calc(100vw - 32px);padding:8px 9px;border:2px solid #000;background:#fff;color:var(--ink);font-family:var(--display);font-size:11px;font-weight:500;line-height:1.35;letter-spacing:0;text-transform:none;white-space:normal;opacity:0;visibility:hidden;pointer-events:none}
+.location-help:hover .location-tip,.location-help:focus-within .location-tip{opacity:1;visibility:visible}
 .logo-pill{padding:2px 6px}
 .logo-pill[aria-pressed="true"]{background:var(--accent-tint);border-color:#000}
 .pill-logo{display:block;width:52px;height:16px;background-repeat:no-repeat;background-position:center;background-size:contain}
@@ -377,7 +382,7 @@ __LOGOVARS__
    <span class="cap" id="leadcap">Lead</span>
    <span class="pill-group" role="group" aria-label="view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span>
    <span class="cap">Locations</span>
-   <span class="pill-group" role="group" aria-label="provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button></span>
+   <span class="pill-group" role="group" aria-label="provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span>
    <span class="spacer"></span>
    <span class="fgroup"><label class="cap" for="spec">Specialty</label><select id="spec" class="control" aria-label="Specialty"></select></span>
   </div>

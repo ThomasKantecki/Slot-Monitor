@@ -95,6 +95,13 @@ test("desktop filters compact into one row when the map panel is wide enough", (
   assert.match(src, /select\.control\{[^}]*width:104px;max-width:104px/);
 });
 
+test("Primary Only includes an accessible multiple-location explanation", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /id="primary-location-info"[^>]*aria-describedby="primary-location-note"/);
+  assert.match(src, /Some providers work at multiple locations\. Switch to Primary Only to show each provider only at their main location\./);
+  assert.match(src, /\.location-help:hover \.location-tip,\.location-help:focus-within \.location-tip\{opacity:1;visibility:visible\}/);
+});
+
 test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /id="map-raster"/);
