@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
+import { dragExceededThreshold, escapeScriptJson, motionRasterTransform, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -99,13 +99,31 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
   assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
 });
 
-test("drag rendering stays sharp above the low-zoom raster range", () => {
+test("drag rendering uses a sharp viewport raster at every zoom", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
-  assert.match(src, /const RASTER_ZOOM_LIMIT=2/);
-  assert.match(src, /const dpr=2/);
-  assert.match(src, /if\(!rasterReady\|\|Z\.k>RASTER_ZOOM_LIMIT\)return/);
-  assert.match(src, /if\(rasterActive&&Z\.k>RASTER_ZOOM_LIMIT\)endRasterMotion\(\)/);
+  assert.doesNotMatch(src, /RASTER_ZOOM_LIMIT/);
+  assert.match(src, /const RASTER_DPR=2/);
+  assert.match(src, /const cssW=Math\.ceil\(mapFrame\.w\+pad\*2\),cssH=Math\.ceil\(mapFrame\.h\+pad\*2\)/);
+  assert.match(src, /rctx\.lineWidth=\(gran==="zip"\?\.4:\.9\)\/scale/);
+  assert.match(src, /function rasterRefreshNeeded\(t\)/);
+  assert.match(src, /if\(rasterRefreshNeeded\(t\)\)\{drawRaster\(\);return;\}/);
+  assert.match(src, /if\(raster\.width!==pixelW\)raster\.width=pixelW/);
   assert.doesNotMatch(src, /shape-rendering:optimizeSpeed/);
+});
+
+test("motion raster transform tracks pan and zoom without repainting each frame", () => {
+  const frame = { s: 0.5, ox: 10, oy: 20 };
+  const snapshot = { k: 2, x: -220, y: -90, pad: 200 };
+  assert.deepEqual(motionRasterTransform({ k: 2, x: -200, y: -100 }, snapshot, frame), {
+    scale: 1,
+    x: 10,
+    y: -5,
+  });
+  assert.deepEqual(motionRasterTransform({ k: 4, x: -300, y: -150 }, { ...snapshot, x: -100, y: -50 }, frame), {
+    scale: 2,
+    x: -260,
+    y: -245,
+  });
 });
 
 test("a county click does not enter drag mode until real pointer movement", () => {

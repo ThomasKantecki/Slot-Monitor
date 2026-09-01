@@ -88,7 +88,7 @@ select.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family
 @container (min-width:820px){.controls{flex-wrap:nowrap}}
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
-#map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}
+#map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0;will-change:transform;image-rendering:auto}
 svg.zooming path.z,svg.drag path.z{pointer-events:none;transition:none}
 #land{fill:#e6e2dc;stroke:#cdd8df;stroke-width:.6;vector-effect:non-scaling-stroke}
 #coast{fill:none;stroke:#000;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
@@ -286,6 +286,19 @@ function providerHeadline(data, { locationMode = "all", gran = "zip", specialty 
 function dragExceededThreshold(dx, dy, threshold = 5) {
   return Math.hypot(dx, dy) > threshold;
 }
+function motionRasterTransform(current, snapshot, frame) {
+  const scale = current.k / snapshot.k;
+  const padShift = snapshot.pad * (1 - scale);
+  const currentX = frame.ox + frame.s * current.x;
+  const currentY = frame.oy + frame.s * current.y;
+  const snapshotX = frame.ox + frame.s * snapshot.x;
+  const snapshotY = frame.oy + frame.s * snapshot.y;
+  return {
+    scale,
+    x: currentX - scale * snapshotX + padShift,
+    y: currentY - scale * snapshotY + padShift,
+  };
+}
 const CTY=J("cty"), OUTLINES=J("outlines");
 const NAVY=["#cfe0ee","#8dbcdb","#4c92c3","#1a6ba3","#00436f"];
 const RED=["#f1d2da","#e199ab","#cf5a79","#b3284e","#83091f"];
@@ -368,9 +381,9 @@ const cssq=(s)=>String(s).replace(/"/g,'\\"');
 const svg=document.getElementById("map"), vp=document.getElementById("vp");
 const raster=document.getElementById("map-raster"), rctx=raster.getContext("2d",{alpha:true});
 const RASTER_OK=!!rctx&&typeof Path2D==="function";
-const RASTER_ZOOM_LIMIT=2;
-let rasterPaths=null,rasterReady=false,rasterQueued=false,rasterActive=false;
-let mapFrame={left:0,top:0,s:1,ox:0,oy:0};
+const RASTER_DPR=2, RASTER_PAD_MIN=128, RASTER_PAD_MAX=256;
+let rasterPaths=null,rasterReady=false,rasterQueued=false,rasterActive=false,rasterSnapshot=null;
+let mapFrame={left:0,top:0,w:W,h:H,s:1,ox:0,oy:0};
 function ensureRasterPaths(){if(rasterPaths||!RASTER_OK)return;
  rasterPaths={
   county:PATHS.county.map(p=>new Path2D(p.d)),
@@ -380,23 +393,29 @@ function ensureRasterPaths(){if(rasterPaths||!RASTER_OK)return;
 function rasterTiePattern(){const tile=document.createElement("canvas");tile.width=8;tile.height=8;const t=tile.getContext("2d");
  t.fillStyle="#b3284e";t.fillRect(0,0,4,8);t.fillStyle="#1a6ba3";t.fillRect(4,0,4,8);
  const pattern=rctx.createPattern(tile,"repeat");if(pattern&&pattern.setTransform&&typeof DOMMatrix==="function")pattern.setTransform(new DOMMatrix().rotate(45));return pattern;}
-function drawRaster(){if(!RASTER_OK)return;ensureRasterPaths();
- const dpr=2;raster.width=Math.round(W*dpr);raster.height=Math.round(H*dpr);
- rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,W,H);rctx.lineJoin="round";
- rctx.fillStyle=NODATA;rctx.strokeStyle="#cdd8df";rctx.lineWidth=.6;rctx.fill(rasterPaths.outline);rctx.stroke(rasterPaths.outline);
- const nodes=[...document.querySelectorAll("#lay-"+gran+" path.z")],paths=rasterPaths[gran],tie=rasterTiePattern();let selectedPath=null;
- rctx.strokeStyle="#000";rctx.lineWidth=gran==="zip"?.4:.9;
+function drawRaster(){if(!RASTER_OK)return false;ensureRasterPaths();if(!rasterPaths)return false;
+ const pad=Math.max(RASTER_PAD_MIN,Math.min(RASTER_PAD_MAX,Math.round(Math.min(mapFrame.w,mapFrame.h)*.35)));
+ const cssW=Math.ceil(mapFrame.w+pad*2),cssH=Math.ceil(mapFrame.h+pad*2),dpr=RASTER_DPR;
+ const pixelW=Math.round(cssW*dpr),pixelH=Math.round(cssH*dpr);if(raster.width!==pixelW)raster.width=pixelW;if(raster.height!==pixelH)raster.height=pixelH;
+ raster.style.left=(-pad)+"px";raster.style.top=(-pad)+"px";raster.style.width=cssW+"px";raster.style.height=cssH+"px";
+ rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,cssW,cssH);
+ const scale=mapFrame.s*Z.k,tx=pad+mapFrame.ox+mapFrame.s*Z.x,ty=pad+mapFrame.oy+mapFrame.s*Z.y;
+ rctx.setTransform(dpr*scale,0,0,dpr*scale,dpr*tx,dpr*ty);rctx.lineJoin="round";
+ rctx.fillStyle=NODATA;rctx.strokeStyle="#cdd8df";rctx.lineWidth=.6/scale;rctx.fill(rasterPaths.outline);rctx.stroke(rasterPaths.outline);
+ const lay=document.getElementById("lay-"+gran),nodes=lay.__rasterPaths||(lay.__rasterPaths=[...lay.querySelectorAll("path.z")]),paths=rasterPaths[gran],tie=rasterTiePattern();let selectedPath=null;
+ rctx.strokeStyle="#000";rctx.lineWidth=(gran==="zip"?.4:.9)/scale;
  paths.forEach((path,i)=>{const node=nodes[i],fill=node?node.getAttribute("fill"):NODATA;rctx.fillStyle=fill===TIE_FILL?(tie||NODATA):(fill||NODATA);rctx.fill(path);rctx.stroke(path);if(node&&node.classList.contains("sel"))selectedPath=path;});
- if(selectedPath){rctx.strokeStyle="#000";rctx.lineWidth=2.8;rctx.stroke(selectedPath);}
- rctx.strokeStyle="#000";rctx.lineWidth=2;rctx.stroke(rasterPaths.outline);rasterReady=true;}
+ if(selectedPath){rctx.strokeStyle="#000";rctx.lineWidth=2.8/scale;rctx.stroke(selectedPath);}
+ rctx.strokeStyle="#000";rctx.lineWidth=2/scale;rctx.stroke(rasterPaths.outline);
+ rasterSnapshot={k:Z.k,x:Z.x,y:Z.y,pad};raster.style.transform="none";rasterReady=true;return true;}
 function queueRaster(){if(!RASTER_OK)return;rasterReady=false;if(rasterActive)endRasterMotion();if(rasterQueued)return;rasterQueued=true;
- const run=()=>{rasterQueued=false;drawRaster();};if(window.requestIdleCallback)window.requestIdleCallback(run,{timeout:120});else requestAnimationFrame(run);}
-function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};
- raster.style.left=mapFrame.ox+"px";raster.style.top=mapFrame.oy+"px";raster.style.width=W*s+"px";raster.style.height=H*s+"px";if(rasterActive)applyRasterZoom();}
-function applyRasterZoom(){raster.style.transform="translate("+(Z.x*mapFrame.s)+"px,"+(Z.y*mapFrame.s)+"px) scale("+Z.k+")";}
-function beginRasterMotion(){svg.classList.add("zooming");if(!rasterReady||Z.k>RASTER_ZOOM_LIMIT)return;syncMapFrame();rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";applyRasterZoom();}
+ const run=()=>{rasterQueued=false;ensureRasterPaths();rasterReady=!!rasterPaths;};if(window.requestIdleCallback)window.requestIdleCallback(run,{timeout:120});else requestAnimationFrame(run);}
+function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,w:r.width,h:r.height,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};if(rasterActive)drawRaster();}
+function rasterRefreshNeeded(t){if(!rasterSnapshot)return true;const pad=rasterSnapshot.pad,guard=24,left=-pad+t.x,top=-pad+t.y,right=left+t.scale*(mapFrame.w+pad*2),bottom=top+t.scale*(mapFrame.h+pad*2);return t.scale>1.25||left>-guard||top>-guard||right<mapFrame.w+guard||bottom<mapFrame.h+guard;}
+function applyRasterZoom(){const t=motionRasterTransform(Z,rasterSnapshot,mapFrame);if(rasterRefreshNeeded(t)){drawRaster();return;}raster.style.transform="translate("+t.x+"px,"+t.y+"px) scale("+t.scale+")";}
+function beginRasterMotion(){svg.classList.add("zooming");if(!RASTER_OK)return;syncMapFrame();if(!rasterReady){ensureRasterPaths();rasterReady=!!rasterPaths;}if(!drawRaster())return;rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";}
 function endRasterMotion(){vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");vp.style.visibility="";
- if(rasterActive){raster.style.opacity="0";rasterActive=false;}svg.classList.remove("zooming");}
+ if(rasterActive){raster.style.opacity="0";raster.style.transform="none";rasterActive=false;rasterSnapshot=null;}svg.classList.remove("zooming");}
 const layerHTML=(name)=>PATHS[name].map(p=>'<path class="z" pathLength="1" fill="'+NODATA+'" data-k="'+p.k.replace(/"/g,"&quot;")+'" d="'+p.d+'"></path>').join("");
 const VISIBLE_SYSTEMS=()=>view==="diff"?ACTIVE:ACTIVE.filter(k=>k===view);
 const SYSLIST=()=>VISIBLE_SYSTEMS().map(k=>SYS[k]).join(" and ");
@@ -464,7 +483,7 @@ document.getElementById("m-all").onclick=()=>setLocationMode("all");document.get
 // zoom + pan — Z is what's drawn, T is where we're heading; each frame eases Z
 // toward T so wheel/trackpad zoom glides and the +/-/reset buttons animate.
 let Z={k:1,x:0,y:0}, T={k:1,x:0,y:0}, raf=null;
-function applyZoom(){if(rasterActive&&Z.k>RASTER_ZOOM_LIMIT)endRasterMotion();if(rasterActive)applyRasterZoom();else vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
+function applyZoom(){if(rasterActive)applyRasterZoom();else vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
 function tick(){const a=0.34;
  Z.k+=(T.k-Z.k)*a; Z.x+=(T.x-Z.x)*a; Z.y+=(T.y-Z.y)*a;
  if(Math.abs(T.k-Z.k)<0.0025&&Math.abs(T.x-Z.x)<0.12&&Math.abs(T.y-Z.y)<0.12){Z.k=T.k;Z.x=T.x;Z.y=T.y;raf=null;endRasterMotion();return;}
