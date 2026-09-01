@@ -23,8 +23,11 @@ test("Provider Map and Slot Times use the same top-level switcher", () => {
 });
 
 test("both views keep the same stationary outer shell", () => {
+  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
-  assert.match(SUITE_NAV_STYLES, /\.brand-box\{width:324px;justify-content:space-between\}/);
+  assert.match(SUITE_NAV_STYLES, /\.brand-box\{width:220px;justify-content:center\}/);
+  assert.doesNotMatch(providerSource, /brand-logo/);
+  assert.doesNotMatch(slots, /brand-logo|adventhealth-logo|ah-logo-img/);
   assert.match(SUITE_NAV_STYLES, /html\{scrollbar-gutter:stable\}/);
   assert.match(SUITE_NAV_STYLES, /@media \(min-width:881px\) and \(max-height:680px\)/);
   assert.match(SUITE_NAV_STYLES, /\.hdr-in\{min-height:52px;padding:6px 18px\}/);

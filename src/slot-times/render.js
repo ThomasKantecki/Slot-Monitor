@@ -15,8 +15,6 @@ function optionalFile(rel, encoding) {
 
 export function renderSlotTimes() {
   const fontsCss = optionalFile("data/fonts.css", "utf8");
-  const ahLogo = optionalFile("assets/adventhealth-logo.png").toString("base64");
-  const logoVar = ahLogo ? `--ah-logo-img:url(data:image/png;base64,${ahLogo});` : "";
 
   return String.raw`<!doctype html>
 <html lang="en">
@@ -27,7 +25,7 @@ export function renderSlotTimes() {
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23005C99'/%3E%3Crect y='12' width='16' height='4' fill='%231FA9E1'/%3E%3C/svg%3E">
 <style>
 ${fontsCss}
-:root{${logoVar}--navy:#14233e;--cream:#f5f1e8;--cream-90:#eee9dc;--chrome:#005c99;--accent:#1fa9e1;--accent-tint:rgba(31,169,225,.12);--ink:#14233e;--mute:#41506c;--faint:#63748c;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--display:"Helvetica Neue","Inter",Helvetica,Arial,system-ui,sans-serif}
+:root{--navy:#14233e;--cream:#f5f1e8;--cream-90:#eee9dc;--chrome:#005c99;--accent:#1fa9e1;--accent-tint:rgba(31,169,225,.12);--ink:#14233e;--mute:#41506c;--faint:#63748c;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--display:"Helvetica Neue","Inter",Helvetica,Arial,system-ui,sans-serif}
 *,*::before,*::after{box-sizing:border-box;border-radius:0;box-shadow:none}
 *{margin:0}
 html{height:100%;overflow:hidden}
@@ -35,10 +33,9 @@ body{height:100vh;height:100dvh;min-height:0;background:var(--cream);color:var(-
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hdr{background:var(--chrome);border-bottom:1px solid rgba(245,241,232,.14);flex:none}
 .hdr-in{max-width:1440px;margin:0 auto;min-height:60px;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.brand-box{display:inline-flex;align-items:center;gap:14px;background:#fff;border:3px solid #000;padding:8px 16px}
+.brand-box{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:3px solid #000;padding:8px 16px}
 .mark{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--navy);white-space:nowrap}
 .mark b{color:var(--accent);font-weight:700}
-.brand-logo{display:inline-block;width:106px;height:26px;background:var(--ah-logo-img) no-repeat center/contain;flex:none}
 .wrap{max-width:1440px;width:100%;margin:0 auto;padding:14px 22px 16px;display:flex;flex:1;min-height:0}
 .panel{width:100%;min-height:0;background:#fff;border:3px solid #000;display:flex;flex-direction:column}
 .panel-band{background:var(--chrome);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -58,8 +55,8 @@ ${SUITE_NAV_STYLES}
 }
 @media (max-width:480px){
  .hdr-in{padding:8px 10px}
- .brand-box{width:100%;justify-content:center;padding:6px 10px;gap:10px}
- .mark{font-size:16px}.brand-logo{width:88px;height:23px}
+ .brand-box{width:100%;justify-content:center;padding:6px 10px}
+ .mark{font-size:16px}
  .wrap{padding:10px}
  .slot-workspace{padding:24px 18px}
 }
@@ -67,7 +64,7 @@ ${SUITE_NAV_STYLES}
 </head>
 <body>
 <header class="hdr"><div class="hdr-in">
- <div class="brand-box"><span class="mark">Slot<b> Times</b></span><span class="brand-logo" role="img" aria-label="AdventHealth"></span></div>
+ <div class="brand-box"><span class="mark">Slot<b> Times</b></span></div>
  ${suiteNavigation("slot-times")}
 </div></header>
 <main class="wrap">

@@ -4,7 +4,7 @@ const PAGES = [
 ];
 
 export const SUITE_NAV_STYLES = String.raw`
-.brand-box{width:324px;justify-content:space-between}
+.brand-box{width:220px;justify-content:center}
 .suite-switcher{display:inline-flex;align-items:center;gap:3px;padding:3px;background:#fff;border:3px solid #000;font-family:var(--mono);flex:none}
 .suite-switcher a{display:block;padding:6px 12px;color:var(--navy);font-size:11px;font-weight:700;letter-spacing:.065em;line-height:1;text-decoration:none;text-transform:uppercase;white-space:nowrap}
 .suite-switcher a:hover{background:var(--accent-tint);color:var(--navy)}
@@ -18,9 +18,8 @@ export const SUITE_NAV_STYLES = String.raw`
 }
 @media (min-width:881px) and (max-height:680px){
  .hdr-in{min-height:52px;padding:6px 18px}
- .brand-box{gap:10px;padding:5px 12px}
+ .brand-box{padding:5px 12px}
  .mark{font-size:16px}
- .brand-logo{width:92px;height:22px}
  .wrap{padding:8px 16px 10px}
  .panel-band{padding:5px 12px}
  .panel-band h1,.panel-band h2{font-size:12px}

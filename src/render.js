@@ -208,10 +208,9 @@ button,input,select{font:inherit;color:inherit}
 .mono{font-family:var(--mono)}
 .hdr{background:var(--chrome);border-bottom:1px solid rgba(245,241,232,.14);flex:none}
 .hdr-in{max-width:1440px;margin:0 auto;min-height:60px;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.brand-box{display:inline-flex;align-items:center;gap:14px;background:#fff;border:3px solid #000;padding:8px 16px}
+.brand-box{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:3px solid #000;padding:8px 16px}
 .mark{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--navy);white-space:nowrap}
 .mark b{color:var(--accent);font-weight:700}
-.brand-logo{display:inline-block;width:106px;height:26px;background:var(--ah-logo-img) no-repeat center/contain;flex:none}
 ${SUITE_NAV_STYLES}
 .wrap{max-width:1440px;width:100%;margin:0 auto;padding:14px 22px 16px;flex:1;min-height:0;display:flex;flex-direction:column}
 .card,.panel{background:#fff;border:3px solid #000}
@@ -305,8 +304,8 @@ a{color:var(--accent-deep)}
 /* Short desktop windows stay one-screen by compacting chrome and side cards. */
 @media (min-width:881px) and (max-height:680px){
  .hdr-in{min-height:52px;padding:6px 18px}
- .brand-box{gap:10px;padding:5px 12px}
- .mark{font-size:16px}.brand-logo{width:92px;height:22px}
+ .brand-box{padding:5px 12px}
+ .mark{font-size:16px}
  .wrap{padding:8px 16px 10px}
  .stage{grid-template-columns:minmax(0,1fr) clamp(320px,27vw,350px);gap:12px}
  .panel-band{padding:5px 12px}.panel-band h2{font-size:12px}.band-meta{font-size:10.5px}
@@ -332,8 +331,8 @@ a{color:var(--accent-deep)}
 }
 @media (max-width:480px){
  .hdr-in{padding:8px 10px}
- .brand-box{width:100%;justify-content:center;gap:10px;padding:6px 10px}
- .mark{font-size:16px}.brand-logo{width:88px;height:23px}
+ .brand-box{width:100%;justify-content:center;padding:6px 10px}
+ .mark{font-size:16px}
  .wrap{padding:10px}
  .controls{gap:6px;padding:8px 10px}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
@@ -347,7 +346,7 @@ a{color:var(--accent-deep)}
 __LOGOVARS__
 </style>
 <header class="hdr"><div class="hdr-in">
- <div class="brand-box"><span class="mark">Provider<b> Map</b></span><span class="brand-logo" role="img" aria-label="AdventHealth"></span></div>
+ <div class="brand-box"><span class="mark">Provider<b> Map</b></span></div>
  ${suiteNavigation("provider-map")}
 </div></header>
 <div class="wrap">
@@ -643,8 +642,6 @@ if(SOLO){
  }
  const grp=document.getElementById("v-"+SOLO); if(grp&&grp.parentElement)grp.parentElement.remove();
  const div=document.querySelector(".tdiv"); if(div)div.remove();
- const bl=document.querySelector(".brand-logo");
- if(bl){bl.style.backgroundImage="var(--"+SOLO+"-logo-img)";bl.setAttribute("aria-label",SYS[SOLO]);}
  document.title=SYS[SOLO]+" Provider Map";
 }
 drawLayer();syncMapFrame();
