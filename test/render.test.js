@@ -65,6 +65,13 @@ test("map color key keeps all three comparison labels on one row", () => {
   assert.match(src, /id="key-tie"[^>]*>[\s\S]*?<span>Equal<\/span>/);
 });
 
+test("totals scope shares a compact single-line header", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /\.tpanel \.panel-band\{[^}]*gap:5px;[^}]*flex-wrap:nowrap/);
+  assert.match(src, /\.tpanel \.panel-band h2\{[^}]*white-space:nowrap/);
+  assert.match(src, /\.tpanel \.panel-band \.band-meta\{[^}]*font-size:9px/);
+});
+
 test("company view filters and refreshes the provider index", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /if\(view!=="diff"\) list=list\.filter\(x=>x\.y===view\)/);

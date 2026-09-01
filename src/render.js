@@ -277,7 +277,9 @@ path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fil
 .hint{position:absolute;z-index:3;right:12px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;color:var(--mute);background:rgba(245,241,232,.93);border:1px solid #000;padding:3px 7px}
 .side{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow:hidden}
 .cbody{padding:12px 14px}
-.tpanel .panel-band{padding:6px 14px}.tpanel .panel-band h2{font-size:12px}
+.tpanel .panel-band{padding:5px 10px;gap:5px;flex-wrap:nowrap}
+.tpanel .panel-band h2{font-size:11.5px;letter-spacing:.055em;white-space:nowrap}
+.tpanel .panel-band .band-meta{margin-left:auto;font-size:9px;letter-spacing:.01em;line-height:1.2}
 .tpanel .cbody{padding:8px 14px}
 .ppanel{flex:1;min-height:120px;display:flex;flex-direction:column}
 .pscroll{position:relative;overflow:auto;padding:0 14px 12px;flex:1;min-height:0}
@@ -312,7 +314,7 @@ a{color:var(--accent-deep)}
  .filter-pill{padding:4px 6px;font-size:9.5px}.logo-pill{padding:2px 6px}.pill-logo{width:52px;height:16px}
  select.control{padding:4px 6px;font-size:9.5px;width:104px;max-width:104px}
  .side{gap:8px}
- .tpanel .panel-band{padding:5px 12px}
+ .tpanel .panel-band{padding:5px 10px}
  .tpanel .cbody{padding:6px 12px}.tlogo{width:108px;height:22px}.tnum{font-size:26px}.tdiv{margin:6px 0}.map-key{font-size:9.5px;margin-top:5px;padding-top:5px}
  .ppanel{min-height:100px}
  .hint{right:8px;bottom:8px;font-size:9.5px}
@@ -336,6 +338,11 @@ a{color:var(--accent-deep)}
  .controls{gap:6px;padding:8px 10px}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
  .fgroup{width:100%;justify-content:space-between}.fgroup select.control{flex:1;width:auto;max-width:none}
+}
+@media (max-width:340px){
+ .tpanel .panel-band{padding-inline:7px;gap:3px}
+ .tpanel .panel-band h2{font-size:10px;letter-spacing:.035em}
+ .tpanel .panel-band .band-meta{font-size:8px}
 }
 __LOGOVARS__
 </style>
