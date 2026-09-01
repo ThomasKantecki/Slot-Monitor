@@ -99,6 +99,15 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
   assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
 });
 
+test("drag rendering stays sharp above the low-zoom raster range", () => {
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  assert.match(src, /const RASTER_ZOOM_LIMIT=2/);
+  assert.match(src, /const dpr=2/);
+  assert.match(src, /if\(!rasterReady\|\|Z\.k>RASTER_ZOOM_LIMIT\)return/);
+  assert.match(src, /if\(rasterActive&&Z\.k>RASTER_ZOOM_LIMIT\)endRasterMotion\(\)/);
+  assert.doesNotMatch(src, /shape-rendering:optimizeSpeed/);
+});
+
 test("a county click does not enter drag mode until real pointer movement", () => {
   assert.equal(dragExceededThreshold(0, 0), false);
   assert.equal(dragExceededThreshold(3, 4), false);

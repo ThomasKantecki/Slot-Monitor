@@ -89,7 +89,7 @@ select.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
 #map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}
-svg.zooming path.z,svg.drag path.z{pointer-events:none;transition:none;shape-rendering:optimizeSpeed}
+svg.zooming path.z,svg.drag path.z{pointer-events:none;transition:none}
 #land{fill:#e6e2dc;stroke:#cdd8df;stroke-width:.6;vector-effect:non-scaling-stroke}
 #coast{fill:none;stroke:#000;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
 path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fill-opacity .45s ease}
@@ -368,6 +368,7 @@ const cssq=(s)=>String(s).replace(/"/g,'\\"');
 const svg=document.getElementById("map"), vp=document.getElementById("vp");
 const raster=document.getElementById("map-raster"), rctx=raster.getContext("2d",{alpha:true});
 const RASTER_OK=!!rctx&&typeof Path2D==="function";
+const RASTER_ZOOM_LIMIT=2;
 let rasterPaths=null,rasterReady=false,rasterQueued=false,rasterActive=false;
 let mapFrame={left:0,top:0,s:1,ox:0,oy:0};
 function ensureRasterPaths(){if(rasterPaths||!RASTER_OK)return;
@@ -380,7 +381,7 @@ function rasterTiePattern(){const tile=document.createElement("canvas");tile.wid
  t.fillStyle="#b3284e";t.fillRect(0,0,4,8);t.fillStyle="#1a6ba3";t.fillRect(4,0,4,8);
  const pattern=rctx.createPattern(tile,"repeat");if(pattern&&pattern.setTransform&&typeof DOMMatrix==="function")pattern.setTransform(new DOMMatrix().rotate(45));return pattern;}
 function drawRaster(){if(!RASTER_OK)return;ensureRasterPaths();
- const dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));raster.width=Math.round(W*dpr);raster.height=Math.round(H*dpr);
+ const dpr=2;raster.width=Math.round(W*dpr);raster.height=Math.round(H*dpr);
  rctx.setTransform(dpr,0,0,dpr,0,0);rctx.clearRect(0,0,W,H);rctx.lineJoin="round";
  rctx.fillStyle=NODATA;rctx.strokeStyle="#cdd8df";rctx.lineWidth=.6;rctx.fill(rasterPaths.outline);rctx.stroke(rasterPaths.outline);
  const nodes=[...document.querySelectorAll("#lay-"+gran+" path.z")],paths=rasterPaths[gran],tie=rasterTiePattern();let selectedPath=null;
@@ -393,7 +394,7 @@ function queueRaster(){if(!RASTER_OK)return;rasterReady=false;if(rasterActive)en
 function syncMapFrame(){const r=svg.getBoundingClientRect(),s=fitScale(r);mapFrame={left:r.left,top:r.top,s,ox:(r.width-W*s)/2,oy:(r.height-H*s)/2};
  raster.style.left=mapFrame.ox+"px";raster.style.top=mapFrame.oy+"px";raster.style.width=W*s+"px";raster.style.height=H*s+"px";if(rasterActive)applyRasterZoom();}
 function applyRasterZoom(){raster.style.transform="translate("+(Z.x*mapFrame.s)+"px,"+(Z.y*mapFrame.s)+"px) scale("+Z.k+")";}
-function beginRasterMotion(){svg.classList.add("zooming");if(!rasterReady)return;syncMapFrame();rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";applyRasterZoom();}
+function beginRasterMotion(){svg.classList.add("zooming");if(!rasterReady||Z.k>RASTER_ZOOM_LIMIT)return;syncMapFrame();rasterActive=true;raster.style.opacity="1";vp.style.visibility="hidden";applyRasterZoom();}
 function endRasterMotion(){vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");vp.style.visibility="";
  if(rasterActive){raster.style.opacity="0";rasterActive=false;}svg.classList.remove("zooming");}
 const layerHTML=(name)=>PATHS[name].map(p=>'<path class="z" pathLength="1" fill="'+NODATA+'" data-k="'+p.k.replace(/"/g,"&quot;")+'" d="'+p.d+'"></path>').join("");
@@ -463,7 +464,7 @@ document.getElementById("m-all").onclick=()=>setLocationMode("all");document.get
 // zoom + pan — Z is what's drawn, T is where we're heading; each frame eases Z
 // toward T so wheel/trackpad zoom glides and the +/-/reset buttons animate.
 let Z={k:1,x:0,y:0}, T={k:1,x:0,y:0}, raf=null;
-function applyZoom(){if(rasterActive)applyRasterZoom();else vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
+function applyZoom(){if(rasterActive&&Z.k>RASTER_ZOOM_LIMIT)endRasterMotion();if(rasterActive)applyRasterZoom();else vp.setAttribute("transform","translate("+Z.x+" "+Z.y+") scale("+Z.k+")");}
 function tick(){const a=0.34;
  Z.k+=(T.k-Z.k)*a; Z.x+=(T.x-Z.x)*a; Z.y+=(T.y-Z.y)*a;
  if(Math.abs(T.k-Z.k)<0.0025&&Math.abs(T.x-Z.x)<0.12&&Math.abs(T.y-Z.y)<0.12){Z.k=T.k;Z.x=T.x;Z.y=T.y;raf=null;endRasterMotion();return;}
