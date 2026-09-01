@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { escapeScriptJson, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
+import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -97,6 +97,19 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
   assert.match(src, /requestAnimationFrame\(moveDrag\)/);
   const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
   assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
+});
+
+test("a county click does not enter drag mode until real pointer movement", () => {
+  assert.equal(dragExceededThreshold(0, 0), false);
+  assert.equal(dragExceededThreshold(3, 4), false);
+  assert.equal(dragExceededThreshold(4, 4), true);
+
+  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const mouseDown = src.match(/svg\.addEventListener\("mousedown",[^\n]+/)?.[0] ?? "";
+  const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
+  assert.doesNotMatch(mouseDown, /beginRasterMotion|classList\.add\("drag"\)/);
+  assert.match(moveDrag, /if\(!dragExceededThreshold\(dx,dy\)\)return/);
+  assert.match(moveDrag, /beginRasterMotion\(\);svg\.classList\.add\("drag"\)/);
 });
 
 test("generated provider-map client script parses", () => {

@@ -95,6 +95,9 @@ export function providerHeadline(data, { locationMode = "all", gran = "zip", spe
     scope: specialty ? "in specialty" : "statewide",
   };
 }
+export function dragExceededThreshold(dx, dy, threshold = 5) {
+  return Math.hypot(dx, dy) > threshold;
+}
 // ── Data contract ───────────────────────────────────────────────────────────
 // Everything under data/ that isn't geometry comes from the data pipeline.
 // Whatever gets built to replace it has to emit exactly these shapes:
@@ -175,6 +178,7 @@ export function render() {
     .replace("__CTY__", escapeScriptJson(cty))
     .replace("__OUTLINES__", escapeScriptJson(outlines))
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
+    .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__LOGOVARS__", logoVars)
     .replace("__FONTS__", fontsCss)
     .replace("__VIEWBOX__", `0 0 ${W} ${H}`)
@@ -404,6 +408,7 @@ const DATASETS={
  },
 };
 __HEADLINE_FUNCTIONS__
+__DRAG_THRESHOLD_FUNCTION__
 const CTY=J("cty"), OUTLINES=J("outlines");
 const NAVY=["#cfe0ee","#8dbcdb","#4c92c3","#1a6ba3","#00436f"];
 const RED=["#f1d2da","#e199ab","#cf5a79","#b3284e","#83091f"];
@@ -598,10 +603,10 @@ document.getElementById("zin").onclick=()=>zoomAt(W/2,H/2,1.5);
 document.getElementById("zout").onclick=()=>zoomAt(W/2,H/2,1/1.5);
 document.getElementById("zreset").onclick=()=>{T={k:1,x:0,y:0};animate();};
 let drag=null,moved=false,dragRaf=null,dragEvent=null;
-function moveDrag(){dragRaf=null;if(!drag||!dragEvent)return;const e=dragEvent;dragEvent=null;const dx=e.clientX-drag.cx,dy=e.clientY-drag.cy;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;T.x=Z.x=drag.ox+dx/drag.s;T.y=Z.y=drag.oy+dy/drag.s;applyZoom();tip.style.opacity=0;}
-svg.addEventListener("mousedown",e=>{if(raf){cancelAnimationFrame(raf);raf=null;}Z.k=T.k;Z.x=T.x;Z.y=T.y;beginRasterMotion();applyZoom();drag={cx:e.clientX,cy:e.clientY,ox:T.x,oy:T.y,s:mapFrame.s};moved=false;svg.classList.add("drag");});
+function moveDrag(){dragRaf=null;if(!drag||!dragEvent)return;const e=dragEvent;dragEvent=null;const dx=e.clientX-drag.cx,dy=e.clientY-drag.cy;if(!moved){if(!dragExceededThreshold(dx,dy))return;moved=true;beginRasterMotion();svg.classList.add("drag");}T.x=Z.x=drag.ox+dx/drag.s;T.y=Z.y=drag.oy+dy/drag.s;applyZoom();tip.style.opacity=0;}
+svg.addEventListener("mousedown",e=>{if(e.button!==0)return;if(raf){cancelAnimationFrame(raf);raf=null;}Z.k=T.k;Z.x=T.x;Z.y=T.y;endRasterMotion();drag={cx:e.clientX,cy:e.clientY,ox:T.x,oy:T.y,s:mapFrame.s};dragEvent=null;moved=false;});
 window.addEventListener("mousemove",e=>{if(!drag)return;dragEvent=e;if(!dragRaf)dragRaf=requestAnimationFrame(moveDrag);});
-window.addEventListener("mouseup",()=>{if(!drag)return;if(dragRaf){cancelAnimationFrame(dragRaf);dragRaf=null;moveDrag();}drag=null;dragEvent=null;svg.classList.remove("drag");endRasterMotion();});
+window.addEventListener("mouseup",()=>{if(!drag)return;if(dragRaf){cancelAnimationFrame(dragRaf);dragRaf=null;moveDrag();}const didMove=moved;drag=null;dragEvent=null;svg.classList.remove("drag");if(didMove)endRasterMotion();});
 svg.addEventListener("click",e=>{if(moved)return;const t=e.target.closest("path.z");if(t)showProviders(t.getAttribute("data-k"));});
 
 // hover tooltip
