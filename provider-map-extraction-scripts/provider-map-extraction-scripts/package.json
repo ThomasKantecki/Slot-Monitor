@@ -1,0 +1,14 @@
+{
+  "name": "provider-map-extraction-scripts",
+  "version": "1.0.0",
+  "description": "Source-only AdventHealth and Orlando Health provider-directory extraction scripts.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "adventhealth": "node scripts/capture-ah-directory.mjs",
+    "orlando-health": "node src/sources/directory.js"
+  }
+}

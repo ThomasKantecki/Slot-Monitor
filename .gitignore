@@ -1,4 +1,9 @@
 .DS_Store
+.venv/
+__pycache__/
+*.pyc
 # public/*.html is the deliverable — committed so it travels with the repo
 data/raw/
+data/cardiology/extractions/
+data/cardiology/runs/
 node_modules/

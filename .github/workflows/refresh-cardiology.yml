@@ -1,0 +1,60 @@
+name: Refresh Cardiology availability
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. Running at both offsets and applying the timezone
+    # gate below keeps the refresh at 9:00 AM through US daylight changes.
+    - cron: "0 13,14 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cardiology-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check 9 AM Eastern schedule window
+        id: eastern
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "$(TZ=America/New_York date +%H)" == "09" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract, deduplicate, promote, and build
+        if: steps.eastern.outputs.run == 'true'
+        run: npm run refresh:cardiology
+
+      - name: Validate generated dashboard
+        if: steps.eastern.outputs.run == 'true'
+        run: npm test
+
+      - name: Commit current snapshot and static site
+        if: steps.eastern.outputs.run == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html data/cardiology/current public
+          if git diff --cached --quiet; then
+            echo "No availability changes to commit."
+          else
+            git commit -m "data: refresh Cardiology availability"
+            git push
+          fi

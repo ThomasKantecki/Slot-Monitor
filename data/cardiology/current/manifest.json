@@ -1,0 +1,18 @@
+{
+  "status": "completed_with_warnings",
+  "scope": "Florida Cardiology public appointment availability",
+  "ah": {
+    "runId": "2026-09-01T110649-0400",
+    "source": "data/cardiology/runs/2026-09-01T110649-0400/ah/ah-cardiology-physical-slots.json",
+    "physicalSlots": 57266,
+    "bookingCategoriesRetained": true
+  },
+  "oh": {
+    "runId": "2026-09-01T125802-0400",
+    "source": "data/cardiology/runs/2026-09-01T125802-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 40998,
+    "bookingCategoriesRetained": false
+  },
+  "totalPhysicalSlots": 98264,
+  "generatedAt": "2026-09-01T22:44:22.408Z"
+}
