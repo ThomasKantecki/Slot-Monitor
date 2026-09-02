@@ -57,6 +57,7 @@ test("both views share the Slot Monitor shell while the landing page remains res
   assert.match(slots, /@media\(max-width:980px\)/);
   assert.match(slots, /@media\(max-width:680px\)/);
   assert.match(slots, /grid-template-columns:minmax\(380px,1fr\) minmax\(230px,\.58fr\) minmax\(410px,1\.05fr\) minmax\(350px,\.82fr\)/);
+  assert.match(slots, /\.radius-group \.filter-group-body\{justify-content:space-between\}/);
   assert.match(slots, /@media\(max-width:1450px\)\{\.toolbar\{grid-template-columns:minmax\(330px,1fr\) minmax\(360px,1fr\)/);
   assert.match(slots, /\.period-group \.filter-group-body\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\) auto;align-items:end\}/);
   assert.match(slots, /\.period-group \.group-note\{grid-column:1\/-1\}/);
@@ -73,6 +74,40 @@ test("slot availability browser code parses and the landing alias is generated",
   assert.match(slots, /"totals":\{"ah":57266,"oh":40998\}/);
   assert.match(slots, /Available appointment slots/);
   assert.doesNotMatch(slots, /Deduplicated physical slots/);
+});
+
+test("slot appointment mix donut is wired to filtered KPI refreshes", () => {
+  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
+  const slots = renderSlotTimes();
+  for (const id of ["mix-donut", "mix-total", "mix-ah", "mix-oh"]) {
+    assert.match(slots, new RegExp(`id="${id}"`));
+  }
+  const summaryStart = slots.indexOf('<article class="card summary">');
+  const summaryEnd = slots.indexOf("</article>", summaryStart);
+  const calendarStart = slots.indexOf('<article class="panel calendar-panel">');
+  const calendarEnd = slots.indexOf("</article>", calendarStart);
+  const mixStart = slots.indexOf('<article class="panel slot-mix-panel">');
+  const mixEnd = slots.indexOf("</article>", mixStart);
+  const providersStart = slots.indexOf('<article class="panel providers-panel">');
+  assert.ok(summaryStart >= 0 && summaryEnd > summaryStart);
+  assert.ok(calendarStart >= 0 && calendarEnd > calendarStart);
+  assert.ok(mixStart > calendarEnd && mixEnd > mixStart);
+  assert.ok(providersStart > mixEnd);
+  assert.doesNotMatch(slots.slice(summaryStart, summaryEnd), /mix-card/);
+  assert.doesNotMatch(slots.slice(calendarStart, calendarEnd), /mix-card/);
+  assert.doesNotMatch(slots.slice(mixStart, mixEnd), /Filtered appointment mix|mix-title/);
+  assert.match(slots.slice(mixStart, mixEnd), /class="mix-card"[\s\S]*id="mix-donut"/);
+  assert.match(slots, /grid-template-areas:"calendar providers" "mix providers"/);
+  assert.match(slots, /\.slot-mix-panel\{grid-area:mix;display:grid/);
+  assert.match(slots, /\.mix-body\{position:relative;display:grid;width:100%;height:100%;min-height:190px;place-items:center\}/);
+  assert.match(slots, /\.mix-legend\{position:absolute;top:6px;right:8px;/);
+  assert.match(client, /function renderKpis\(\) \{\s*const indices = filteredIndices\(\);/);
+  assert.match(client, /\$\("mix-total"\)\.innerHTML = `<span>\$\{number\(total\)\}<\/span><small>slots<\/small>`;/);
+  assert.match(client, /\$\("mix-ah"\)\.textContent = `\$\{number\(counts\.ah\)\} · \$\{total \? Math\.round\(counts\.ah \/ total \* 100\) : 0\}%`;/);
+  assert.match(client, /\$\("mix-oh"\)\.textContent = `\$\{number\(counts\.oh\)\} · \$\{total \? Math\.round\(counts\.oh \/ total \* 100\) : 0\}%`;/);
+  assert.match(client, /\$\("mix-donut"\)\.style\.background = total \? `conic-gradient\(var\(--ah\) 0 \$\{ahShare\}%, var\(--oh\) \$\{ahShare\}% 100%\)` : "#edf0f2";/);
+  assert.match(client, /function refresh\(\) \{[^}]*selectArea\(state\.selected\); \}/);
+  assert.match(client, /paintMap\(\); renderKpis\(\); renderSummary\(\);/);
 });
 
 test("slot area selection can be cleared and Reset restores today's period and v3 ZIP-radius defaults", () => {

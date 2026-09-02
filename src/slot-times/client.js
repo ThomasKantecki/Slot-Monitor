@@ -320,6 +320,11 @@
     const counts = { ah: 0, oh: 0 }, providers = new Set(), facilities = { ah: new Set(), oh: new Set() }, dates = new Set();
     indices.forEach((index) => { const slot = DATA.slots[index]; counts[slot.y] += 1; providers.add(slot.p); facilities[slot.y].add(slot.f); dates.add(slot.d); });
     $("kpi-ah").textContent = number(counts.ah); $("kpi-oh").textContent = number(counts.oh);
+    const total = counts.ah + counts.oh, ahShare = total ? counts.ah / total * 100 : 50;
+    $("mix-total").innerHTML = `<span>${number(total)}</span><small>slots</small>`;
+    $("mix-ah").textContent = `${number(counts.ah)} · ${total ? Math.round(counts.ah / total * 100) : 0}%`;
+    $("mix-oh").textContent = `${number(counts.oh)} · ${total ? Math.round(counts.oh / total * 100) : 0}%`;
+    $("mix-donut").style.background = total ? `conic-gradient(var(--ah) 0 ${ahShare}%, var(--oh) ${ahShare}% 100%)` : "#edf0f2";
     const noRadiusResults = !indices.length && state.radiusActive;
     $("kpi-ah-sub").textContent = noRadiusResults ? `No appointments within ${state.radius} miles — expand radius` : "Available appointment slots";
     $("kpi-oh-sub").textContent = noRadiusResults ? `No appointments within ${state.radius} miles — expand radius` : "Available appointment slots";
