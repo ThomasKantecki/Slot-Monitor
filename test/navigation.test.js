@@ -7,11 +7,14 @@ import { renderSlotTimes } from "../src/slot-times/render.js";
 test("shared navigation marks exactly one current view", () => {
   const provider = suiteNavigation("provider-map");
   const slots = suiteNavigation("slot-times");
+  const opportunities = suiteNavigation("opportunities");
   assert.match(provider, /href="\.\/provider-map\.html" aria-current="page"/);
   assert.doesNotMatch(provider, /href="\.\/index\.html" aria-current="page"/);
   assert.match(slots, /href="\.\/index\.html" aria-current="page"/);
   assert.doesNotMatch(slots, /href="\.\/provider-map\.html" aria-current="page"/);
-  assert.ok(slots.indexOf("Slot Availability") < slots.indexOf("Provider Index"));
+  assert.match(opportunities, /href="\.\/market-opportunities\.html" aria-current="page"/);
+  assert.ok(slots.indexOf("Slot Availability") < slots.indexOf("Market Opportunities"));
+  assert.ok(slots.indexOf("Market Opportunities") < slots.indexOf("Provider Index"));
 });
 
 test("Provider Index and Slot Availability use the same top-level switcher", () => {
@@ -72,7 +75,7 @@ test("slot availability browser code parses and the landing alias is generated",
   assert.doesNotMatch(slots, /Deduplicated physical slots/);
 });
 
-test("slot area selection can be cleared and Reset restores the v3 ZIP-radius defaults", () => {
+test("slot area selection can be cleared and Reset restores today's period and v3 ZIP-radius defaults", () => {
   const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(slots, /id="clear-area"/);
@@ -85,7 +88,9 @@ test("slot area selection can be cleared and Reset restores the v3 ZIP-radius de
   assert.match(client, /const landingRadius = 140/);
   assert.match(client, /const searchedZipRadius = 50/);
   assert.match(client, /state\.originZip = defaultOriginZip; state\.radius = landingRadius; state\.radiusActive = Boolean\(defaultOriginZip\)/);
-  assert.match(client, /state\.through = comparisonThrough/);
+  assert.match(client, /const defaultFrom = window\.SUITE_DATE\.today\(\)/);
+  assert.match(client, /state\.month = new Date\(`\$\{resetSlotDate\}T12:00:00`\); state\.from = resetFrom; state\.through = resetThrough/);
+  assert.match(slots, /root\.SUITE_DATE = Object\.freeze\(\{ today \}\)/);
   assert.match(slots, /"commonMaxDate":"2027-10-01"/);
   assert.match(slots, /id="period-status"/);
   assert.match(client, /if \(!state\.selected\) return "Florida statewide"/);

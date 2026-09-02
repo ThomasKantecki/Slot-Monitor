@@ -18,13 +18,16 @@
   const landingRadius = 140;
   const searchedZipRadius = 50;
   const comparisonThrough = DATA.commonMaxDate || DATA.maxDate;
+  const defaultFrom = window.SUITE_DATE.today();
+  const defaultThrough = comparisonThrough < defaultFrom ? defaultFrom : comparisonThrough;
+  const initialSlotDate = DATA.slots.find((slot) => slot.d >= defaultFrom && slot.d <= defaultThrough)?.d || defaultFrom;
   const miles = window.SLOT_RADIUS.miles;
 
   const state = {
-    granularity: "zip", view: "diff", selected: "", selectedDate: DATA.minDate,
-    from: DATA.minDate, through: comparisonThrough,
+    granularity: "zip", view: "diff", selected: "", selectedDate: initialSlotDate,
+    from: defaultFrom, through: defaultThrough,
     originZip: defaultOriginZip, radius: landingRadius, radiusActive: Boolean(defaultOriginZip), areaQuery: "",
-    month: new Date(`${DATA.minDate}T12:00:00`), zoom: { k: 1, x: 0, y: 0 },
+    month: new Date(`${initialSlotDate}T12:00:00`), zoom: { k: 1, x: 0, y: 0 },
   };
   const slotsByArea = { zip: new Map(), county: new Map() };
   const allIndices = DATA.slots.map((_, index) => index);
@@ -332,8 +335,11 @@
   $("from-date").addEventListener("change", (event) => { state.from = event.target.value; if (state.through < state.from) { state.through = state.from; $("through-date").value = state.from; } refresh(); });
   $("through-date").addEventListener("change", (event) => { state.through = event.target.value; if (state.from > state.through) { state.from = state.through; $("from-date").value = state.through; } refresh(); });
   $("reset").addEventListener("click", () => {
-    state.granularity = "zip"; state.selected = ""; state.selectedDate = DATA.minDate;
-    state.month = new Date(`${DATA.minDate}T12:00:00`); state.from = DATA.minDate; state.through = comparisonThrough; state.view = "diff";
+    const resetFrom = window.SUITE_DATE.today();
+    const resetThrough = comparisonThrough < resetFrom ? resetFrom : comparisonThrough;
+    const resetSlotDate = DATA.slots.find((slot) => slot.d >= resetFrom && slot.d <= resetThrough)?.d || resetFrom;
+    state.granularity = "zip"; state.selected = ""; state.selectedDate = resetSlotDate;
+    state.month = new Date(`${resetSlotDate}T12:00:00`); state.from = resetFrom; state.through = resetThrough; state.view = "diff";
     state.originZip = defaultOriginZip; state.radius = landingRadius; state.radiusActive = Boolean(defaultOriginZip); state.areaQuery = "";
     $("from-date").value = state.from; $("through-date").value = state.through;
     $("origin-zip").value = ""; $("radius").value = state.radius; $("area-search").value = "";
@@ -399,8 +405,8 @@
   }
   $("origin-options").innerHTML = origins.map((origin) => `<option value="${esc(origin.z)}"></option>`).join("");
   $("origin-zip").value = "";
-  $("from-date").min = DATA.minDate; $("from-date").max = DATA.maxDate; $("from-date").value = DATA.minDate;
-  $("through-date").min = DATA.minDate; $("through-date").max = DATA.maxDate; $("through-date").value = comparisonThrough;
+  $("from-date").min = DATA.minDate < defaultFrom ? DATA.minDate : defaultFrom; $("from-date").max = DATA.maxDate > defaultThrough ? DATA.maxDate : defaultThrough; $("from-date").value = defaultFrom;
+  $("through-date").min = DATA.minDate < defaultFrom ? DATA.minDate : defaultFrom; $("through-date").max = DATA.maxDate > defaultThrough ? DATA.maxDate : defaultThrough; $("through-date").value = defaultThrough;
   $("period-status").textContent = `Common endpoint: ${longDate(comparisonThrough)}`;
   fillSearch(); drawMap(); refresh();
 })();

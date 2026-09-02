@@ -72,6 +72,7 @@ export function renderSlotTimes() {
     .replace("__SLOT_DATA__", escapeScriptJson(data))
     .replace("__SLOT_PATHS__", escapeScriptJson(paths))
     .replace("__SLOT_OUTLINE__", escapeScriptJson(outlinePath))
+    .replace("__DATE_CLIENT__", read("src/shared/date.js"))
     .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
     .replace("__CLIENT__", read("src/slot-times/client.js"));
 }
@@ -118,6 +119,7 @@ __NAV_STYLES__</style></head><body>
 <section class="detail"><article class="panel calendar-panel"><div class="band"><h2>Appointment calendar</h2><span class="band-meta">Select a date</span></div><div class="calendar-head"><button id="month-prev" aria-label="Previous month">‹</button><div id="month-label" class="month"></div><button id="month-next" aria-label="Next month">›</button></div><div id="calendar" class="calendar"></div></article><article class="panel providers-panel"><div class="band"><h2>Providers and appointment times</h2><span id="provider-date" class="band-meta"></span></div><div id="provider-list" class="provider-list"></div><div class="note">AdventHealth booking categories are shown where supplied. Orlando Health source output does not provide equivalent category labels.</div></article></section>
 <section class="panel appointment-panel"><div class="band band-with-search"><h2>Detailed appointments</h2><input id="appointment-search" class="band-search appointment-search" type="search" placeholder="Search provider, location, ZIP, type, or reason" aria-label="Search appointments"><span id="appointment-count" class="band-meta"></span></div><div id="appointment-table" class="table-region"></div><div class="note">Appointment type and reason display only when retained by the source extraction.</div></section>
 </main><dialog id="facility-dialog" class="facility-dialog"><div class="dialog-head"><div><span id="dialog-system" class="system-tag"></span><h2 id="dialog-title"></h2><p id="dialog-address"></p></div><button id="close-dialog" aria-label="Close facility appointments">×</button></div><div id="dialog-summary" class="dialog-summary"></div><div id="doctor-list" class="doctor-list"></div></dialog><div id="tip" class="tip" role="tooltip"></div><script>window.SLOT_DATA=__SLOT_DATA__;window.SLOT_PATHS=__SLOT_PATHS__;window.SLOT_OUTLINE=__SLOT_OUTLINE__;
+__DATE_CLIENT__
 __RADIUS_CLIENT__
 __CLIENT__</script></body></html>`;
 

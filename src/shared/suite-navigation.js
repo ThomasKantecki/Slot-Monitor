@@ -1,5 +1,6 @@
 const PAGES = [
   { id: "slot-times", label: "Slot Availability", href: "./index.html" },
+  { id: "opportunities", label: "Market Opportunities", href: "./market-opportunities.html" },
   { id: "provider-map", label: "Provider Index", href: "./provider-map.html" },
 ];
 
@@ -29,6 +30,7 @@ export const SUITE_NAV_STYLES = String.raw`
  .hdr .hdr-in{grid-template-columns:1fr}
  .hdr .brand-box{justify-self:center}
  .suite-switcher{grid-column:1}
+ .suite-switcher a{padding-inline:4px;font-size:8.5px;letter-spacing:.035em}
 }
 @media (max-width:880px),(max-height:520px){
  html{scrollbar-gutter:stable}
