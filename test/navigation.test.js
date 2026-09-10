@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { SUITE_NAV_STYLES, suiteNavigation } from "../src/shared/suite-navigation.js";
 import { renderSlotTimes } from "../src/slot-times/render.js";
 
+const slotModel = JSON.parse(readFileSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url), "utf8"));
+
 test("shared navigation marks exactly one current view", () => {
   const provider = suiteNavigation("provider-map");
   const slots = suiteNavigation("slot-times");
@@ -71,7 +73,7 @@ test("slot availability browser code parses and the landing alias is generated",
   assert.ok(inlineScript);
   assert.doesNotThrow(() => new Function(inlineScript));
   assert.match(slots, /window\.SLOT_DATA=/);
-  assert.match(slots, /"totals":\{"ah":57266,"oh":40998\}/);
+  assert.match(slots, new RegExp(`"totals":\\{"ah":${slotModel.totals.ah},"oh":${slotModel.totals.oh}\\}`));
   assert.match(slots, /Available appointment slots/);
   assert.doesNotMatch(slots, /Deduplicated physical slots/);
 });
@@ -126,7 +128,7 @@ test("slot area selection can be cleared and Reset restores today's period and v
   assert.match(client, /const defaultFrom = window\.SUITE_DATE\.today\(\)/);
   assert.match(client, /state\.month = new Date\(`\$\{resetSlotDate\}T12:00:00`\); state\.from = resetFrom; state\.through = resetThrough/);
   assert.match(slots, /root\.SUITE_DATE = Object\.freeze\(\{ today \}\)/);
-  assert.match(slots, /"commonMaxDate":"2027-10-01"/);
+  assert.match(slots, new RegExp(`"commonMaxDate":"${slotModel.commonMaxDate}"`));
   assert.match(slots, /id="period-status"/);
   assert.match(client, /if \(!state\.selected\) return "Florida statewide"/);
   assert.match(client, /\$\("origin-zip"\)\.value = "";/);
