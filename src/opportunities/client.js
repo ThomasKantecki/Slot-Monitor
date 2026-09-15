@@ -1,4 +1,4 @@
-(() => {
+ (async () => {
   const DATA = window.SLOT_DATA;
   const PATHS = window.ZIP_PATHS;
   const OUTLINE = window.FLORIDA_OUTLINE;
@@ -16,14 +16,34 @@
   const marketRadiusMiles = 25;
   const comparisonThrough = DATA.commonMaxDate || DATA.maxDate;
   const defaultFrom = window.SUITE_DATE.today();
-  const defaultThrough = comparisonThrough < defaultFrom ? defaultFrom : comparisonThrough;
+  // The landing view is intentionally narrow; all dates remain available in the filters.
+  const defaultPeriodEnd = new Date(`${defaultFrom}T12:00:00`);
+  defaultPeriodEnd.setDate(defaultPeriodEnd.getDate() + 14);
+  const fifteenDayThrough = [defaultPeriodEnd.getFullYear(), String(defaultPeriodEnd.getMonth() + 1).padStart(2, "0"), String(defaultPeriodEnd.getDate()).padStart(2, "0")].join("-");
+  const defaultThrough = comparisonThrough < defaultFrom ? defaultFrom : (comparisonThrough < fifteenDayThrough ? comparisonThrough : fifteenDayThrough);
+  await window.SLOT_PARTITIONS.load(defaultFrom, defaultThrough);
   const counties = [...new Set(Object.values(DATA.zipCounty || {}).filter(Boolean))].sort();
   const state = {
     from: defaultFrom, through: defaultThrough, originZip: defaultOriginZip,
     radius: landingRadius, radiusActive: Boolean(defaultOriginZip), county: "",
     filter: "all", selectedZip: "", zoom: { k: 1, x: 0, y: 0 },
   };
-  let allRows = [], exactRows = [], visibleRows = [], rowByZip = new Map(), exactGapByZip = new Map(), visibleExactGapByZip = new Map();
+  let allRows = [], exactRows = [], visibleRows = [], rowByZip = new Map(), exactGapByZip = new Map(), priorityExactGapByZip = new Map(), visibleExactGapByZip = new Map();
+  let periodRequest = 0;
+
+  async function refreshPeriod() {
+    const request = ++periodRequest;
+    $("period-status").textContent = "Loading selected dates…";
+    try {
+      await window.SLOT_PARTITIONS.load(state.from, state.through);
+    } catch (error) {
+      $("period-status").textContent = "Could not load the selected appointment dates.";
+      console.error(error);
+      return;
+    }
+    if (request !== periodRequest) return;
+    refresh();
+  }
 
   function distanceBetweenZips(a, b) {
     const first = originByZip.get(a), second = originByZip.get(b);
@@ -40,7 +60,7 @@
 
   function filterRows(rows) {
     if (state.filter === "high") return rows.filter((row) => row.score.total >= 50);
-    if (state.filter === "coverage") return rows.filter((row) => exactGapByZip.has(row.zip));
+    if (state.filter === "coverage") return rows.filter((row) => priorityExactGapByZip.has(row.zip));
     if (state.filter === "earlier") return rows.filter((row) => row.earliestAh && row.earliestOh && row.earliestOh < row.earliestAh);
     if (state.filter === "slots") return rows.filter((row) => row.slotGap > 0);
     return rows;
@@ -88,7 +108,7 @@
       ? `<circle class="radius-ring" cx="${origin.x}" cy="${origin.y}" r="${state.radius * origin.m}"></circle><circle class="origin-marker" cx="${origin.x}" cy="${origin.y}" r="6"></circle>`
       : "";
     const scope = state.radiusActive ? `${number(state.radius)} miles from ${state.originZip}` : "Florida statewide";
-    $("map-meta").textContent = `${number(visibleExactGapByZip.size)} exact-ZIP gaps · ${number(rowByZip.size)} OH-leading 25-mile markets · centers within ${scope}`;
+    $("map-meta").textContent = `${number(visibleExactGapByZip.size)} priority exact-ZIP gaps · ${number(rowByZip.size)} OH-leading 25-mile markets · centers within ${scope}`;
   }
 
   function showTip(event) {
@@ -123,13 +143,13 @@
     const nearest = Number.isFinite(row.nearestAhMiles) ? `${row.nearestAhMiles.toFixed(1)} miles` : "No active AH facility";
     const timing = row.oh && !row.ah ? "OH has availability; AH has none" : row.timingGapDays > 0 ? `OH is ${row.timingGapDays} days sooner` : "No OH timing advantage";
     const exactGap = exactGapByZip.get(row.zip);
-    const exactFinding = exactGap ? `<div class="finding exact-gap-finding"><b>Exact ZIP gap:</b> OH has ${number(exactGap.oh)} slots in ${esc(row.zip)} while AH has none in that ZIP.</div>` : "";
+    const exactFinding = exactGap ? `<div class="finding exact-gap-finding"><b>Exact ZIP gap:</b> OH has ${number(exactGap.oh)} slots in ${esc(row.zip)} while AH has none in that ZIP.${priorityExactGapByZip.has(row.zip) ? " This is a priority gap because OH also leads the 25-mile market." : " AH leads the surrounding 25-mile market, so this is context only and is not shown as a priority marker."}</div>` : "";
     $("market-evidence").innerHTML = `<div class="evidence-head"><div><span class="evidence-kicker">25-mile market · ${esc(row.county)} County</span><h3>Centered on ZIP ${esc(row.zip)}</h3></div><div class="score-badge"><b>${row.score.total}</b><span>${scoreLabel(row.score.total)}</span></div></div>${exactFinding}<div class="evidence-compare"><div><span>AH slots</span><b class="ah">${number(row.ah)}</b><small>${longDate(row.earliestAh)} earliest</small></div><div><span>OH slots</span><b class="oh">${number(row.oh)}</b><small>${longDate(row.earliestOh)} earliest</small></div></div><div class="finding">${esc(timing)} within 25 miles. Nearest active AH access: <b>${esc(nearest)}</b>.</div><div class="score-breakdown">${scoreBreakdown(row)}</div><button class="plain review-market" data-review="${esc(row.zip)}">Review facilities and providers</button>`;
   }
 
   function renderKpis() {
     const localLeaders = [...rowByZip.values()];
-    $("kpi-priority").textContent = number(exactGapByZip.size);
+    $("kpi-priority").textContent = number(priorityExactGapByZip.size);
     $("kpi-coverage").textContent = number(localLeaders.length);
     $("kpi-earlier").textContent = number(localLeaders.filter((row) => row.earliestAh && row.earliestOh && row.earliestOh < row.earliestAh).length);
     $("kpi-slot-gap").textContent = number(localLeaders.reduce((largest, row) => Math.max(largest, row.slotGap), 0));
@@ -215,12 +235,17 @@
   function refresh(message = "") {
     const includeZips = scopedZips();
     exactRows = buildOpportunityRows(DATA, { from: state.from, through: state.through, includeZips, miles });
-    exactGapByZip = new Map(exactRows.filter((row) => row.oh > 0 && row.ah === 0).map((row) => [row.zip, row]));
     allRows = buildOpportunityRows(DATA, { from: state.from, through: state.through, includeZips, marketRadiusMiles, miles });
+    exactGapByZip = new Map(exactRows.filter((row) => row.oh > 0 && row.ah === 0).map((row) => [row.zip, row]));
+    const marketByZip = new Map(allRows.map((row) => [row.zip, row]));
+    priorityExactGapByZip = new Map([...exactGapByZip].filter(([zip]) => {
+      const market = marketByZip.get(zip);
+      return market && market.oh > market.ah;
+    }));
     visibleRows = filterRows(allRows);
     rowByZip = new Map(visibleRows.filter((row) => row.oh > row.ah).map((row) => [row.zip, row]));
     const showExactGap = (row) => state.filter === "all" || state.filter === "coverage" || state.filter === "slots" || (state.filter === "high" && row.score.total >= 50);
-    visibleExactGapByZip = new Map([...exactGapByZip].filter(([, row]) => showExactGap(row)));
+    visibleExactGapByZip = new Map([...priorityExactGapByZip].filter(([, row]) => showExactGap(row)));
     if (!visibleRows.some((row) => row.zip === state.selectedZip)) state.selectedZip = visibleRows[0]?.zip || "";
     syncControls(message); renderKpis(); paintMap(); renderEvidence(); renderTable();
   }
@@ -247,10 +272,13 @@
     if (!value) { state.county = ""; state.selectedZip = ""; refresh(); }
   }
 
-  function reset() {
-    state.from = window.SUITE_DATE.today(); state.through = comparisonThrough < state.from ? state.from : comparisonThrough; state.originZip = defaultOriginZip;
+  async function reset() {
+    state.from = window.SUITE_DATE.today();
+    const resetEnd = new Date(`${state.from}T12:00:00`); resetEnd.setDate(resetEnd.getDate() + 14);
+    const resetFifteenDayThrough = [resetEnd.getFullYear(), String(resetEnd.getMonth() + 1).padStart(2, "0"), String(resetEnd.getDate()).padStart(2, "0")].join("-");
+    state.through = comparisonThrough < state.from ? state.from : (comparisonThrough < resetFifteenDayThrough ? comparisonThrough : resetFifteenDayThrough); state.originZip = defaultOriginZip;
     state.radius = landingRadius; state.radiusActive = Boolean(defaultOriginZip); state.county = "";
-    state.filter = "all"; state.selectedZip = ""; $("table-search").value = ""; refresh();
+    state.filter = "all"; state.selectedZip = ""; $("table-search").value = ""; await refreshPeriod();
   }
 
   function fillOptions() {
@@ -268,9 +296,9 @@
   $("area-search").addEventListener("keydown", (event) => { if (event.key === "Enter") applyAreaSearch(); });
   $("clear-area").addEventListener("click", () => { state.county = ""; state.selectedZip = ""; $("area-search").value = ""; refresh(); });
   $("opportunity-filter").addEventListener("change", (event) => { state.filter = event.target.value; refresh(); });
-  $("from-date").addEventListener("change", (event) => { state.from = event.target.value || window.SUITE_DATE.today(); if (state.from > state.through) state.through = state.from; refresh(); });
-  $("through-date").addEventListener("change", (event) => { state.through = event.target.value || (comparisonThrough < state.from ? state.from : comparisonThrough); if (state.through < state.from) state.from = state.through; refresh(); });
-  $("reset").addEventListener("click", reset);
+  $("from-date").addEventListener("change", async (event) => { state.from = event.target.value || window.SUITE_DATE.today(); if (state.from > state.through) state.through = state.from; await refreshPeriod(); });
+  $("through-date").addEventListener("change", async (event) => { state.through = event.target.value || (comparisonThrough < state.from ? state.from : comparisonThrough); if (state.through < state.from) state.from = state.through; await refreshPeriod(); });
+  $("reset").addEventListener("click", () => { void reset(); });
   $("table-search").addEventListener("input", renderTable);
   $("opportunity-table").addEventListener("click", (event) => { const review = event.target.closest("[data-review]"); if (review) { event.stopPropagation(); openMarket(review.dataset.review); return; } const row = event.target.closest("[data-zip]"); if (row) selectZip(row.dataset.zip); });
   $("market-evidence").addEventListener("click", (event) => { const button = event.target.closest("[data-review]"); if (button) openMarket(button.dataset.review); });
@@ -314,5 +342,5 @@
   const periodMax = DATA.maxDate > defaultThrough ? DATA.maxDate : defaultThrough;
   $("from-date").min = periodMin; $("from-date").max = periodMax;
   $("through-date").min = periodMin; $("through-date").max = periodMax;
-  fillOptions(); drawMap(); reset();
+  fillOptions(); drawMap(); await reset();
 })();

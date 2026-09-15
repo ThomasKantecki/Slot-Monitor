@@ -38,7 +38,7 @@ export function escapeScriptJson(value) {
 }
 
 export function renderSlotTimes() {
-  const data = readJson("data/cardiology/current/slot-times-model.json");
+  const data = readJson("public/data/cardiology/slot-times-summary.json");
   data.zipCounty = readJson("data/zip-county.json");
   const centroidSource = read("data/geography/florida-zip-centroids.js").trim();
   const centroidPrefix = "window.FLORIDA_ZIP_CENTROIDS=";
@@ -74,6 +74,7 @@ export function renderSlotTimes() {
     .replace("__SLOT_OUTLINE__", escapeScriptJson(outlinePath))
     .replace("__DATE_CLIENT__", read("src/shared/date.js"))
     .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
+    .replace("__PARTITION_LOADER__", read("src/slot-times/partition-loader.js"))
     .replace("__CLIENT__", read("src/slot-times/client.js"));
 }
 
@@ -121,6 +122,7 @@ __NAV_STYLES__</style></head><body>
 </main><dialog id="facility-dialog" class="facility-dialog"><div class="dialog-head"><div><span id="dialog-system" class="system-tag"></span><h2 id="dialog-title"></h2><p id="dialog-address"></p></div><button id="close-dialog" aria-label="Close facility appointments">×</button></div><div id="dialog-summary" class="dialog-summary"></div><div id="doctor-list" class="doctor-list"></div></dialog><div id="tip" class="tip" role="tooltip"></div><script>window.SLOT_DATA=__SLOT_DATA__;window.SLOT_PATHS=__SLOT_PATHS__;window.SLOT_OUTLINE=__SLOT_OUTLINE__;
 __DATE_CLIENT__
 __RADIUS_CLIENT__
+__PARTITION_LOADER__
 __CLIENT__</script></body></html>`;
 
 function main() { const result = writeSlotTimes(); console.log(`wrote index.html + public/index.html + public/slot-times.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }

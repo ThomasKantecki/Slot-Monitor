@@ -1,4 +1,4 @@
-(() => {
+ (async () => {
   const DATA = window.SLOT_DATA;
   const PATHS = window.SLOT_PATHS;
   const OUTLINE = window.SLOT_OUTLINE;
@@ -19,7 +19,12 @@
   const searchedZipRadius = 50;
   const comparisonThrough = DATA.commonMaxDate || DATA.maxDate;
   const defaultFrom = window.SUITE_DATE.today();
-  const defaultThrough = comparisonThrough < defaultFrom ? defaultFrom : comparisonThrough;
+  // The landing view is intentionally narrow; all dates remain available in the filters.
+  const defaultPeriodEnd = new Date(`${defaultFrom}T12:00:00`);
+  defaultPeriodEnd.setDate(defaultPeriodEnd.getDate() + 14);
+  const fifteenDayThrough = [defaultPeriodEnd.getFullYear(), String(defaultPeriodEnd.getMonth() + 1).padStart(2, "0"), String(defaultPeriodEnd.getDate()).padStart(2, "0")].join("-");
+  const defaultThrough = comparisonThrough < defaultFrom ? defaultFrom : (comparisonThrough < fifteenDayThrough ? comparisonThrough : fifteenDayThrough);
+  await window.SLOT_PARTITIONS.load(defaultFrom, defaultThrough);
   const initialSlotDate = DATA.slots.find((slot) => slot.d >= defaultFrom && slot.d <= defaultThrough)?.d || defaultFrom;
   const miles = window.SLOT_RADIUS.miles;
 
@@ -29,16 +34,39 @@
     originZip: defaultOriginZip, radius: landingRadius, radiusActive: Boolean(defaultOriginZip), areaQuery: "",
     month: new Date(`${initialSlotDate}T12:00:00`), zoom: { k: 1, x: 0, y: 0 },
   };
-  const slotsByArea = { zip: new Map(), county: new Map() };
-  const allIndices = DATA.slots.map((_, index) => index);
-  DATA.slots.forEach((slot, index) => {
-    const facility = DATA.facilities[slot.f];
-    [["zip", facility.z], ["county", facility.ct]].forEach(([granularity, key]) => {
-      if (!key) return;
-      if (!slotsByArea[granularity].has(key)) slotsByArea[granularity].set(key, []);
-      slotsByArea[granularity].get(key).push(index);
+  let slotsByArea = { zip: new Map(), county: new Map() };
+  let allIndices = [];
+  function indexSlots() {
+    slotsByArea = { zip: new Map(), county: new Map() };
+    allIndices = DATA.slots.map((_, index) => index);
+    DATA.slots.forEach((slot, index) => {
+      const facility = DATA.facilities[slot.f];
+      [["zip", facility.z], ["county", facility.ct]].forEach(([granularity, key]) => {
+        if (!key) return;
+        if (!slotsByArea[granularity].has(key)) slotsByArea[granularity].set(key, []);
+        slotsByArea[granularity].get(key).push(index);
+      });
     });
-  });
+  }
+  indexSlots();
+  let periodRequest = 0;
+  async function refreshPeriod() {
+    const request = ++periodRequest;
+    $("period-status").textContent = "Loading selected dates…";
+    try {
+      await window.SLOT_PARTITIONS.load(state.from, state.through);
+    } catch (error) {
+      $("period-status").textContent = "Could not load the selected appointment dates.";
+      console.error(error);
+      return;
+    }
+    if (request !== periodRequest) return;
+    indexSlots();
+    const dates = DATA.slots.map((slot) => slot.d);
+    if (!dates.includes(state.selectedDate)) state.selectedDate = dates[0] || state.from;
+    state.month = new Date(`${state.selectedDate}T12:00:00`);
+    refresh();
+  }
   let distanceOriginZip = "", distanceCache = [];
   const facilityDistance = (facilityIndex) => {
     if (distanceOriginZip !== state.originZip) {
@@ -337,20 +365,21 @@
   function setPressed(prefix, value, choices) { choices.forEach((choice) => $(`${prefix}-${choice}`)?.setAttribute("aria-pressed", String(choice === value))); }
   ["zip", "county"].forEach((value) => $(`gran-${value}`).addEventListener("click", () => { state.granularity = value; state.selected = ""; setPressed("gran", value, ["zip", "county"]); fillSearch(); refresh(); }));
   ["diff", "ah", "oh"].forEach((value) => $(`view-${value}`).addEventListener("click", () => { state.view = value; setPressed("view", value, ["diff", "ah", "oh"]); refresh(); }));
-  $("from-date").addEventListener("change", (event) => { state.from = event.target.value; if (state.through < state.from) { state.through = state.from; $("through-date").value = state.from; } refresh(); });
-  $("through-date").addEventListener("change", (event) => { state.through = event.target.value; if (state.from > state.through) { state.from = state.through; $("from-date").value = state.through; } refresh(); });
-  $("reset").addEventListener("click", () => {
+  $("from-date").addEventListener("change", async (event) => { state.from = event.target.value; if (state.through < state.from) { state.through = state.from; $("through-date").value = state.from; } await refreshPeriod(); });
+  $("through-date").addEventListener("change", async (event) => { state.through = event.target.value; if (state.from > state.through) { state.from = state.through; $("from-date").value = state.through; } await refreshPeriod(); });
+  $("reset").addEventListener("click", async () => {
     const resetFrom = window.SUITE_DATE.today();
-    const resetThrough = comparisonThrough < resetFrom ? resetFrom : comparisonThrough;
-    const resetSlotDate = DATA.slots.find((slot) => slot.d >= resetFrom && slot.d <= resetThrough)?.d || resetFrom;
-    state.granularity = "zip"; state.selected = ""; state.selectedDate = resetSlotDate;
-    state.month = new Date(`${resetSlotDate}T12:00:00`); state.from = resetFrom; state.through = resetThrough; state.view = "diff";
+    const resetEnd = new Date(`${resetFrom}T12:00:00`); resetEnd.setDate(resetEnd.getDate() + 14);
+    const resetFifteenDayThrough = [resetEnd.getFullYear(), String(resetEnd.getMonth() + 1).padStart(2, "0"), String(resetEnd.getDate()).padStart(2, "0")].join("-");
+    const resetThrough = comparisonThrough < resetFrom ? resetFrom : (comparisonThrough < resetFifteenDayThrough ? comparisonThrough : resetFifteenDayThrough);
+    state.granularity = "zip"; state.selected = ""; state.selectedDate = resetFrom;
+    state.month = new Date(`${resetFrom}T12:00:00`); state.from = resetFrom; state.through = resetThrough; state.view = "diff";
     state.originZip = defaultOriginZip; state.radius = landingRadius; state.radiusActive = Boolean(defaultOriginZip); state.areaQuery = "";
     $("from-date").value = state.from; $("through-date").value = state.through;
     $("origin-zip").value = ""; $("radius").value = state.radius; $("area-search").value = "";
     $("facility-search").value = ""; $("appointment-search").value = "";
     setPressed("gran", "zip", ["zip", "county"]); setPressed("view", "diff", ["diff", "ah", "oh"]);
-    fillSearch(); resetZoom(); refresh();
+    fillSearch(); resetZoom(); await refreshPeriod();
   });
   $("area-search").addEventListener("change", (event) => {
     const raw = event.target.value.trim(), key = raw.split(" · ")[0];

@@ -22,12 +22,19 @@ const defaultZips = model.origins.filter((origin) => globalThis.SLOT_RADIUS.mile
 const defaultExactRows = buildOpportunityRows(model, { from: globalThis.SUITE_DATE.today(), through, includeZips: defaultZips, miles: globalThis.SLOT_RADIUS.miles });
 const defaultExactGaps = defaultExactRows.filter((row) => row.oh > 0 && row.ah === 0);
 const defaultRows = buildOpportunityRows(model, { from: globalThis.SUITE_DATE.today(), through, includeZips: defaultZips, marketRadiusMiles: 25, miles: globalThis.SLOT_RADIUS.miles });
+const defaultMarketByZip = new Map(defaultRows.map((row) => [row.zip, row]));
+const priorityExactGaps = defaultExactGaps.filter((row) => {
+  const market = defaultMarketByZip.get(row.zip);
+  return market && market.oh > market.ah;
+});
+const contextOnlyExactGaps = defaultExactGaps.filter((row) => !priorityExactGaps.includes(row));
 const defaultLeaders = defaultRows.filter((row) => row.oh > row.ah);
 const coverageGaps = defaultLeaders.filter((row) => row.ah === 0);
 const sharedMarkets = defaultLeaders.filter((row) => row.ah > 0);
 if (!defaultExactGaps.length) throw new Error("Expected at least one default-scope exact-ZIP gap");
-console.log(`Default map layers: ${defaultExactGaps.length} exact-ZIP gaps + ${sharedMarkets.length} AH-present/OH-leading 25-mile markets (${coverageGaps.length} additional 25-mile AH-absent markets)`);
-console.table(defaultExactGaps.map((row) => ({ zip: row.zip, county: row.county, ah: row.ah, oh: row.oh, gap: row.slotGap })));
+console.log(`Default map layers: ${priorityExactGaps.length} priority exact-ZIP gaps + ${sharedMarkets.length} AH-present/OH-leading 25-mile markets (${contextOnlyExactGaps.length} exact-ZIP gaps shown as context only)`);
+console.table(priorityExactGaps.map((row) => ({ zip: row.zip, county: row.county, ah: row.ah, oh: row.oh, gap: row.slotGap })));
+console.table(contextOnlyExactGaps.map((row) => ({ zip: row.zip, county: row.county, ah: row.ah, oh: row.oh, gap: row.slotGap })));
 console.table(sharedMarkets.map((row) => ({ zip: row.zip, county: row.county, score: row.score.total, ah: row.ah, oh: row.oh, gap: row.slotGap })));
 
 const statewideToday = buildOpportunityRows(model, { from: globalThis.SUITE_DATE.today(), through, miles: globalThis.SLOT_RADIUS.miles });

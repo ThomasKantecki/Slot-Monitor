@@ -6,4 +6,6 @@ __pycache__/
 data/raw/
 data/cardiology/extractions/
 data/cardiology/runs/
+# Build-only deep model; published appointment data is date-partitioned under public/data.
+data/cardiology/current/slot-times-model.json
 node_modules/

@@ -1,9 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { buildSlotAvailability } from "../src/slot-times/data.js";
 
+const manifest = JSON.parse(readFileSync("data/cardiology/current/manifest.json", "utf8"));
+if (manifest.modelSource === "streamed-large-ah-csv") {
+  console.log("preserved deep-AH slot model and its date partitions; rerun build-deep-ah-slot-model.py to refresh them");
+  process.exit(0);
+}
 const rows = JSON.parse(readFileSync("data/cardiology/current/cardiology-physical-slots.json", "utf8"));
 const zipCounty = JSON.parse(readFileSync("data/zip-county.json", "utf8"));
-const manifest = JSON.parse(readFileSync("data/cardiology/current/manifest.json", "utf8"));
 const model = buildSlotAvailability(rows, zipCounty);
 model.generatedAt = manifest.generatedAt;
 model.status = manifest.status;

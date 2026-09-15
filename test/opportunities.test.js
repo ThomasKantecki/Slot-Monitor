@@ -72,7 +72,7 @@ test("market opportunity page is generated with the full decision workflow", () 
   assert.match(html, /Cardiology opportunity signals/);
   assert.doesNotMatch(html, />AH slot lead</);
   assert.match(html, /Marker size = opportunity score/);
-  assert.match(html, /Exact ZIP: AH absent · OH present/);
+  assert.match(html, /Priority exact ZIP: AH absent · OH leads locally/);
   assert.match(html, /25-mile market: AH present · OH leads/);
   assert.match(html, /maroon core inside coral = both/i);
   assert.match(styles, /\.op-marker\.coverage\{fill:#5b001f/);
@@ -89,6 +89,7 @@ test("opportunity browser source parses and uses the shared score implementation
   assert.match(client, /const marketRadiusMiles = 25/);
   assert.match(client, /includeZips, marketRadiusMiles, miles/);
   assert.match(client, /exactGapByZip/);
+  assert.match(client, /priorityExactGapByZip/);
   assert.match(client, /exactRows = buildOpportunityRows/);
   assert.match(client, /localMarker \+ exactMarker/);
   assert.match(client, /map\.addEventListener\("pointerdown"/);
@@ -100,6 +101,7 @@ test("opportunity browser source parses and uses the shared score implementation
   assert.match(client, /Review facilities and providers/);
   assert.match(client, /Nearest active AH comparison/);
   assert.match(client, /visibleRows\.filter\(\(row\) => row\.oh > row\.ah\)/);
+  assert.match(client, /return market && market\.oh > market\.ah/);
   assert.match(client, /id="opportunity-marker-layer"/);
   assert.match(client, /class="op-marker/);
   assert.doesNotMatch(client, /path\.setAttribute\("fill", scoreColor/);

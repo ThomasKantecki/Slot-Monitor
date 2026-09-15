@@ -78,6 +78,20 @@ test("slot availability browser code parses and the landing alias is generated",
   assert.doesNotMatch(slots, /Deduplicated physical slots/);
 });
 
+test("slot dashboards embed only a compact summary and load appointment records by date", () => {
+  const slots = renderSlotTimes();
+  const summary = JSON.parse(readFileSync(new URL("../public/data/cardiology/slot-times-summary.json", import.meta.url), "utf8"));
+  const firstDate = summary.partitionDates[0];
+  const firstPartition = JSON.parse(readFileSync(new URL(`../public/data/cardiology/slots/${firstDate}.json`, import.meta.url), "utf8"));
+  assert.equal(summary.totalPhysicalSlots, slotModel.slots.length);
+  assert.ok(summary.partitionDates.length > 0);
+  assert.equal(firstPartition.date, firstDate);
+  assert.ok(firstPartition.slots.length > 0);
+  assert.match(slots, /window\.SLOT_PARTITIONS/);
+  assert.match(slots, /data\/cardiology\/slots\/\$\{date\}\.json/);
+  assert.doesNotMatch(slots, /"slots":\[\{"y":/);
+});
+
 test("slot appointment mix donut is wired to filtered KPI refreshes", () => {
   const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
@@ -112,7 +126,7 @@ test("slot appointment mix donut is wired to filtered KPI refreshes", () => {
   assert.match(client, /paintMap\(\); renderKpis\(\); renderSummary\(\);/);
 });
 
-test("slot area selection can be cleared and Reset restores today's period and v3 ZIP-radius defaults", () => {
+test("slot area selection can be cleared and Reset restores a 15-day period and v3 ZIP-radius defaults", () => {
   const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(slots, /id="clear-area"/);
@@ -126,7 +140,10 @@ test("slot area selection can be cleared and Reset restores today's period and v
   assert.match(client, /const searchedZipRadius = 50/);
   assert.match(client, /state\.originZip = defaultOriginZip; state\.radius = landingRadius; state\.radiusActive = Boolean\(defaultOriginZip\)/);
   assert.match(client, /const defaultFrom = window\.SUITE_DATE\.today\(\)/);
-  assert.match(client, /state\.month = new Date\(`\$\{resetSlotDate\}T12:00:00`\); state\.from = resetFrom; state\.through = resetThrough/);
+  assert.match(client, /resetEnd\.setDate\(resetEnd\.getDate\(\) \+ 14\)/);
+  assert.match(client, /state\.month = new Date\(`\$\{resetFrom\}T12:00:00`\); state\.from = resetFrom; state\.through = resetThrough/);
+  assert.match(client, /await refreshPeriod\(\)/);
+  assert.match(client, /window\.SLOT_PARTITIONS\.load\(state\.from, state\.through\)/);
   assert.match(slots, /root\.SUITE_DATE = Object\.freeze\(\{ today \}\)/);
   assert.match(slots, new RegExp(`"commonMaxDate":"${slotModel.commonMaxDate}"`));
   assert.match(slots, /id="period-status"/);
