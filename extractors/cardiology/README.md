@@ -5,6 +5,11 @@ availability for AdventHealth and Orlando Health. The direct API extractor uses
 Python's standard library; it does not require Selenium, pandas, credentials,
 or a browser.
 
+`AH_cardiology_exhaustive.py`, `OH_cardiology_all_public_flows.py`, and their
+two `epic_scheduling_extractor_*.py` dependencies are mirrors of the current
+root-workspace extractors used for the latest deep runs. `extract_ah.py` and
+`extract_oh.py` now delegate to those current runners.
+
 If Python is not already available on `PATH`, create a repository-local
 `.venv` or set `CARDIOLOGY_PYTHON` to a Python 3.9+ executable. The npm commands
 automatically prefer `.venv` on Windows and macOS/Linux.
@@ -21,22 +26,28 @@ npm run refresh:cardiology:dry-run
 npm run refresh:cardiology
 ```
 
-The full command runs AH, then OH, deduplicates physical appointments, promotes
-both outputs into `data/cardiology/runs/<run-id>`, selects the latest valid AH
-and OH sources for `data/cardiology/current`, and rebuilds the static site.
-These are long-running network jobs; partial slot and audit files are
-checkpointed after every public flow.
+The older full-refresh command remains in the repository for its established
+dashboard-promotion workflow. The current deep AH/OH runners below are the
+source of truth for new extraction work; their outputs should be validated and
+promoted through the current data-build process before publishing. These are
+long-running network jobs; partial slot and audit files are checkpointed after
+every public flow.
 
 Run one source independently when needed:
 
 ```sh
-npm run extract:ah -- --max-slot-loads 1000
-npm run extract:oh -- --max-slot-loads 1000
+npm run extract:ah
+npm run extract:oh
 ```
 
-Independent extraction writes raw output under
-`data/cardiology/extractions/<run-id>/<system>`. Use the full refresh command
-for automatic promotion and site rebuilding.
+AH defaults to a finite 10,000-page brake. OH defaults to uncapped pagination
+(`--max-slot-loads 0`) and writes a run-health artifact that flags incomplete
+flows and coverage failures. The current deep runners write their raw run
+folders beside the script unless an `--artifacts` destination is supplied.
+
+Independent extraction writes raw output below the supplied `--artifacts`
+folder (or in the runner's default artifact folder). Promote a validated run
+through the data-build process before rebuilding the site.
 
 ## Scheduled refresh
 
