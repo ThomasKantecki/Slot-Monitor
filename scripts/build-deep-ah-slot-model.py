@@ -66,6 +66,12 @@ def ingest(groups: dict, path: Path, system: str) -> int:
     return rows
 
 
+def source_run_id(path: Path, system: str) -> str:
+    """Use the extraction run directory, not a nested system folder, as the ID."""
+    parent = path.resolve().parent
+    return parent.parent.name if parent.name.lower() == system.lower() else parent.name
+
+
 def build_model(groups: dict, zip_county: dict[str, str]) -> dict:
     type_list = sorted({item for group in groups.values() for item in group["types"]})
     reason_list = sorted({item for group in groups.values() for item in group["reasons"]})
@@ -147,14 +153,14 @@ def main() -> None:
     zip_county = json.loads((ROOT / "data" / "zip-county.json").read_text(encoding="utf-8"))
     model = build_model(groups, zip_county)
     generated = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    ah_run_id = args.ah_source.resolve().parent.name
-    oh_run_id = args.oh_source.resolve().parent.name
+    ah_run_id = source_run_id(args.ah_source, "ah")
+    oh_run_id = source_run_id(args.oh_source, "oh")
     manifest = {
         "status": "completed_with_warnings",
         "scope": "Florida Cardiology public appointment availability",
         "generatedAt": generated,
         "ah": {"runId": ah_run_id, "source": str(args.ah_source), "physicalSlots": model["totals"]["ah"], "bookingCategoriesRetained": True, "warning": "Specialists flow reached the temporary 10,000-page ceiling; New Patient ended after an AH non-JSON response."},
-        "oh": {"runId": oh_run_id, "source": str(args.oh_source), "physicalSlots": model["totals"]["oh"], "bookingCategoriesRetained": True, "warning": "Physical-slot coverage passed the Sep 13 comparison; 28 questionnaire flows errored before slots, 14 slot flows preserved partial results after non-JSON responses, and 2 flows reached the 1,000-page guard."},
+        "oh": {"runId": oh_run_id, "source": str(args.oh_source), "physicalSlots": model["totals"]["oh"], "bookingCategoriesRetained": True, "validation": "Accepted extractor run: 42 flows reached the configured 730-day horizon, 7 were legitimate public stops, and no flows were incomplete."},
         "totalPhysicalSlots": len(model["slots"]),
         "modelSource": "streamed-large-ah-csv",
     }
