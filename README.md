@@ -55,6 +55,7 @@ npm run extract:ah          # run only the AH Cardiology extractor
 npm run extract:oh          # run only the OH Cardiology extractor
 npm run all           # directory + data + build
 python3 scripts/build-deck.py   # rebuild the two deck files onto ~/Desktop
+python3 scripts/build-exec-deck.py   # six-slide executive deck onto ~/Desktop (needs assets/deck/*.png)
 ```
 
 The detailed extraction controls and storage layout are documented in
@@ -66,13 +67,30 @@ The generated `public/` folder is the complete static website and can be used
 as the publish directory on a static host. Its root address opens Slot
 Availability, and the shared switcher links to Provider Index. The
 deployed site remains static; extraction runs from the source repository.
+There is no scheduled refresh. To update the data, run `npm run refresh:cardiology`
+locally, commit `data/cardiology/current` and `public/`, and push.
+
+## Refreshing the data
+
+The extractor under `extractors/cardiology` is the agreed method for every future
+pull; `extractors/cardiology/README.md` explains why and how to run it. In short:
+create the Python environment once (`python3 -m venv .venv`; the extractor needs
+only the standard library), run `npm run refresh:cardiology`, let it run to the
+end (AdventHealth takes most of a day), then `npm test` and commit the rebuilt
+`public/` folder.
 
 ## Data sources
 
 - **Appointment availability** — the in-repo direct API extractors traverse
   each system's anonymous Epic Cardiology workflow, save flow-level audit data,
   deduplicate physical slots, retain AH booking categories, and promote the
-  latest valid system runs into `data/cardiology/current`.
+  latest valid system runs into `data/cardiology/current`. Every published
+  Florida slot is kept and shown by default. The Comparison filters
+  (`src/slot-rules.js`) narrow both sides the same way: physicians only,
+  because AdventHealth also opens nurse practitioner, physician assistant,
+  nurse and pharmacist schedules to online booking and Orlando Health does
+  not; in-person only, because Orlando Health publishes no video visits
+  online; and new patients only, the visit types a new patient can book.
 
 - **Orlando Health** — the physician-finder's Algolia records provide identity,
   employment, specialty and every practice location. `npm run directory`
@@ -90,3 +108,7 @@ mode shows distinct statewide providers; all-locations mode shows distinct
 provider-office assignments across all published Florida practice locations.
 The details live in comments in `src/specialty.js`, `src/sources/*.js`
 and `src/geo.js`.
+
+## Published data layout
+
+The built pages embed only a compact summary (`public/data/cardiology/slot-times-summary.json`: providers, facilities, totals, dates). The appointment slots themselves are published one file per bookable date under `public/data/cardiology/slots/`, and each page fetches just the dates in the selected period (the landing view is the next 90 days). `npm run build` writes both from `data/cardiology/current/slot-times-model.json`, which is build-only and not committed; a checkout without it keeps the published partitions.

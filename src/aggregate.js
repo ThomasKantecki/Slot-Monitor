@@ -51,6 +51,7 @@ export function aggregate({ rosters, zipCounty, source, locationMode = "all",
         if (!byProvider.has(rosterUid)) byProvider.set(rosterUid, {
           i: uid, n: p.name, s: spec, y: sys, cr: p.cred ?? "",
           ph: p.photo ?? "", u: p.profile ?? "", l: [],
+          ...(p.src ? { src: p.src } : {}), ...(p.label && p.label !== spec ? { sl: p.label } : {}),
         });
         const entry = byProvider.get(rosterUid);
         const locKey = locationKey(l);

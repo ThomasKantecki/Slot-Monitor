@@ -38,57 +38,68 @@ export function buildOpportunityRows(model, options = {}) {
   const marketRadiusMiles = Number(options.marketRadiusMiles) || 0;
   const miles = options.miles || (() => Infinity);
   const originByZip = new Map((model.origins || []).map((origin) => [origin.z, origin]));
-  const active = model.slots.map((slot, index) => ({ slot, index })).filter(({ slot }) => slot.d >= from && slot.d <= through);
-  const activeAhFacilities = new Set(active.filter(({ slot }) => slot.y === "ah").map(({ slot }) => slot.f));
+  const include = options.include || (() => true);
+
+  // One pass over the slots builds a per-facility summary; markets then merge facility summaries instead of
+  // re-reading every slot for every circle that contains it (which took seconds on a 700k-slot model).
+  const perFacility = new Map();
+  model.slots.forEach((slot, index) => {
+    if (!include(slot) || slot.d < from || slot.d > through) return;
+    let facility = perFacility.get(slot.f);
+    if (!facility) { facility = { y: slot.y, count: 0, providers: new Set(), earliest: "", dates: new Map(), indices: [] }; perFacility.set(slot.f, facility); }
+    facility.count += 1; facility.providers.add(slot.p);
+    if (!facility.earliest || slot.d < facility.earliest) facility.earliest = slot.d;
+    facility.dates.set(slot.d, (facility.dates.get(slot.d) || 0) + 1);
+    facility.indices.push(index);
+  });
   const rows = new Map();
 
   const createRow = (zip, county = "") => ({
     zip, county: model.zipCounty?.[zip] || county, ah: 0, oh: 0,
     earliestAh: "", earliestOh: "", providersAh: new Set(), providersOh: new Set(),
-    facilitiesAh: new Set(), facilitiesOh: new Set(), dates: new Map(), slotIndices: [],
+    facilitiesAh: new Set(), facilitiesOh: new Set(), dates: new Map(), facilityIndices: [],
   });
 
-  const addSlot = (row, slot, sourceIndex) => {
-    row[slot.y] += 1;
-    row[`providers${slot.y === "ah" ? "Ah" : "Oh"}`].add(slot.p);
-    row[`facilities${slot.y === "ah" ? "Ah" : "Oh"}`].add(slot.f);
-    const earliestKey = slot.y === "ah" ? "earliestAh" : "earliestOh";
-    if (!row[earliestKey] || slot.d < row[earliestKey]) row[earliestKey] = slot.d;
-    if (!row.dates.has(slot.d)) row.dates.set(slot.d, { ah: 0, oh: 0 });
-    row.dates.get(slot.d)[slot.y] += 1;
-    row.slotIndices.push(sourceIndex);
+  const addFacility = (row, facilityIndex, facility) => {
+    const system = facility.y === "ah" ? "Ah" : "Oh";
+    row[facility.y] += facility.count;
+    for (const provider of facility.providers) row[`providers${system}`].add(provider);
+    row[`facilities${system}`].add(facilityIndex);
+    const earliestKey = `earliest${system}`;
+    if (!row[earliestKey] || facility.earliest < row[earliestKey]) row[earliestKey] = facility.earliest;
+    for (const [date, count] of facility.dates) {
+      let day = row.dates.get(date);
+      if (!day) { day = { ah: 0, oh: 0 }; row.dates.set(date, day); }
+      day[facility.y] += count;
+    }
+    row.facilityIndices.push(facilityIndex);
   };
 
   if (marketRadiusMiles > 0) {
-    const activeByFacility = new Map();
-    for (const entry of active) {
-      if (!activeByFacility.has(entry.slot.f)) activeByFacility.set(entry.slot.f, []);
-      activeByFacility.get(entry.slot.f).push(entry);
-    }
-    const candidateZips = new Set(active.map(({ slot }) => model.facilities[slot.f]?.z).filter((zip) => zip && (!includeZips || includeZips.has(zip))));
+    const candidateZips = new Set([...perFacility.keys()].map((index) => model.facilities[index]?.z).filter((zip) => zip && (!includeZips || includeZips.has(zip))));
     for (const zip of candidateZips) {
       const center = originByZip.get(zip);
       const centerFacility = model.facilities.find((facility) => facility?.z === zip);
       const row = createRow(zip, centerFacility?.ct || "");
-      for (const [facilityIndex, entries] of activeByFacility) {
+      for (const [facilityIndex, summary] of perFacility) {
         const facility = model.facilities[facilityIndex];
         const facilityOrigin = originByZip.get(facility?.z);
         const inCatchment = facility?.z === zip || (center && facilityOrigin && miles(center.a, center.o, facilityOrigin.a, facilityOrigin.o) <= marketRadiusMiles);
-        if (inCatchment) for (const { slot, index } of entries) addSlot(row, slot, index);
+        if (inCatchment) addFacility(row, facilityIndex, summary);
       }
       rows.set(zip, row);
     }
   } else {
-    for (const { slot, index: sourceIndex } of active) {
-      const facility = model.facilities[slot.f];
+    for (const [facilityIndex, summary] of perFacility) {
+      const facility = model.facilities[facilityIndex];
       if (!facility?.z || (includeZips && !includeZips.has(facility.z))) continue;
       if (!rows.has(facility.z)) rows.set(facility.z, createRow(facility.z, facility.ct || ""));
-      addSlot(rows.get(facility.z), slot, sourceIndex);
+      addFacility(rows.get(facility.z), facilityIndex, summary);
     }
   }
 
-  const activeAh = [...activeAhFacilities].map((index) => ({ index, origin: originByZip.get(model.facilities[index]?.z) })).filter((row) => row.origin);
-  return [...rows.values()].map((row) => {
+  const activeAh = [...perFacility.entries()].filter(([, summary]) => summary.y === "ah").map(([index]) => ({ index, origin: originByZip.get(model.facilities[index]?.z) })).filter((row) => row.origin);
+  const result = [...rows.values()].map((row) => {
     const origin = originByZip.get(row.zip);
     let nearestAhMiles = Infinity, nearestAhFacility = null;
     if (origin) for (const candidate of activeAh) {
@@ -96,14 +107,40 @@ export function buildOpportunityRows(model, options = {}) {
       if (distance < nearestAhMiles) { nearestAhMiles = distance; nearestAhFacility = candidate.index; }
     }
     const score = opportunityScore({ ...row, nearestAhMiles });
-    return {
+    const out = {
       zip: row.zip, county: row.county, ah: row.ah, oh: row.oh,
       slotGap: row.oh - row.ah, earliestAh: row.earliestAh, earliestOh: row.earliestOh,
       timingGapDays: row.ah ? dateDays(row.earliestAh, row.earliestOh) : (row.oh ? null : 0),
+      booksSooner: row.oh > 0 && (row.ah === 0 || dateDays(row.earliestAh, row.earliestOh) >= 7),  // a week or more sooner, not a one-day difference
+      leadDates: [...row.dates.values()].filter((day) => day.oh > day.ah).length,
       providersAh: row.providersAh.size, providersOh: row.providersOh.size,
       facilitiesAh: row.facilitiesAh.size, facilitiesOh: row.facilitiesOh.size,
       representedDates: row.dates.size, nearestAhMiles, nearestAhFacility,
-      marketRadiusMiles, score, slotIndices: row.slotIndices,
+      marketRadiusMiles, score, facilityIndices: row.facilityIndices, rank: 0,
     };
+    // The slot indices behind a market are only needed for the one the user opens, so they are assembled on demand.
+    Object.defineProperty(out, "slotIndices", { enumerable: false, get() { let indices = []; for (const facilityIndex of row.facilityIndices) indices = indices.concat(perFacility.get(facilityIndex).indices); return indices.sort((a, b) => a - b); } });
+    return out;
   }).sort((a, b) => b.score.total - a.score.total || b.slotGap - a.slotGap || a.zip.localeCompare(b.zip));
+  result.forEach((row, index) => { row.rank = index + 1; });
+  return result;
+}
+
+// The reasons a market ranks where it does, in the words the page shows: strongest signal first.
+export function marketReasons(row, { exactGap = false } = {}) {
+  const reasons = [];
+  const scope = row.marketRadiusMiles ? `within ${row.marketRadiusMiles} miles` : "in this ZIP";
+  if (exactGap) reasons.push({ system: "oh", text: "No AdventHealth slots in this ZIP" });
+  if (row.ah === 0 && row.oh > 0) reasons.push({ system: "oh", text: `No AdventHealth slots ${scope}` });
+  else if (row.ah > 0 && row.oh > 0 && row.earliestOh && row.earliestAh) {
+    const days = dateDays(row.earliestAh, row.earliestOh);
+    if (days > 0) reasons.push({ system: "oh", text: `Orlando Health books ${days} day${days === 1 ? "" : "s"} sooner` });
+    else { const ahDays = dateDays(row.earliestOh, row.earliestAh); if (ahDays > 0) reasons.push({ system: "ah", text: `AdventHealth books ${ahDays} day${ahDays === 1 ? "" : "s"} sooner` }); }
+  }
+  const more = (count) => `${count.toLocaleString("en-US")} more slot${count === 1 ? "" : "s"}`;
+  if (row.slotGap > 0 && row.ah > 0) reasons.push({ system: "oh", text: `Orlando Health has ${more(row.slotGap)}` });
+  if (row.slotGap < 0) reasons.push({ system: "ah", text: `AdventHealth has ${more(-row.slotGap)}` });
+  if (Number.isFinite(row.nearestAhMiles) && row.nearestAhMiles >= 1) reasons.push({ system: "ah", text: `Nearest AdventHealth ${row.nearestAhMiles.toFixed(row.nearestAhMiles >= 10 ? 0 : 1)} mi away` });
+  if (row.ah > 0 && row.leadDates > 0) reasons.push({ system: "oh", text: `Orlando Health ahead on ${row.leadDates} of ${row.representedDates} dates` });
+  return reasons;
 }

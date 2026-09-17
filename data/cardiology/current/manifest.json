@@ -1,21 +1,25 @@
 {
   "status": "completed_with_warnings",
   "scope": "Florida Cardiology public appointment availability",
-  "generatedAt": "2026-09-16T13:58:08.488428Z",
+  "rule": "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
   "ah": {
-    "runId": "14sep_AH_cardio_exhaustive_011852",
-    "source": "..\\..\\AH_cardiology_exhaustive_outputs\\14sep_AH_cardio_exhaustive_011852\\14sep_AH_cardio_exhaustive_011852_slots.csv",
-    "physicalSlots": 656104,
-    "bookingCategoriesRetained": true,
-    "warning": "Specialists flow reached the temporary 10,000-page ceiling; New Patient ended after an AH non-JSON response."
+    "runId": "2026-09-15T103541-0400",
+    "source": "data/cardiology/runs/2026-09-15T103541-0400/ah/ah-cardiology-physical-slots.json",
+    "physicalSlots": 652873,
+    "nonPhysicianSlots": 305773,
+    "telemedicineOnlySlots": 1600,
+    "newPatientSlots": 314056,
+    "bookingCategoriesRetained": true
   },
   "oh": {
-    "runId": "2026-09-15T225919-0400",
-    "source": "data\\cardiology\\extractions\\2026-09-15T225919-0400\\oh\\oh-cardiology-unique-physical-slots.csv",
-    "physicalSlots": 64111,
-    "bookingCategoriesRetained": true,
-    "validation": "Accepted extractor run: 42 flows reached the configured 730-day horizon, 7 were legitimate public stops, and no flows were incomplete."
+    "runId": "2026-09-15T103541-0400",
+    "source": "data/cardiology/runs/2026-09-15T103541-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 64193,
+    "nonPhysicianSlots": 0,
+    "telemedicineOnlySlots": 0,
+    "newPatientSlots": 49548,
+    "bookingCategoriesRetained": false
   },
-  "totalPhysicalSlots": 720215,
-  "modelSource": "streamed-large-ah-csv"
+  "totalPhysicalSlots": 717066,
+  "generatedAt": "2026-09-16T04:00:49.860Z"
 }

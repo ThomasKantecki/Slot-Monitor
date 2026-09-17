@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import "../src/slot-times/radius.js";
 
 const centroidSource = readFileSync(new URL("../data/geography/florida-zip-centroids.js", import.meta.url), "utf8").trim();
@@ -12,7 +12,7 @@ test("radius distance uses v3's great-circle mile calculation", () => {
 });
 
 test("local Florida origin data covers every current cardiology facility ZIP", () => {
-  const model = JSON.parse(readFileSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url), "utf8"));
+  const model = (existsSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url)) ? JSON.parse(readFileSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url), "utf8")) : JSON.parse(readFileSync(new URL("../public/data/cardiology/slot-times-summary.json", import.meta.url), "utf8")));
   const originZips = new Set(centroids.map((row) => row.zip));
   assert.ok(centroids.length > 900);
   assert.ok(originZips.has("32804"));

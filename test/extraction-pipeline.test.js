@@ -25,6 +25,15 @@ test("Cardiology extraction scripts compile and expose an offline dry run", () =
   assert.equal(output.specialty, "Cardiology");
 });
 
+test("slot paging survives Epic's empty closing pages, re-served pages and stalls without losing a slot", () => {
+  const result = spawnSync(PYTHON, [join(ROOT, "extractors", "cardiology", "paging_check.py")], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /stall_new_tokens .* ok/);
+  assert.match(result.stdout, /stall_same_token .* ok/);
+  assert.match(result.stdout, /reserve_once .* restarts=  0 ok/);
+  assert.match(result.stdout, /search identity ok/);
+});
+
 test("OH physical deduplication collapses flow overlap without losing counts", () => {
   const folder = mkdtempSync(join(tmpdir(), "slot-monitor-dedup-"));
   try {

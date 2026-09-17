@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createInterface } from "node:readline";
 import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -38,16 +39,28 @@ function csv(rows, headers) {
   return [headers.join(","), ...rows.map((row) => headers.map((header) => csvValue(row[header])).join(","))].join("\n") + "\n";
 }
 
-export function combineAhPhysicalSlots(rows) {
+// Rows are folded into physical slots one at a time, so a run of a million raw rows never has to be
+// held as one JSON string (Node cannot even read a file that large into a single string).
+export function createAccumulator() {
   const groups = new Map();
-  for (const row of rows) {
-    const key = physicalKey(row);
-    if (!groups.has(key)) groups.set(key, { row, options: new Map() });
-    const option = optionOf(row);
-    const optionKey = JSON.stringify(option);
-    groups.get(key).options.set(optionKey, option);
-  }
+  return {
+    add(row) {
+      const key = physicalKey(row);
+      if (!groups.has(key)) groups.set(key, { row, options: new Map() });
+      const option = optionOf(row);
+      groups.get(key).options.set(JSON.stringify(option), option);
+    },
+    finish() { return finishGroups(groups); },
+  };
+}
 
+export function combineAhPhysicalSlots(rows) {
+  const accumulator = createAccumulator();
+  for (const row of rows) accumulator.add(row);
+  return accumulator.finish();
+}
+
+function finishGroups(groups) {
   return [...groups.entries()].map(([key, group]) => {
     const options = [...group.options.values()].sort((a, b) =>
       (TYPE_RANK.get(a.appointment_type) ?? 99) - (TYPE_RANK.get(b.appointment_type) ?? 99)
@@ -78,40 +91,81 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function main() {
+// The source is a slots.json array (small runs), a JSON-lines file, or a directory of the extractor's
+// per-flow JSON-lines part files (large runs); the last two are streamed line by line.
+async function readSource(sourcePath, accumulator) {
+  const hash = createHash("sha256");
+  let rows = 0;
+  const files = statSync(sourcePath).isDirectory()
+    ? readdirSync(sourcePath).filter((name) => name.endsWith(".jsonl")).sort().map((name) => join(sourcePath, name))
+    : [sourcePath];
+  for (const file of files) {
+    if (!file.endsWith(".jsonl")) {
+      const text = readFileSync(file, "utf8"); hash.update(text);
+      for (const row of JSON.parse(text)) { accumulator.add(row); rows += 1; }
+      continue;
+    }
+    const lines = createInterface({ input: createReadStream(file, { encoding: "utf8" }), crlfDelay: Infinity });
+    for await (const line of lines) {
+      if (!line.trim()) continue;
+      hash.update(line); hash.update("\n");
+      accumulator.add(JSON.parse(line)); rows += 1;
+    }
+  }
+  return { rows, sha256: hash.digest("hex"), files: files.map((file) => relative(process.cwd(), file).replaceAll("\\", "/")) };
+}
+
+function writeStreamed(path, write) {
+  return new Promise((resolvePromise, reject) => {
+    const stream = createWriteStream(path, { encoding: "utf8" });
+    stream.on("error", reject); stream.on("finish", resolvePromise);
+    write((chunk) => stream.write(chunk));
+    stream.end();
+  });
+}
+
+async function main() {
   const source = argument("--source");
   const runId = argument("--run-id");
-  if (!source || !runId) throw new Error("Usage: node scripts/build-ah-physical-slots.mjs --source <slots.json> --run-id <run-id>");
+  if (!source || !runId) throw new Error("Usage: node scripts/build-ah-physical-slots.mjs --source <slots.json | slots.jsonl | parts dir> --run-id <run-id>");
 
   const sourcePath = resolve(source);
   const runPath = join(process.cwd(), "data", "cardiology", "runs", runId, "ah");
   if (!existsSync(sourcePath)) throw new Error(`Source does not exist: ${sourcePath}`);
   if (existsSync(runPath)) throw new Error(`Run path already exists: ${runPath}`);
 
-  const sourceRows = JSON.parse(readFileSync(sourcePath, "utf8"));
-  const physicalSlots = combineAhPhysicalSlots(sourceRows);
+  const accumulator = createAccumulator();
+  const read = await readSource(sourcePath, accumulator);
+  const physicalSlots = accumulator.finish();
   const outputJson = join(runPath, "ah-cardiology-physical-slots.json");
   const outputCsv = join(runPath, "ah-cardiology-physical-slots.csv");
-  const importedRaw = join(runPath, "source-ah-slots.json");
   const headers = [
     "physical_slot_id", ...PHYSICAL_FIELDS, "appointment_types", "appointment_type_count", "duration_minutes", "booking_options_json",
   ];
 
   mkdirSync(dirname(runPath), { recursive: true });
   mkdirSync(runPath, { recursive: false });
-  copyFileSync(sourcePath, importedRaw);
-  writeFileSync(outputJson, `${JSON.stringify(physicalSlots, null, 2)}\n`);
-  writeFileSync(outputCsv, csv(physicalSlots, headers));
+  const streamed = statSync(sourcePath).isDirectory() || sourcePath.endsWith(".jsonl");
+  if (!streamed) copyFileSync(sourcePath, join(runPath, "source-ah-slots.json"));
+  await writeStreamed(outputJson, (write) => {
+    write("[\n");
+    physicalSlots.forEach((slot, index) => write(`${index ? ",\n" : ""}${JSON.stringify(slot)}`));
+    write("\n]\n");
+  });
+  await writeStreamed(outputCsv, (write) => {
+    write(`${headers.join(",")}\n`);
+    for (const slot of physicalSlots) write(`${headers.map((header) => csvValue(slot[header])).join(",")}\n`);
+  });
   writeFileSync(join(runPath, "manifest.json"), `${JSON.stringify({
     status: "imported",
-    source: { originalPath: relative(process.cwd(), sourcePath).replaceAll("\\", "/"), sha256: sha256(sourcePath), rows: sourceRows.length },
+    source: { originalPath: relative(process.cwd(), sourcePath).replaceAll("\\", "/"), files: read.files, sha256: read.sha256, rows: read.rows, streamed },
     physicalSlots: physicalSlots.length,
-    overlapRowsCollapsed: sourceRows.length - physicalSlots.length,
-    outputs: ["source-ah-slots.json", "ah-cardiology-physical-slots.json", "ah-cardiology-physical-slots.csv"],
+    overlapRowsCollapsed: read.rows - physicalSlots.length,
+    outputs: [...(streamed ? [] : ["source-ah-slots.json"]), "ah-cardiology-physical-slots.json", "ah-cardiology-physical-slots.csv"],
     importedAt: new Date().toISOString(),
   }, null, 2)}\n`);
-  console.log(`Imported ${sourceRows.length.toLocaleString()} AH rows into ${physicalSlots.length.toLocaleString()} physical slots.`);
+  console.log(`Imported ${read.rows.toLocaleString()} AH rows into ${physicalSlots.length.toLocaleString()} physical slots.`);
   console.log(`Wrote ${outputCsv}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().catch((error) => { console.error(error); process.exit(1); });

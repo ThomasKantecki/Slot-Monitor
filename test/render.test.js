@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline } from "../src/render.js";
+import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline, withOtherOffices } from "../src/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -96,8 +96,8 @@ test("selected ZIP and county borders override their base stroke widths", () => 
 test("desktop filters compact into one row when the map panel is wide enough", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /container-type:inline-size/);
-  assert.match(src, /@container \(min-width:680px\) and \(max-width:819px\)\{\.controls\{flex-wrap:nowrap\}/);
-  assert.match(src, /@container \(min-width:820px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.match(src, /@container \(min-width:900px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.doesNotMatch(src, /@container \(min-width:680px\) and \(max-width:819px\)/);
   assert.match(src, /\.pill-logo\{[^}]*width:52px;height:16px/);
   assert.match(src, /select\.control\{[^}]*width:104px;max-width:104px/);
 });
@@ -171,4 +171,19 @@ test("client code never dereferences an element the single-system branch removes
   // setNum is the specific path that broke: it takes an id and must bail out.
   const setNum = src.match(/function setNum\([^)]*\)\{[^\n]*/)?.[0] ?? "";
   assert.match(setNum, /if\(!el\)return/, "setNum must tolerate a removed element");
+});
+
+test("provider cards carry a person's offices outside the selected area", () => {
+  const downtown = { n: "Downtown", a: "1 Main St", c: "Orlando", z: "32804" };
+  const lakeMary = { n: "Lake Mary", a: "2 Lake Rd", c: "Lake Mary", z: "32746" };
+  const roster = {
+    "32804": [{ i: "1", n: "A", s: "Cardiology", y: "ah", l: [downtown] }],
+    "32746": [{ i: "1", n: "A", s: "Cardiology", y: "ah", l: [lakeMary] }, { i: "2", n: "B", s: "Cardiology", y: "oh", l: [{ n: "Solo", a: "3 Oak St", c: "Lake Mary", z: "32746" }] }],
+  };
+  const out = withOtherOffices(roster);
+  assert.deepEqual(out["32804"][0].o, [lakeMary]);
+  assert.deepEqual(out["32746"][0].o, [downtown]);
+  assert.equal("o" in out["32746"][1], false, "single-office providers gain nothing");
+  assert.deepEqual(out["32804"][0].l, [downtown], "in-area offices are untouched");
+  assert.deepEqual(withOtherOffices(out)["32804"][0].o, [lakeMary], "idempotent on already-enriched rosters");
 });

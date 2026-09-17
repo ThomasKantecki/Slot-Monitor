@@ -23,12 +23,18 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--system", choices=sorted(SITES), required=True)
     result.add_argument("--run-id", default="")
     result.add_argument("--output-root", type=Path, default=REPO / "data" / "cardiology" / "extractions")
-    result.add_argument("--max-slot-loads", type=int, default=1000)
+    result.add_argument("--max-slot-loads", type=int, default=20000)
+    result.add_argument("--max-days-ahead", type=int, default=560, help="Stop restarting a stalled search past this many days from the catalog date")
     result.add_argument("--max-paths", type=int, default=10000)
     result.add_argument("--max-depth", type=int, default=50)
     result.add_argument("--max-answers", type=int, default=1000)
     result.add_argument("--request-delay", type=float, default=0.5)
     result.add_argument("--retries", type=int, default=5)
+    result.add_argument("--resume", action="store_true", help="Continue an interrupted run from its checkpoint files (same --run-id)")
+    result.add_argument("--only-visit", dest="only_visits", action="append", default=None,
+                        help="Run only this visit type (repeatable), e.g. to split a system across processes")
+    result.add_argument("--only-answer-path", dest="only_answer_paths", action="append", default=None,
+                        help='Run only the flows with this questionnaire answer path (a JSON list, repeatable), e.g. to retry a failed flow')
     result.add_argument("--dry-run", action="store_true", help="Validate configuration without contacting either website")
     return result
 

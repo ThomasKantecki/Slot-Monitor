@@ -3,9 +3,12 @@
 __pycache__/
 *.pyc
 # public/*.html is the deliverable — committed so it travels with the repo
-data/raw/
+# raw directory captures stay local, except the AdventHealth scrape the Provider Index build reads
+data/raw/*
+!data/raw/ah-directory-scrape.json
 data/cardiology/extractions/
 data/cardiology/runs/
-# Build-only deep model; published appointment data is date-partitioned under public/data.
-data/cardiology/current/slot-times-model.json
 node_modules/
+# full-run slot exports are far over GitHub's 100 MB file limit; the built pages and slot-times-model.json carry the data
+data/cardiology/current/cardiology-physical-slots.json
+data/cardiology/current/cardiology-physical-slots.csv

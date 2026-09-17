@@ -1,6 +1,23 @@
 const SYSTEM = new Map([["AH", "ah"], ["OH", "oh"], ["ah", "ah"], ["oh", "oh"]]);
 
 const text = (value) => String(value ?? "").trim();
+
+// Booking categories that describe a virtual visit. AdventHealth's anonymous Cardiology
+// catalog exposes "New patient telemedicine visit", "Patient Telemedicine Visit" and
+// "Telemedicine Established" (video, with a telephone mode); Orlando Health exposes no
+// telehealth visit types. Matched by name because the extraction keeps only the label.
+const TELEMEDICINE_PATTERN = /telemedicine|telehealth|televisit|telephone|video|virtual|\be-?visit\b/i;
+export const isTelemedicineType = (name) => TELEMEDICINE_PATTERN.test(text(name));
+// A slot is telemedicine when every booking option on it is a virtual visit. A slot that
+// can also be booked as an office visit stays an in-person opportunity.
+export const isTelemedicineSlot = (categories) => categories.length > 0 && categories.every(isTelemedicineType);
+// Visit types a new patient can book. AdventHealth: "New Patient", "New patient telemedicine visit".
+// Orlando Health (the questionnaire remaps its two catalog types): "New Patient", "Orlando Health New
+// Cardiology Patient", "Florida Medical Clinic Orlando Health New Cardiology Patient", "ED Cardiology
+// Follow Up New". Existing-patient types on both sides carry no "new": "Specialists Office Visit",
+// "Established Cardiology Patient", "Patient Telemedicine Visit", "Telemedicine Established".
+const NEW_PATIENT_PATTERN = /\bnew\b/i;
+export const isNewPatientType = (name) => NEW_PATIENT_PATTERN.test(text(name));
 const firstText = (...values) => values.map(text).find(Boolean) ?? "";
 const valuesOf = (value) => text(value)
   .split("|").map((value) => value.trim()).filter(Boolean);
@@ -60,6 +77,8 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
       l: text(row.duration_minutes ?? row.length_minutes),
       ty: row.categories.map((category) => typeIndex.get(category)),
       rv: row.reasons.map((reason) => reasonIndex.get(reason)),
+      ...(isTelemedicineSlot(row.categories) ? { v: 1 } : {}),
+      ...(row.categories.some(isNewPatientType) ? { np: 1 } : {}),
     };
   }).sort((a, b) => a.u.localeCompare(b.u) || a.y.localeCompare(b.y));
   const area = () => ({ ah: 0, oh: 0 });
@@ -80,6 +99,10 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
     types: typeList, reasons: reasonList, providers, facilities, slots,
     areas: { zip: zipAreas, county: countyAreas },
     totals: { ah: slots.filter((slot) => slot.y === "ah").length, oh: slots.filter((slot) => slot.y === "oh").length },
+    telemedicineSlots: slots.filter((slot) => slot.v).length,
+    // the mix the pages' Comparison filters act on, per system, for the data check
+    nonPhysicianSlots: { ah: slots.filter((slot) => slot.y === "ah" && providers[slot.p].c !== "Physician").length, oh: slots.filter((slot) => slot.y === "oh" && providers[slot.p].c !== "Physician").length },
+    newPatientSlots: { ah: slots.filter((slot) => slot.y === "ah" && slot.np).length, oh: slots.filter((slot) => slot.y === "oh" && slot.np).length },
     minDate: slots[0]?.d ?? "", maxDate: slots.at(-1)?.d ?? "", maxDateBySystem,
     commonMaxDate: systemMaxDates.length ? systemMaxDates.sort()[0] : "",
   };

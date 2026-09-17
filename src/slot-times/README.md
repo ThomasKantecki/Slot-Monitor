@@ -21,6 +21,15 @@ top navigation and visual language.
   map coloring, locations, calendar counts, and provider slots. Selecting a map
   area switches to area scope; **All FL** clears radius scope; **Reset** restores
   the 32804/140-mile landing state.
+- The Comparison group's All visits / In person toggle removes slots whose
+  every booking category is a virtual visit (flag `v` in the browser model, rule
+  in `data.js`). A slot that is also bookable as an office visit stays visible.
+  Orlando Health's public Cardiology workflow exposes no telehealth visit types,
+  so the toggle only changes AdventHealth counts. Reset all returns to All visits.
+- The toolbar has no visible captions; controls carry aria-labels. Boxes sit four
+  across above 1200px, two across down to 700px, then one. Each box keeps the same
+  rhythm (control row, control row, status text at the bottom) so a row shares one
+  height; buttons never wrap and text inputs stretch to the box width.
 - The initial and Reset date endpoint is the earlier of the two systems' latest
   dates, providing a common comparison horizon. The full source horizon remains
   selectable in the Through control for system-specific investigation.

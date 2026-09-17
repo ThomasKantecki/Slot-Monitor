@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "../src/slot-rules.js";
 
 const ROOT = process.cwd();
 const RUNS = join(ROOT, "data", "cardiology", "runs");
@@ -38,15 +39,48 @@ function csvValue(value) {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
+// Both outputs are streamed in chunks: a full run is hundreds of megabytes, more than one JS string may hold.
+function writeLines(path, head, lines, tail) {
+  return new Promise((resolvePromise, reject) => {
+    const stream = createWriteStream(path, { encoding: "utf8" });
+    stream.on("error", reject); stream.on("finish", resolvePromise);
+    stream.write(head);
+    let batch = [];
+    for (const line of lines) { batch.push(line); if (batch.length >= 4000) { stream.write(batch.join("")); batch = []; } }
+    if (batch.length) stream.write(batch.join(""));
+    stream.write(tail); stream.end();
+  });
+}
+
 function writeCsv(path, rows) {
   const headers = ["system", "physical_slot_id", "provider_name", "provider_id", "provider_credentials", "facility_name", "facility_id", "address", "city", "state", "zip", "appointment_date", "appointment_time", "display_datetime_utc", "days_ahead", "duration_minutes", "booking_categories", "booking_category_count", "visit_types", "reasons", "matching_flow_count"];
-  writeFileSync(path, [headers.join(","), ...rows.map((row) => headers.map((header) => csvValue(row[header])).join(","))].join("\n") + "\n");
+  return writeLines(path, `${headers.join(",")}\n`, rows.map((row) => `${headers.map((header) => csvValue(row[header])).join(",")}\n`), "");
 }
 
 const ahSource = latestSystemFile("ah", "ah-cardiology-physical-slots.json");
 const ohSource = latestSystemFile("oh", "source-oh-unique-physical-slots.csv");
-const ah = JSON.parse(readFileSync(ahSource.path, "utf8"))
-  .filter((row) => String(row.state).toUpperCase() === "FL")
+// A full AdventHealth run's physical-slot file is written one row per line and can exceed what Node will
+// read into one string, so it is parsed line by line (a plain single-line JSON array still works).
+function readJsonRows(path) {
+  const size = statSync(path).size;
+  if (size < 400 * 1024 * 1024) return JSON.parse(readFileSync(path, "utf8"));
+  const rows = [];
+  const fd = openSync(path, "r"); const chunk = Buffer.alloc(1 << 22); let leftover = "", position = 0;
+  const take = (line) => { const text = line.trim().replace(/,$/, ""); if (text && text !== "[" && text !== "]") rows.push(JSON.parse(text)); };
+  for (;;) {
+    const read = readSync(fd, chunk, 0, chunk.length, position); if (!read) break; position += read;
+    const parts = (leftover + chunk.toString("utf8", 0, read)).split("\n"); leftover = parts.pop();
+    for (const line of parts) take(line);
+  }
+  closeSync(fd); if (leftover) take(leftover);
+  return rows;
+}
+const ahFlorida = readJsonRows(ahSource.path).filter((row) => String(row.state).toUpperCase() === "FL");
+const ohFlorida = parseCsv(readFileSync(ohSource.path, "utf8")).filter((row) => String(row.state).toUpperCase() === "FL");
+// Every published Florida slot is kept. The pages show everything by default and offer the comparability
+// rules in src/slot-rules.js as filters; the manifest records the mix for the data check.
+const mix = (rows) => ({ nonPhysicianSlots: rows.filter((row) => !isPhysicianSlot(row)).length, telemedicineOnlySlots: rows.filter(isTelemedicineOnlySlot).length, newPatientSlots: rows.filter(isNewPatientSlot).length });
+const ah = ahFlorida
   .map((row) => ({
     system: "AH", physical_slot_id: row.physical_slot_id, provider_name: row.provider_name, provider_id: row.provider_id,
     provider_credentials: row.provider_credentials, facility_name: row.location_name, facility_id: row.department_id,
@@ -56,8 +90,7 @@ const ah = JSON.parse(readFileSync(ahSource.path, "utf8"))
     visit_types: "", reasons: "",
     matching_flow_count: "",
   }));
-const oh = parseCsv(readFileSync(ohSource.path, "utf8"))
-  .filter((row) => String(row.state).toUpperCase() === "FL")
+const oh = ohFlorida
   .map((row) => ({
     system: "OH", physical_slot_id: `OH-${row.physical_slot_id}`, provider_name: row.provider_name, provider_id: row.provider_id,
     provider_credentials: row.provider_credentials, facility_name: row.location_name, facility_id: row.department_id,
@@ -69,12 +102,15 @@ const oh = parseCsv(readFileSync(ohSource.path, "utf8"))
   }));
 const slots = [...ah, ...oh].sort((a, b) => a.display_datetime_utc.localeCompare(b.display_datetime_utc) || a.system.localeCompare(b.system));
 mkdirSync(OUT, { recursive: true });
-writeFileSync(join(OUT, "cardiology-physical-slots.json"), `${JSON.stringify(slots)}\n`);
-writeCsv(join(OUT, "cardiology-physical-slots.csv"), slots);
+// written one row per line so downstream readers can stream it; still a valid JSON array
+await writeLines(join(OUT, "cardiology-physical-slots.json"), "[\n", slots.map((slot, index) => `${index ? ",\n" : ""}${JSON.stringify(slot)}`), "\n]\n");
+await writeCsv(join(OUT, "cardiology-physical-slots.csv"), slots);
 writeFileSync(join(OUT, "manifest.json"), `${JSON.stringify({
   status: "completed_with_warnings", scope: "Florida Cardiology public appointment availability",
-  ah: { runId: ahSource.runId, source: relative(ROOT, ahSource.path).replaceAll("\\", "/"), physicalSlots: ah.length, bookingCategoriesRetained: true },
-  oh: { runId: ohSource.runId, source: relative(ROOT, ohSource.path).replaceAll("\\", "/"), physicalSlots: oh.length, bookingCategoriesRetained: false },
+  rule: "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
+  ah: { runId: ahSource.runId, source: relative(ROOT, ahSource.path).replaceAll("\\", "/"), physicalSlots: ah.length, ...mix(ahFlorida), bookingCategoriesRetained: true },
+  oh: { runId: ohSource.runId, source: relative(ROOT, ohSource.path).replaceAll("\\", "/"), physicalSlots: oh.length, ...mix(ohFlorida), bookingCategoriesRetained: false },
   totalPhysicalSlots: slots.length, generatedAt: new Date().toISOString(),
 }, null, 2)}\n`);
-console.log(`Built ${slots.length.toLocaleString()} Florida physical Cardiology slots (${ah.length.toLocaleString()} AH, ${oh.length.toLocaleString()} OH).`);
+const ahMix = mix(ahFlorida), ohMix = mix(ohFlorida);
+console.log(`Built ${slots.length.toLocaleString()} Florida physical Cardiology slots (${ah.length.toLocaleString()} AH, ${oh.length.toLocaleString()} OH). Mix: non-physician ${ahMix.nonPhysicianSlots.toLocaleString()} AH / ${ohMix.nonPhysicianSlots.toLocaleString()} OH, video-only ${ahMix.telemedicineOnlySlots.toLocaleString()} AH / ${ohMix.telemedicineOnlySlots.toLocaleString()} OH, new-patient ${ahMix.newPatientSlots.toLocaleString()} AH / ${ohMix.newPatientSlots.toLocaleString()} OH.`);

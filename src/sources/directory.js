@@ -139,14 +139,20 @@ export function toRoster(raw, photoCapture = []) {
       isPrimaryCare: !!rec.isPrimaryCareProvider,
       isApp: !!rec.isAppProvider,
       slug: rec.slug,
-      photo: String(rec.photo ?? photos.get(rec.slug) ?? "").trim(),
+      // The index carries the headshot as `media`; the optional browser capture is a fallback.
+      photo: String(rec.photo ?? (typeof rec.media === "string" ? rec.media : rec.media?.url) ?? photos.get(rec.slug) ?? "").trim(),
       profile: rec.slug ? `https://www.orlandohealth.com/physician-finder/${rec.slug}` : "",
       updated: rec.updatedDate ?? "",
-      locations: locs.map((l) => ({
-        name: l.name, zip: zip5(l.zipCode), city: l.city,
-        addr: [l.address1, l.address2].filter(Boolean).join(", "),
-        primary: !!l.isPrimary, lat: l._geoloc?.lat, lon: l._geoloc?.lng,
-      })),
+      locations: locs.map((l) => {
+        const addr = [l.address1, l.address2].filter(Boolean).join(", ");
+        // A few feed locations carry the street in the name field and no address.
+        const streetInName = !addr && /^\d+\s/.test(String(l.name ?? ""));
+        return {
+          name: streetInName ? "" : l.name, zip: zip5(l.zipCode), city: l.city,
+          addr: streetInName ? String(l.name).trim() : addr,
+          primary: !!l.isPrimary, lat: l._geoloc?.lat, lon: l._geoloc?.lng,
+        };
+      }),
     });
   }
   return dedupByNpi(out);

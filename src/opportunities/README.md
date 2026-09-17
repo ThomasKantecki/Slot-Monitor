@@ -1,38 +1,32 @@
 # AH Market Opportunities
 
-This view ranks ZIP-centered 25-mile Florida markets where the current
-Cardiology appointment snapshot indicates an AdventHealth access opportunity
-relative to Orlando Health. Candidate market centers are ZIPs represented by
-active facilities. Every active AH and OH facility within 25 miles of a center
-contributes to that market's counts, dates, providers, and score.
+This view answers one question: where does Orlando Health have cardiology
+appointment availability that AdventHealth does not match?
 
-The page's Radius control limits which market centers are displayed; it does
-not change the fixed 25-mile catchment used for each comparison. Catchments can
-overlap and reuse the same source slots, so counts across market rows are not
-additive. Exact-ZIP aggregation remains available from `buildOpportunityRows`
-when `marketRadiusMiles` is omitted and is used for source reconciliation.
+A market is a circle around a ZIP that has at least one facility with active
+slots. Every active AdventHealth and Orlando Health facility inside the circle
+contributes its slots, providers and earliest dates. The circle is 10, 25 or 50
+miles (25 by default, chosen in the toolbar). The Geography controls only choose
+which market centres are in view. Neighbouring circles overlap and can count the
+same slots, so market figures are not additive.
 
-The map deliberately keeps both grains visible. Maroon markers identify an
-exact ZIP where OH has slots and AH has none. Coral markers identify a 25-mile
-market where both systems are present and OH has more slots. When both apply at
-one center, the exact-ZIP marker is drawn as a maroon core inside the coral
-local-market marker.
+Markets are ranked with the strongest gaps first. The ranking uses the score in
+`scoring.js` (no AdventHealth slots, an earlier Orlando Health first appointment,
+more Orlando Health slots, a persistent Orlando Health lead, distance to the
+nearest AdventHealth site). The page shows the rank ("#3 of 72") and the reasons
+in plain words (`marketReasons`), never the score itself.
 
-The 100-point score is intentionally transparent:
+The map draws one dot per market centre: red where Orlando Health leads, blue
+where AdventHealth leads, and a white core where the ZIP itself has Orlando
+Health slots and no AdventHealth slots. Hovering shows the market's counts;
+clicking opens it in the summary card, which lists its facilities and providers
+on request. The table below ranks every market in view.
 
-- 35 points: OH has active slots and AH has none within 25 miles.
-- 25 points: OH's earliest active date is sooner, capped at a 30-day gap.
-- 20 points: OH's relative physical-slot advantage.
-- 10 points: share of represented dates on which OH has more slots.
-- 10 points: distance to the nearest AH facility with active slots, capped at
-  50 miles.
-
-`scoring.js` is the single score implementation used by Node tests, the audit,
-and the generated browser page. `client.js` owns filters, map selection, the
-ranked table, and the facility/provider evidence dialog. Run
-`npm run audit:opportunities` to reconcile the current comparison window and
-inspect the highest-ranked ZIPs. Run `npm run build:opportunities` to generate
+`scoring.js` is the single implementation used by Node tests, the audit, and the
+generated browser page. `client.js` owns filters, the map, the summary card, the
+table and the market dialog. Run `npm run audit:opportunities` to reconcile the
+current comparison window and `npm run build:opportunities` to generate
 `public/market-opportunities.html`.
 
-This is an availability prioritization signal, not a measure of patient demand,
-market share, appointment completion, or unmet need.
+This is an availability signal, not a measure of patient demand, market share,
+appointment completion, or unmet need.

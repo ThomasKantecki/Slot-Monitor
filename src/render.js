@@ -3,10 +3,12 @@
 // Albers projection, with counts + rosters embedded and a client that
 // colors/filters/zooms/inspects. Offline, no dependencies.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { SUITE_NAV_STYLES, suiteNavigation } from "./shared/suite-navigation.js";
+import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "./shared/suite-navigation.js";
+import { directoryGaps, providerDataChecks } from "./shared/dataset-facts.js";
+import { buildProviderIndex } from "./provider-index-people.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const W = 1000, H = 940, PAD = 12;
@@ -131,18 +133,41 @@ const readJson = (rel, fallback) => {
   catch (e) { if (fallback !== undefined && e.code === "ENOENT") return fallback; throw e; }
 };
 
+// Each area's roster lists a person once with only the offices inside that area.
+// A card should still show the person's whole footprint, so the build derives the
+// offices that fall outside the area (`o`) from the union across all areas. The
+// primary-location rosters hold one office per person, so they gain nothing.
+export function withOtherOffices(roster) {
+  const key = (l) => `${l.z}|${String(l.a ?? "").toLowerCase()}|${String(l.c ?? "").toLowerCase()}|${String(l.n ?? "").toLowerCase()}`;
+  const all = new Map();
+  for (const entries of Object.values(roster)) for (const p of entries) {
+    const id = `${p.y}:${p.i}`;
+    if (!all.has(id)) all.set(id, new Map());
+    for (const l of p.l ?? []) all.get(id).set(key(l), l);
+  }
+  const byPlace = (a, b) => `${a.c}|${a.a}`.localeCompare(`${b.c}|${b.a}`);
+  return Object.fromEntries(Object.entries(roster).map(([area, entries]) => [area, entries.map((p) => {
+    const here = new Set((p.l ?? []).map(key));
+    const o = [...all.get(`${p.y}:${p.i}`).values()].filter((l) => !here.has(key(l))).sort(byPlace);
+    const { o: _previous, ...rest } = p;
+    return o.length ? { ...rest, o } : rest;
+  })]));
+}
+
 export function render() {
   const countyGeo = readJson("data/fl-county.geojson");
   const zipGeo = readJson("data/fl-zcta.geojson");
-  const cData = readJson("data/providers-by-county.json", EMPTY_DATA);
-  const zData = readJson("data/providers-by-zip.json", EMPTY_DATA);
-  const cRoster = readJson("data/roster-county.json", {});
-  const zRoster = readJson("data/roster.json", {});
-  const cDataPrimary = readJson("data/providers-by-county-primary.json", cData);
-  const zDataPrimary = readJson("data/providers-by-zip-primary.json", zData);
-  const cRosterPrimary = readJson("data/roster-county-primary.json", cRoster);
-  const zRosterPrimary = readJson("data/roster-primary.json", zRoster);
   const cty = readJson("data/zip-county.json");
+  const directoryData = readJson("data/providers-by-zip.json", EMPTY_DATA);
+  // The deep slot model is build-only; a checkout without it uses the published summary, which carries the same providers, facilities and provider-facility counts.
+  const slotModel = existsSync(join(ROOT, "data/cardiology/current/slot-times-model.json")) ? readJson("data/cardiology/current/slot-times-model.json", {}) : readJson("public/data/cardiology/slot-times-summary.json", {});
+  // Rebuilt from the pipeline's rosters at render time: adult cardiology labels
+  // count together, and clinicians who book in MyChart but have no directory
+  // profile join at their clinics (see src/provider-index-people.js).
+  const index = buildProviderIndex({ rosterAll: readJson("data/roster.json", {}), rosterPrimary: readJson("data/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
+  const zData = index.all.byZip, cData = index.all.byCounty, zDataPrimary = index.primary.byZip, cDataPrimary = index.primary.byCounty;
+  const zRoster = withOtherOffices(index.all.rosterZip), cRoster = withOtherOffices(index.all.rosterCounty);
+  const zRosterPrimary = withOtherOffices(index.primary.rosterZip), cRosterPrimary = withOtherOffices(index.primary.rosterCounty);
   // One clean FL coast outline (dissolved counties -> outer rings). ZIPs are
   // clipped to this same boundary at build time, so it traces both layers exactly
   // and has no interior excursion around the no-ZIP lake/Everglades regions.
@@ -180,6 +205,8 @@ export function render() {
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
     .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__LOGOVARS__", logoVars)
+    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
+    .replace("__INFO_SCRIPT__", SUITE_INFO_SCRIPT)
     .replace("__FONTS__", fontsCss)
     .replace("__VIEWBOX__", `0 0 ${W} ${H}`)
     .replaceAll("__W__", String(W)).replaceAll("__H__", String(H));
@@ -207,13 +234,13 @@ body{background:var(--cream);color:var(--ink);font-family:var(--display);font-si
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mono{font-family:var(--mono)}
-.hdr{background:var(--chrome);border-bottom:1px solid rgba(245,241,232,.14);flex:none}
-.hdr-in{max-width:1440px;margin:0 auto;min-height:60px;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.brand-box{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:3px solid #000;padding:8px 16px}
+.hdr{background:var(--chrome);border-bottom:2px solid #000;flex:none}
+.hdr-in{max-width:1500px;margin:0 auto;min-height:64px;padding:10px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand-box{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:3px solid #000;padding:7px 14px}
 .mark{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--navy);white-space:nowrap}
 .mark b{color:var(--accent);font-weight:700}
 ${SUITE_NAV_STYLES}
-.wrap{max-width:1440px;width:100%;margin:0 auto;padding:14px 22px 16px;flex:1;min-height:0;display:flex;flex-direction:column}
+.wrap{max-width:1500px;width:100%;margin:0 auto;padding:14px 20px 16px;flex:1;min-height:0;display:flex;flex-direction:column}
 .card,.panel{background:#fff;border:3px solid #000}
 .cap{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
 .totbox{display:flex;flex-direction:column}
@@ -233,16 +260,17 @@ ${SUITE_NAV_STYLES}
 .map-key-item.tie .map-key-swatch{background:repeating-linear-gradient(135deg,#b3284e 0 3px,#1a6ba3 3px 6px)}
 .stage{display:grid;grid-template-columns:minmax(0,1fr) clamp(320px,29vw,372px);gap:16px;flex:1;min-height:0}
 .panel-band{background:var(--chrome);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex:none}
-.panel-band h2{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cream);min-width:0}
+.panel-band h2{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cream);min-width:0}
 .band-meta{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--accent-band);white-space:nowrap;font-variant-numeric:tabular-nums}
 .controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 8px;border-bottom:2px solid #000}
-.controls .spacer{flex:1 1 0;min-width:0}
 .control-section{min-width:0;margin:0;padding:5px 7px 7px;border:2px solid #9aa8b7;background:#f8fafb}
 .control-section legend{padding:0 5px;color:var(--chrome);font-family:var(--mono);font-size:9px;font-weight:700;line-height:1;letter-spacing:.09em;text-transform:uppercase}
 .control-section-body{display:flex;align-items:flex-end;gap:7px;flex-wrap:wrap}
 .control-stack{display:grid;gap:3px}.control-stack .cap{line-height:1}
 .geography-controls{flex:1 1 420px}.geography-controls .search-stack{flex:1 1 155px}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none}
 .comparison-controls{flex:0 1 auto}.comparison-controls .control-section-body{flex-wrap:nowrap}
+.location-controls{flex:0 1 auto}.location-controls .control-section-body{flex-wrap:nowrap}
+@container (max-width:899px){.comparison-controls,.location-controls{flex:1 1 auto}}
 .pill-group{display:inline-flex;gap:2px;flex:none}
 .filter-pill{padding:4px 6px;border:2px solid #000;background:#fff;color:var(--mute);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.035em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
 .filter-pill:hover{color:var(--ink);background:var(--accent-tint)}
@@ -260,8 +288,7 @@ ${SUITE_NAV_STYLES}
 select.control,input.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.01em;color:var(--ink);width:104px;max-width:104px;text-overflow:ellipsis;overflow:hidden}select.control{cursor:pointer}
 .fgroup{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;flex:none}
 .mapbox{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;container-type:inline-size}
-@container (min-width:680px) and (max-width:819px){.controls{flex-wrap:nowrap}.control-stack>.cap{display:none}.control-section{padding-top:7px}}
-@container (min-width:820px){.controls{flex-wrap:nowrap}}
+@container (min-width:900px){.controls{flex-wrap:nowrap}}
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
 #map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}
@@ -299,7 +326,7 @@ path.z{vector-effect:non-scaling-stroke;stroke:#000;transition:fill .4s ease,fil
 .pinitials{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--mute)}
 .pimg{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;background:#fff}
 .pdetail{min-width:0;flex:1}.prov .pn{font-weight:600;font-size:14px;color:var(--ink);text-decoration:none}.prov a.pn:hover{text-decoration:underline}
-.prov .ps{font-size:12.5px;color:var(--mute);margin-top:1px}.plocs{margin-top:4px}.ploc+.ploc{margin-top:5px}
+.prov .ps{font-size:12.5px;color:var(--mute);margin-top:1px}.psrc{display:inline-block;margin-left:5px;padding:2px 5px;border:1px solid #9aa8b7;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);vertical-align:1px}.plocs{margin-top:4px}.ploc+.ploc{margin-top:5px}.ploc.away{opacity:.72}
 .prov .pln{font-size:11.5px;font-weight:600;color:var(--mute);line-height:1.3}.prov .pa{font-family:var(--mono);font-size:10.5px;color:var(--faint);line-height:1.35;letter-spacing:0;overflow-wrap:anywhere}
 .empty,.prompt{color:var(--mute);font-size:13px;padding:12px 0}
 #tip{position:fixed;pointer-events:none;background:var(--chrome);color:var(--cream);border:2px solid #000;padding:8px 10px;font-size:12px;line-height:1.35;opacity:0;transition:opacity .07s;z-index:20;max-width:240px;font-family:var(--mono)}
@@ -343,7 +370,7 @@ a{color:var(--accent-deep)}
  .mark{font-size:16px}
  .wrap{padding:10px}
  .controls{gap:6px;padding:8px 10px}
- .control-section{width:100%}.control-section-body{align-items:stretch}.comparison-controls .control-section-body{flex-wrap:wrap}
+ .control-section{width:100%}.control-section-body{align-items:stretch}.comparison-controls .control-section-body{flex-wrap:wrap}.pill-group{flex:0 1 auto;flex-wrap:wrap}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
  .fgroup{width:100%;justify-content:space-between}.fgroup select.control{flex:1;width:auto;max-width:none}
 }
@@ -355,7 +382,7 @@ a{color:var(--accent-deep)}
 __LOGOVARS__
 </style>
 <header class="hdr"><div class="hdr-in">
- <div class="brand-box"><span class="mark">Cardiology <b>Access</b></span><span class="pixel-heart" aria-hidden="true"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg></span></div>
+ ${suiteTitle("provider-map")}
  <div class="header-health-brand" aria-label="AdventHealth"><span class="header-health-logo" aria-hidden="true"></span></div>
  ${suiteNavigation("provider-map")}
 </div></header>
@@ -365,13 +392,11 @@ __LOGOVARS__
   <div class="panel-band"><h2 class="mono" id="mapband">Cardiology providers per ZIP code</h2><span class="band-meta" id="mapmeta">Cardiology · all published locations</span></div>
   <div class="controls">
    <fieldset class="control-section geography-controls"><legend>Geography</legend><div class="control-section-body">
-    <span class="control-stack"><span class="cap">Area type</span><span class="pill-group" role="group" aria-label="granularity"><button id="g-zip" class="filter-pill pill" aria-pressed="true">ZIP codes</button><button id="g-county" class="filter-pill pill" aria-pressed="false">Counties</button></span></span>
-    <span class="control-stack search-stack"><label class="cap" for="area-search">Find area</label><span class="fgroup"><input id="area-search" class="control" list="area-options" placeholder="ZIP code" autocomplete="off"><datalist id="area-options"></datalist></span></span>
+    <span class="control-stack"><span class="pill-group" role="group" aria-label="Area type"><button id="g-zip" class="filter-pill pill" aria-pressed="true">ZIP codes</button><button id="g-county" class="filter-pill pill" aria-pressed="false">Counties</button></span></span>
+    <span class="control-stack search-stack"><span class="fgroup"><input id="area-search" class="control" list="area-options" placeholder="ZIP code" autocomplete="off" aria-label="Find area"><datalist id="area-options"></datalist></span></span>
    </div></fieldset>
-   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="cap" id="leadcap">Health system view</span><span class="pill-group" role="group" aria-label="view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span></div></fieldset>
-   <span class="cap" hidden>Locations</span>
-   <span class="pill-group" role="group" aria-label="provider locations" hidden><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span>
-   <span class="spacer"></span>
+   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span></div></fieldset>
+   <fieldset class="control-section location-controls"><legend>Locations</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span></span></div></fieldset>
    <span class="fgroup" hidden><label class="cap" for="spec">Specialty</label><select id="spec" class="control" aria-label="Specialty"></select></span>
   </div>
   <div class="mapwrap">
@@ -403,6 +428,7 @@ __LOGOVARS__
 </div>
 </div>
 <div id="tip"></div>
+__INFO_DIALOG__
 <script id="cpaths" type="application/json">__CPATHS__</script>
 <script id="zpaths" type="application/json">__ZPATHS__</script>
 <script id="cdata" type="application/json">__CDATA__</script>
@@ -504,8 +530,9 @@ function showProviders(k){selected=k;
   const name=esc(x.n)+(x.cr?', '+esc(x.cr):'');
   const nameEl=x.u?'<a class="pn" href="'+esc(x.u)+'" target="_blank" rel="noreferrer">'+name+'</a>':'<div class="pn">'+name+'</div>';
   const photo=x.ph?'<img class="pimg" src="'+esc(x.ph)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'';
-  const locs=(x.l||[]).map(l=>{const address=[l.a,l.c,l.z].filter(Boolean).map(esc).join(", ");return '<div class="ploc">'+(l.n?'<div class="pln">'+esc(l.n)+'</div>':'')+(address?'<div class="pa">'+address+'</div>':'')+'</div>';}).join("");
-  return '<div class="prov"><span class="dot '+x.y+'"></span><div class="pavatar '+x.y+'"><span class="pinitials">'+esc(initials(x.n))+'</span>'+photo+'</div><div class="pdetail">'+nameEl+'<div class="ps">'+esc(tc(x.s))+'</div>'+(locs?'<div class="plocs">'+locs+'</div>':'')+'</div></div>';
+  const office=(l,cls)=>{const address=[l.a,l.c,l.z].filter(Boolean).map(esc).join(", ");return '<div class="'+cls+'">'+(l.n?'<div class="pln">'+esc(l.n)+'</div>':'')+(address?'<div class="pa">'+address+'</div>':'')+'</div>';};
+  const locs=(x.l||[]).map(l=>office(l,"ploc")).join("")+(x.o||[]).map(l=>office(l,"ploc away")).join("");
+  return '<div class="prov"><span class="dot '+x.y+'"></span><div class="pavatar '+x.y+'"><span class="pinitials">'+esc(initials(x.n))+'</span>'+photo+'</div><div class="pdetail">'+nameEl+'<div class="ps">'+esc(tc(x.sl||x.s))+(x.src==="mychart"?' <span class="psrc">MyChart scheduling</span>':'')+'</div>'+(locs?'<div class="plocs">'+locs+'</div>':'')+'</div></div>';
  }).join(""):'<div class="empty">No '+SYSLIST()+(specialty?" providers in this specialty":" providers")+' here.</div>';
  const pn=document.getElementById("panel"); pn.innerHTML=head+body; pn.querySelectorAll("img.pimg").forEach(img=>img.addEventListener("error",()=>img.remove(),{once:true})); pn.scrollTop=0; fade(pn);}
 const cssq=(s)=>String(s).replace(/"/g,'\\"');
@@ -661,6 +688,7 @@ if(SOLO){
 }
 refreshAreaOptions();drawLayer();syncMapFrame();
 if(typeof ResizeObserver==="function")new ResizeObserver(syncMapFrame).observe(svg);else window.addEventListener("resize",syncMapFrame);
+__INFO_SCRIPT__
 </script>`;
 
 function main() { const r = render(); console.log(`wrote public/provider-map.html — ${r.counties} counties + ${r.zips} ZIPs, ${(r.bytes / 1e6).toFixed(2)} MB`); }
