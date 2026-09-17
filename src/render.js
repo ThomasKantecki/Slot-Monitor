@@ -267,12 +267,13 @@ ${SUITE_NAV_STYLES}
 .control-section legend{padding:0 5px;color:var(--chrome);font-family:var(--mono);font-size:9px;font-weight:700;line-height:1;letter-spacing:.09em;text-transform:uppercase}
 .control-section-body{display:flex;align-items:flex-end;gap:7px;flex-wrap:wrap}
 .control-stack{display:grid;gap:3px}.control-stack .cap{line-height:1}
-.geography-controls{flex:1 1 420px}.geography-controls .search-stack{flex:1 1 155px}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none}
-.comparison-controls{flex:0 1 auto}.comparison-controls .control-section-body{flex-wrap:nowrap}
-.location-controls{flex:0 1 auto}.location-controls .control-section-body{flex-wrap:nowrap}
-@container (max-width:899px){.comparison-controls,.location-controls{flex:1 1 auto}}
+.geography-controls{flex:1 1 300px;min-width:0}.geography-controls .control-section-body{flex-wrap:nowrap}.geography-controls .search-stack{flex:1 1 110px;min-width:0}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none;min-width:56px}
+.comparison-controls{flex:0 0 auto}.comparison-controls .control-section-body{flex-wrap:nowrap}
+.location-controls{flex:0 0 auto}.location-controls .control-section-body{flex-wrap:nowrap}
+@container (max-width:699px){.comparison-controls,.location-controls{flex:1 0 auto}}
 .pill-group{display:inline-flex;gap:2px;flex:none}
 .filter-pill{padding:4px 6px;border:2px solid #000;background:#fff;color:var(--mute);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.035em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
+.filter-pill{white-space:nowrap}
 .filter-pill:hover{color:var(--ink);background:var(--accent-tint)}
 .filter-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--navy)}
 .location-help{position:relative;display:inline-flex;align-items:center;margin-left:2px;flex:none}
@@ -288,7 +289,7 @@ ${SUITE_NAV_STYLES}
 select.control,input.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.01em;color:var(--ink);width:104px;max-width:104px;text-overflow:ellipsis;overflow:hidden}select.control{cursor:pointer}
 .fgroup{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;flex:none}
 .mapbox{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;container-type:inline-size}
-@container (min-width:900px){.controls{flex-wrap:nowrap}}
+@container (min-width:700px){.controls{flex-wrap:nowrap}}
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
 #map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}

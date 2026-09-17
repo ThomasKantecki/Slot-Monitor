@@ -43,15 +43,17 @@
 /* no status row on this page, so the boxes hold only their control rows (no empty third track and its gap) */
 .slot-toolbar .filter-group-body{grid-template-rows:none;grid-auto-rows:auto}
 .period-preset{flex:1 1 118px;min-width:0;width:auto;padding:0 4px;font:700 9.5px/1 var(--mono);letter-spacing:.035em;text-transform:uppercase;color:var(--ink);cursor:pointer}
+/* A pill never shrinks below its label: on machines whose fonts render wider, the row wraps instead of clipping. */
+.toolbar .toggle,.toolbar .plain{min-width:max-content;flex-shrink:0}
 .control-row{display:flex;flex-wrap:wrap;gap:6px 8px;min-width:0}
 /* Geography lines up as two columns: the area toggles above the center-ZIP group, the find field above the slider. */
-.geography-group .filter-group-body{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 8px;align-content:start}.geography-group .control-row{display:contents}.geography-group .control-group>.toggle{flex:1 1 0}.geography-group .scope-status{grid-column:1/-1}.control-row>.control-group{flex:0 1 auto;min-width:0}.control-row>.area-find{flex:1 1 150px}.control-row>.radius-control{flex:1 1 130px}.control-row .area-find>.field{flex:1 1 110px;min-width:0;width:auto}.control-row .zip-field{flex:0 0 96px;width:96px}
+.geography-group .filter-group-body{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 8px;align-content:start}.geography-group .control-row{display:contents}.geography-group .control-group>.toggle{flex:1 0 auto}.geography-group .scope-status{grid-column:1/-1}.control-row>.control-group{flex:0 1 auto;min-width:0}.control-row>.area-find{flex:1 1 150px}.control-row>.radius-control{flex:1 1 130px}.control-row .area-find>.field{flex:1 1 110px;min-width:0;width:auto}.control-row .zip-field{flex:0 0 96px;width:96px}
 /* the suggestion fields keep their placeholders readable: Chrome's datalist arrow would take a fifth of the box */
 #area-search::-webkit-calendar-picker-indicator,#origin-zip::-webkit-calendar-picker-indicator{display:none!important;width:0!important;opacity:0!important}.control-row .radius-control input{flex:1 1 70px}
-.filter-pairs{display:grid;grid-template-columns:1fr;gap:6px;min-width:0}.filter-pairs .control-group{min-width:0}.filter-pairs .control-group>.toggle{flex:1 1 auto;min-width:0;padding:0 5px;font-size:10px;letter-spacing:.04em;white-space:nowrap;overflow:visible}
+.filter-pairs{display:grid;grid-template-columns:1fr;gap:6px;min-width:0}.filter-pairs .control-group{min-width:0}.filter-pairs .control-group>.toggle{flex:1 1 auto;min-width:max-content;padding:0 5px;font-size:10px;letter-spacing:.04em;white-space:nowrap;overflow:visible}
 /* row one: the system view across the full box; row two: the three filter pairs side by side, in a slightly smaller
    type so all six buttons fit, wrapping pair by pair when the box is narrow. The last pair's tip opens to the left. */
-.filter-pairs .view-group>.toggle{flex:1 1 0;font-size:9px;letter-spacing:0}.filter-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}.filter-row>.control-group{flex:1 1 150px;min-width:0}.filter-pairs .filter-row>.control-group>.toggle{padding:0 5px;font-size:9px;letter-spacing:0}
+.filter-pairs .view-group>.toggle{flex:1 0 auto;font-size:9px;letter-spacing:0}.filter-pairs .view-group{flex-wrap:wrap}.filter-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}.filter-row>.control-group{flex:1 1 150px;min-width:0}.filter-pairs .filter-row>.control-group>.toggle{padding:0 5px;font-size:9px;letter-spacing:0}
 @media(max-width:1060px){.filter-pairs .view-group{flex-wrap:wrap}.filter-pairs .view-group>.toggle{flex:1 1 auto}}
 .filter-pairs .logo-toggle{display:inline-flex;align-items:center;justify-content:center}.filter-pairs .comparison-logo{margin:0 auto}
 /* The "i" help circle and its note, the same component as the Provider Index's Primary Only help. */

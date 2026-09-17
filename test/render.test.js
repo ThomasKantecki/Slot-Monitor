@@ -96,7 +96,10 @@ test("selected ZIP and county borders override their base stroke widths", () => 
 test("desktop filters compact into one row when the map panel is wide enough", () => {
   const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
   assert.match(src, /container-type:inline-size/);
-  assert.match(src, /@container \(min-width:900px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.match(src, /@container \(min-width:700px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.match(src, /\.comparison-controls\{flex:0 0 auto\}/);
+  assert.match(src, /\.location-controls\{flex:0 0 auto\}/);
+  assert.match(src, /\.geography-controls \.control-section-body\{flex-wrap:nowrap\}/);
   assert.doesNotMatch(src, /@container \(min-width:680px\) and \(max-width:819px\)/);
   assert.match(src, /\.pill-logo\{[^}]*width:52px;height:16px/);
   assert.match(src, /select\.control\{[^}]*width:104px;max-width:104px/);
