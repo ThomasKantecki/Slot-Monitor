@@ -1,6 +1,6 @@
 # Cardiology Access
 
-One self-contained repository for Cardiology extraction, processing, and two
+One self-contained repository for Cardiology extraction, processing, and three
 static healthcare-access views:
 
 - `index.html` — repository-root launcher for the Slot Availability landing
@@ -8,12 +8,15 @@ static healthcare-access views:
 - `public/index.html` — Cardiology physical slot availability by ZIP/county,
   with calendar, location, provider, appointment-time, and AH booking-category
   detail.
+- `public/market-opportunities.html` — where Orlando Health has Cardiology
+  availability that AdventHealth does not match, ranked by 25-mile market.
 - `public/provider-map.html` — Cardiology provider coverage by ZIP and county.
 
 ## Project ownership
 
 - **Provider Index:** `src/render.js` and the existing data pipeline.
 - **Slot Times:** `src/slot-times/`.
+- **Market Opportunities:** `src/opportunities/` (shares the slot data and map parts).
 - **Shared navigation only:** `src/shared/suite-navigation.js`.
 
 This separation lets each view be developed on its own branch without mixing
@@ -66,9 +69,8 @@ The detailed extraction controls and storage layout are documented in
 The generated `public/` folder is the complete static website and can be used
 as the publish directory on a static host. Its root address opens Slot
 Availability, and the shared switcher links to Provider Index. The
-deployed site remains static; extraction runs from the source repository.
-There is no scheduled refresh. To update the data, run `npm run refresh:cardiology`
-locally, commit `data/cardiology/current` and `public/`, and push.
+deployed site remains static; extraction runs from the source repository, as
+described under "Refreshing the data".
 
 ## Refreshing the data
 
