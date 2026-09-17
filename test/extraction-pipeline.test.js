@@ -1,23 +1,40 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const PYTHON = process.platform === "win32" ? join(ROOT, ".venv", "Scripts", "python.exe") : join(ROOT, ".venv", "bin", "python");
+// Same lookup as scripts/run-python.mjs: CARDIOLOGY_PYTHON, then a repository .venv, then Python on PATH.
+function findPython() {
+  const configured = process.env.CARDIOLOGY_PYTHON;
+  const candidates = [
+    ...(configured ? [[configured]] : []),
+    [join(ROOT, ".venv", "Scripts", "python.exe")],
+    [join(ROOT, ".venv", "bin", "python")],
+    ["python3"], ["python"], ["py", "-3"],
+  ];
+  for (const [command, ...prefix] of candidates) {
+    if ((command.includes("\\") || command.includes("/")) && !existsSync(command)) continue;
+    const probe = spawnSync(command, [...prefix, "--version"], { stdio: "ignore" });
+    if (!probe.error && probe.status === 0) return { command, prefix };
+  }
+  throw new Error("Python 3.9+ was not found. Create .venv or set CARDIOLOGY_PYTHON to a Python executable.");
+}
+const { command: PYTHON_COMMAND, prefix: PYTHON_PREFIX } = findPython();
+const python = (args, options) => spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX, ...args], options);
 
 test("Cardiology extraction scripts compile and expose an offline dry run", () => {
   const scripts = ["epic_public.py", "extract_system.py", "extract_ah.py", "extract_oh.py", "deduplicate.py", "refresh.py"]
     .map((name) => join(ROOT, "extractors", "cardiology", name));
   const source = scripts.map((path) => readFileSync(path, "utf8"));
   source.forEach((code, index) => assert.doesNotThrow(() => {
-    const result = spawnSync(PYTHON, ["-c", "compile(open(r'''" + scripts[index] + "''', encoding='utf-8').read(), r'''" + scripts[index] + "''', 'exec')"]);
+    const result = python(["-c", "compile(open(r'''" + scripts[index] + "''', encoding='utf-8').read(), r'''" + scripts[index] + "''', 'exec')"]);
     if (result.status !== 0) throw new Error(result.stderr.toString());
   }));
-  const dry = spawnSync(PYTHON, [scripts[1], "--system", "ah", "--run-id", "test-run", "--dry-run"], { encoding: "utf8" });
+  const dry = python([scripts[1], "--system", "ah", "--run-id", "test-run", "--dry-run"], { encoding: "utf8" });
   assert.equal(dry.status, 0, dry.stderr);
   const output = JSON.parse(dry.stdout);
   assert.equal(output.status, "dry_run");
@@ -26,7 +43,7 @@ test("Cardiology extraction scripts compile and expose an offline dry run", () =
 });
 
 test("slot paging survives Epic's empty closing pages, re-served pages and stalls without losing a slot", () => {
-  const result = spawnSync(PYTHON, [join(ROOT, "extractors", "cardiology", "paging_check.py")], { encoding: "utf8" });
+  const result = python([join(ROOT, "extractors", "cardiology", "paging_check.py")], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /stall_new_tokens .* ok/);
   assert.match(result.stdout, /stall_same_token .* ok/);
@@ -44,7 +61,7 @@ test("OH physical deduplication collapses flow overlap without losing counts", (
       "b,p1,d1,2026-09-02T13:00:00Z,Doctor One,Check up,Chest pressure,path-b",
       "c,p1,d1,2026-09-02T14:00:00Z,Doctor One,New Patient,Check up,path-a",
     ].join("\n") + "\n");
-    const result = spawnSync(PYTHON, [join(ROOT, "extractors", "cardiology", "deduplicate.py"), "--input", input, "--output", output], { encoding: "utf8" });
+    const result = python([join(ROOT, "extractors", "cardiology", "deduplicate.py"), "--input", input, "--output", output], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
     const rows = readFileSync(output, "utf8").replace(/^\uFEFF/, "").trim().split(/\r?\n/);
     assert.equal(rows.length, 3, "header plus two physical slots");

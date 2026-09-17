@@ -3,9 +3,10 @@
 __pycache__/
 *.pyc
 # public/*.html is the deliverable — committed so it travels with the repo
-# raw directory captures stay local, except the AdventHealth scrape the Provider Index build reads
+# raw directory captures stay local, except the two the Provider Index build and `npm run data` read
 data/raw/*
 !data/raw/ah-directory-scrape.json
+!data/raw/oh-directory.json
 data/cardiology/extractions/
 data/cardiology/runs/
 node_modules/
