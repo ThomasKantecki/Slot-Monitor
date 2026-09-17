@@ -138,6 +138,11 @@ button,input,select{font:inherit;color:inherit}
 .location-info:hover,.location-info:focus-visible{background:var(--accent-tint);color:var(--ink)}
 .location-tip{position:absolute;z-index:30;top:calc(100% + 7px);right:0;width:250px;max-width:calc(100vw - 32px);padding:8px 9px;border:2px solid #000;background:#fff;color:var(--ink);font-family:var(--display);font-size:11px;font-weight:500;line-height:1.35;letter-spacing:0;text-transform:none;white-space:normal;opacity:0;visibility:hidden;pointer-events:none}
 .location-help:hover .location-tip,.location-help:focus-within .location-tip{opacity:1;visibility:visible}
+.pill-help{display:inline-flex;align-items:center;border:2px solid #000;background:#fff;padding-right:4px}
+.pill-help>.filter-pill{border:0;background:transparent;padding-right:3px}
+.pill-help>.location-help{margin-left:0}
+.pill-help:hover{background:var(--accent-tint)}.pill-help>.filter-pill:hover{background:transparent}
+.pill-help:has(>.filter-pill[aria-pressed="true"]){background:var(--accent);border-color:var(--accent)}
 .logo-pill{padding:2px 6px}
 .logo-pill[aria-pressed="true"]{background:var(--accent-tint);border-color:#000}
 .pill-logo{display:block;width:52px;height:16px;background-repeat:no-repeat;background-position:center;background-size:contain}
@@ -254,7 +259,7 @@ a{color:var(--accent-deep)}
     <span class="control-stack search-stack"><span class="fgroup"><input id="area-search" class="control" list="area-options" placeholder="ZIP code" autocomplete="off" aria-label="Find area"><datalist id="area-options"></datalist></span></span>
    </div></fieldset>
    <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span></div></fieldset>
-   <fieldset class="control-section location-controls"><legend>Locations</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span></span></div></fieldset>
+   <fieldset class="control-section location-controls"><legend>Locations</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><span class="pill-help pill"><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span></span></span></div></fieldset>
    <span class="fgroup" hidden><label class="cap" for="spec">Specialty</label><select id="spec" class="control" aria-label="Specialty"></select></span>
   </div>
   <div class="mapwrap">
