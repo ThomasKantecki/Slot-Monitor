@@ -12,14 +12,14 @@
     "bookingCategoriesRetained": true
   },
   "oh": {
-    "runId": "2026-09-15T103541-0400",
-    "source": "data/cardiology/runs/2026-09-15T103541-0400/oh/source-oh-unique-physical-slots.csv",
-    "physicalSlots": 64193,
+    "runId": "2026-09-18T101159-0400",
+    "source": "data/cardiology/runs/2026-09-18T101159-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 63612,
     "nonPhysicianSlots": 0,
     "telemedicineOnlySlots": 0,
-    "newPatientSlots": 49548,
+    "newPatientSlots": 63612,
     "bookingCategoriesRetained": false
   },
-  "totalPhysicalSlots": 717066,
-  "generatedAt": "2026-09-16T04:00:49.860Z"
+  "totalPhysicalSlots": 716485,
+  "generatedAt": "2026-09-18T20:56:35.599Z"
 }
