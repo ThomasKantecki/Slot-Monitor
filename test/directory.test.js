@@ -1,3 +1,4 @@
+// Provider directory sources: Orlando Health records and the AdventHealth capture become one provider format.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cleanName, specialtyOf, isFlZip, zip5, toRoster, dedupByNpi, NPI_FIXES } from "../src/sources/directory.js";

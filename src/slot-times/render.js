@@ -1,3 +1,5 @@
+// Builds public/index.html (Slot Availability): page markup + styles.css + client.js + the map shapes, all inlined into one file.
+// Also writes the root index.html launcher and public/slot-times.html, which just forward to it.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,7 +85,9 @@ export function renderSlotTimes() {
 
 export function writeSlotTimes() {
   const html = renderSlotTimes(); const output = join(ROOT, "public"); mkdirSync(output, { recursive: true });
-  writeFileSync(join(output, "index.html"), html); writeFileSync(join(output, "slot-times.html"), html);
+  writeFileSync(join(output, "index.html"), html);
+  // slot-times.html was the page's earlier address; it now forwards to index.html instead of duplicating 1.7 MB
+  writeFileSync(join(output, "slot-times.html"), '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./index.html"><title>Cardiology Slot Availability</title><script>location.replace("./index.html" + location.search + location.hash)</script></head><body><p><a href="./index.html">Open Cardiology Slot Availability</a></p></body></html>\n');
   writeFileSync(join(ROOT, "index.html"), ROOT_LANDING);
   return { bytes: html.length };
 }
@@ -127,5 +131,5 @@ __MOTION_CLIENT__
 __CLIENT__
 __INFO_SCRIPT__</script></body></html>`;
 
-function main() { const result = writeSlotTimes(); console.log(`wrote index.html + public/index.html + public/slot-times.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }
+function main() { const result = writeSlotTimes(); console.log(`wrote index.html + public/index.html (+ slot-times.html redirect) — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

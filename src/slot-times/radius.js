@@ -1,3 +1,4 @@
+// Great-circle distance in miles between two lat/lon points. Used by the pages' radius ring and by the market ranking.
 ((root) => {
   const miles = (lat1, lon1, lat2, lon2) => {
     const earth = 3958.8, rad = Math.PI / 180;

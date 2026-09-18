@@ -1,3 +1,4 @@
+// Sanity check for the Market Opportunities numbers: the per-ZIP rows must add up to the slot total, then prints the top markets. `npm run audit:opportunities`.
 import { readFileSync } from "node:fs";
 import { buildOpportunityRows } from "../src/opportunities/scoring.js";
 import "../src/slot-times/radius.js";

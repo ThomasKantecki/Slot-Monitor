@@ -1,3 +1,5 @@
+// Refresh step 2 (AdventHealth): turns the raw slot rows the scraper wrote (one row per visit type) into physical slots,
+// one per provider + location + time, and stores them with their audit under data/cardiology/runs/<run-id>/ah. Called by extractors/cardiology/refresh.py.
 import { createHash } from "node:crypto";
 import { copyFileSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";

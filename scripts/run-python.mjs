@@ -1,3 +1,4 @@
+// Runs a Python script with the first interpreter it finds: CARDIOLOGY_PYTHON, then a repo .venv, then python3 on PATH. Used by the npm extract/refresh commands.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";

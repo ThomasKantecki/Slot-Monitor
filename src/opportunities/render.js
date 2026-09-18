@@ -1,3 +1,4 @@
+// Builds public/market-opportunities.html: page markup + styles.css + scoring.js + client.js + the map shapes, all inlined into one file.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

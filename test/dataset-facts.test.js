@@ -1,3 +1,4 @@
+// The "Data check" dialog text on each page must describe the data correctly.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { directoryGaps, nameKeys, opportunityDataChecks, providerDataChecks, slotDataChecks } from "../src/shared/dataset-facts.js";

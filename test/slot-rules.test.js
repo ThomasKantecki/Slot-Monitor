@@ -1,3 +1,4 @@
+// The three comparison filters (physicians only, in person, new patients) classify slots the same way everywhere.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

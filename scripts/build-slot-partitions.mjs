@@ -1,3 +1,4 @@
+// Build step: writes public/data/cardiology (the summary the pages embed and one slot file per day). `npm run build` runs it after build-slot-times-data.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 

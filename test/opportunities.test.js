@@ -1,3 +1,4 @@
+// The market ranking (scoring.js) and the built Market Opportunities page.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -91,7 +92,7 @@ test("market opportunity page is built from the Slot Availability parts with no 
   assert.match(styles, /\.market-marker\.oh \.dot\{fill:var\(--oh\)\}\.market-marker\.ah \.dot\{fill:var\(--ah\)\}/);
   assert.match(styles, /\.market-row\.selected\{background:#e8f5fb;box-shadow:inset 3px 0 0 var\(--sky\);border-color:var\(--sky\)\}/);
   assert.match(html, /window\.SLOT_DATA=/);
-  assert.match(html, /Markets are circles of 10, 25 or 50 miles/);
+  assert.match(html, /Markets are 25-mile circles around each ZIP/);
 });
 
 test("opportunity browser source parses and uses the shared score implementation", () => {

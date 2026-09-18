@@ -36,7 +36,7 @@ export function slotDataChecks(model, zipCounty = {}) {
 
 export function opportunityDataChecks(model, zipCounty = {}) {
   const report = slotDataChecks(model, zipCounty);
-  report.checks.push({ ok: true, text: "Markets are circles of 10, 25 or 50 miles (25 by default) around each ZIP with active facilities, ranked by how much Orlando Health has that AdventHealth does not: no AdventHealth slots, an earlier first appointment, more slots, and distance to the nearest AdventHealth site. Neighbouring circles overlap and can count the same slots, so market figures are not additive." });
+  report.checks.push({ ok: true, text: "Markets are 25-mile circles around each ZIP with active facilities, ranked by how much Orlando Health has that AdventHealth does not: no AdventHealth slots, an earlier first appointment, more slots, and distance to the nearest AdventHealth site. Neighbouring circles overlap and can count the same slots, so market figures are not additive." });
   return report;
 }
 

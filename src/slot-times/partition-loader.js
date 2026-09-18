@@ -1,3 +1,5 @@
+// window.SLOT_PARTITIONS.load(from, through): fetches the per-day slot files under data/cardiology/slots for a date range
+// (cached per day) and puts them in window.SLOT_DATA.slots. Both slot pages call this instead of embedding every slot.
 (() => {
   const data = window.SLOT_DATA;
   const availableDates = new Set(data.partitionDates || []);

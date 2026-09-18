@@ -1,3 +1,4 @@
+// Refresh step 2 (Orlando Health): copies the deduplicated slot CSV and its audit into data/cardiology/runs/<run-id>/oh. Called by extractors/cardiology/refresh.py.
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
