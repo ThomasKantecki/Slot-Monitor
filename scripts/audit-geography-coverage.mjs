@@ -1,3 +1,4 @@
+// Sanity check: every facility and ZIP in the slot data has a map shape, and the per-facility slot totals add up. `npm run audit:geography`.
 import { existsSync, readFileSync } from "node:fs";
 
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));

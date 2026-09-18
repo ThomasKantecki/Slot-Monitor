@@ -1,3 +1,5 @@
+// Browser code for the Market Opportunities page (inlined into public/market-opportunities.html by render.js).
+// Loads the slot files for the chosen dates, ranks 25-mile markets with scoring.js, and draws the map, summary card, ranked list and dialog.
 (async () => {
   const DATA = window.SLOT_DATA;
   const PATHS = window.ZIP_PATHS;

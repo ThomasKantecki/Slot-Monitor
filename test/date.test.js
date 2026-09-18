@@ -1,3 +1,4 @@
+// SUITE_DATE.today() formats a local date as YYYY-MM-DD.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import "../src/shared/date.js";

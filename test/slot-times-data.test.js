@@ -1,3 +1,4 @@
+// The slot model built from the export: providers, facilities, telemedicine flags and totals.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSlotAvailability, deduplicatePhysicalSlots, isNewPatientType, isTelemedicineSlot, isTelemedicineType } from "../src/slot-times/data.js";

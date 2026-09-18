@@ -1,3 +1,5 @@
+// Refresh step 3: picks the newest complete AdventHealth and Orlando Health runs under data/cardiology/runs, joins them into
+// data/cardiology/current (the slot export + manifest.json) that the page builds read. Called by extractors/cardiology/refresh.py.
 import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "../src/slot-rules.js";

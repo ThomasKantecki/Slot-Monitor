@@ -1,3 +1,5 @@
+// Turns the slot export from data/cardiology/current into the compact model the pages use: numbered providers, facilities and
+// visit types, one small record per slot, plus totals by area. Used by scripts/build-slot-times-data.mjs.
 const SYSTEM = new Map([["AH", "ah"], ["OH", "oh"], ["ah", "ah"], ["oh", "oh"]]);
 
 const text = (value) => String(value ?? "").trim();

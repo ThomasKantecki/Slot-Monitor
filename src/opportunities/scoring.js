@@ -1,3 +1,5 @@
+// The market ranking. buildOpportunityRows() groups slots by ZIP (or by 25-mile market), scores how much Orlando Health has that
+// AdventHealth does not, and marketReasons() turns a row into plain-English reasons. Shared by the page, the tests and the audit.
 const DAY_MS = 86_400_000;
 
 const dateDays = (later, earlier) => {

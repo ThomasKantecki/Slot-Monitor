@@ -1,3 +1,4 @@
+# Publishes the public/ folder to GitHub Pages on every push to main. Nothing is built here; the pages are committed already.
 name: Deploy GitHub Pages
 
 on:

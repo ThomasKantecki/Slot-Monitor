@@ -1,3 +1,4 @@
+// The scraper: scripts compile, the offline paging replay passes, deduplication keeps counts, and the audit script runs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

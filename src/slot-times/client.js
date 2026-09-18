@@ -1,3 +1,5 @@
+// Browser code for the Slot Availability page (inlined into public/index.html by render.js).
+// Loads the slot files for the chosen dates, applies the toolbar filters, and draws the map, summary card, calendar and provider list.
 (async () => {
   const DATA = window.SLOT_DATA;
   const PATHS = window.SLOT_PATHS;

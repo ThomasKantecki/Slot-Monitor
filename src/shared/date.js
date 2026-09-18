@@ -1,3 +1,4 @@
+// Today's date as YYYY-MM-DD in the viewer's local time. Shared by the pages and the Node scripts (window.SUITE_DATE / globalThis.SUITE_DATE).
 ((root) => {
   const today = (date = new Date()) => {
     const year = date.getFullYear();

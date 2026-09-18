@@ -1,3 +1,4 @@
+// The header shared by all three pages: the page switcher, the title box, and the "Data check" info dialog.
 const PAGES = [
   { id: "slot-times", label: "Slot Availability", href: "./index.html", title: ["Cardiology", "Slot Availability"] },
   { id: "opportunities", label: "Market Opportunities", href: "./market-opportunities.html", title: ["AH Market", "Opportunities"] },

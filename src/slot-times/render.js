@@ -1,3 +1,5 @@
+// Builds public/index.html (Slot Availability): page markup + styles.css + client.js + the map shapes, all inlined into one file.
+// Also writes the root index.html launcher and public/slot-times.html, which just forward to it.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

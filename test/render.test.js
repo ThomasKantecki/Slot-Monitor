@@ -1,3 +1,4 @@
+// The built Provider Index page: controls, map, provider cards and styles.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

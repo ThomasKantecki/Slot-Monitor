@@ -1,3 +1,4 @@
+// The built Slot Availability page: header, toolbar markup, filters, map controls and the summary card.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

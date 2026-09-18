@@ -1,3 +1,5 @@
+// Build step: reads data/cardiology/current and writes the slot model (data/cardiology/current/slot-times-model.json, local only)
+// that the page builds and the partition writer use. If the export is missing it keeps the model already on disk.
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { buildSlotAvailability } from "../src/slot-times/data.js";
 

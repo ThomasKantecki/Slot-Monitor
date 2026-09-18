@@ -1,3 +1,4 @@
+// The market ranking (scoring.js) and the built Market Opportunities page.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
