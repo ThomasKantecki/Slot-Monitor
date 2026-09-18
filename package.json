@@ -25,6 +25,6 @@
     "all": "node src/sources/directory.js && node scripts/build-data.mjs && node scripts/build-slot-times-data.mjs && node src/render.js && node src/slot-times/render.js && node src/opportunities/render.js",
     "geometry": "bash scripts/build-geometry.sh",
     "fonts": "node scripts/embed-fonts.mjs",
-    "test": "node --test --test-isolation=none"
+    "test": "node --test --test-isolation=none test/"
   }
 }

@@ -1,116 +1,63 @@
 # Cardiology Access
 
-One self-contained repository for Cardiology extraction, processing, and three
-static healthcare-access views:
+A comparison of Cardiology appointment availability between AdventHealth and
+Orlando Health in Florida, built from the public online-scheduling data both
+systems publish.
 
-- `index.html` — repository-root launcher for the Slot Availability landing
-  page.
-- `public/index.html` — Cardiology physical slot availability by ZIP/county,
-  with calendar, location, provider, appointment-time, and AH booking-category
-  detail.
-- `public/market-opportunities.html` — where Orlando Health has Cardiology
-  availability that AdventHealth does not match, ranked by 25-mile market.
-- `public/provider-map.html` — Cardiology provider coverage by ZIP and county.
+Live site: https://thomaskantecki.github.io/Slot-Monitor/
 
-## Project ownership
+## What is here
 
-- **Provider Index:** `src/render.js` and the existing data pipeline.
-- **Slot Times:** `src/slot-times/`.
-- **Market Opportunities:** `src/opportunities/` (shares the slot data and map parts).
-- **Shared navigation only:** `src/shared/suite-navigation.js`.
+Three pages, all static HTML in `public/`:
 
-This separation lets each view be developed on its own branch without mixing
-map logic. Generated files in `public/` should be rebuilt rather than edited by
-hand.
+- **Slot Availability** (`index.html`): how many Cardiology appointments each
+  system has open, by ZIP or county, with a map, a calendar and a provider list.
+- **Market Opportunities** (`market-opportunities.html`): where Orlando Health
+  has availability that AdventHealth does not match, ranked by 25-mile market.
+- **Provider Index** (`provider-map.html`): which Cardiology providers each
+  system lists, by ZIP and county, from the two public provider directories.
 
-## Provider Index
+## Where the data comes from
 
-Florida bookable-provider coverage, AdventHealth vs Orlando Health, from each
-system's own public directory.
+Both systems let anyone browse open appointment slots on their websites without
+logging in. The scraper in `extractors/cardiology` reads that same public
+scheduling data, one page at a time, for every Cardiology visit type, and saves
+every open slot with its provider, location, date and time. It does not log in,
+book anything, or touch patient information.
 
-The map opens in **All locations** mode: a clinician appears once in every ZIP
-or county where the directory says they practice. Its headline counts distinct
-provider-office assignments, so the number remains the same when the map is
-grouped by ZIP or county. **Primary only** reduces the footprint to one primary
-or first-published office and shows distinct statewide clinicians. Provider
-cards group all offices in the selected area and show a directory photo when
-one is published.
+The scraper is the one agreed method for pulling this data. It walks each
+schedule to the end, recovers when the scheduling site stalls or drops a
+request, can resume an interrupted run, and has an offline test that replays
+the tricky cases. `extractors/cardiology/README.md` explains how it works and
+why it replaced the earlier scripts.
 
-## Requirements
+Provider directory data for the Provider Index comes from each system's public
+physician finder (`npm run directory` and `npm run adventhealth`).
 
-Node 20 or newer and Python 3.9 or newer. The Cardiology appointment extractor
-uses only Python's standard library. No credentials, Selenium, pandas, or npm
-dependencies are required.
+## Running it
 
-## Commands
+Needs Node 20+ and Python 3.9+. No packages to install.
 
 ```
-npm test              # run the data and rendering checks
-npm run directory     # re-pull the Orlando Health directory (8 requests)
-npm run adventhealth  # re-pull Medical Group cards, photos and locations
-npm run data          # rebuild both location-mode datasets from data/raw
-npm run build         # rebuild both public pages
-npm run build:provider-map  # rebuild only the Provider Index
-npm run build:slot-times    # rebuild only Slot Times
-npm run refresh:cardiology:dry-run # validate the complete refresh command
-npm run refresh:cardiology  # AH + OH extraction, dedup, promote, and site build
-npm run extract:ah          # run only the AH Cardiology extractor
-npm run extract:oh          # run only the OH Cardiology extractor
-npm run all           # directory + data + build
-python3 scripts/build-deck.py   # rebuild the two deck files onto ~/Desktop
-python3 scripts/build-exec-deck.py   # six-slide executive deck onto ~/Desktop (needs assets/deck/*.png)
+npm test                     # run all checks
+npm run build                # rebuild the three pages from the current data
+npm run refresh:cardiology   # pull fresh appointment data (AdventHealth takes most of a day), then rebuild
 ```
 
-The detailed extraction controls and storage layout are documented in
-`extractors/cardiology/README.md`.
+After a refresh: run `npm test`, commit `data/cardiology/current` and `public/`,
+and push. GitHub Pages redeploys the site from `public/` on every push to main.
+There is no scheduled refresh.
 
-## Website deployment
+## Layout
 
-The generated `public/` folder is the complete static website and can be used
-as the publish directory on a static host. Its root address opens Slot
-Availability, and the shared switcher links to Provider Index. The
-deployed site remains static; extraction runs from the source repository, as
-described under "Refreshing the data".
+```
+extractors/cardiology/   the scraper and its docs
+scripts/                 build steps (data files, pages)
+src/                     page sources: render.js (Provider Index), slot-times/, opportunities/, shared/
+data/                    provider directory data and the current run's manifest
+public/                  the built site, including per-day slot files under data/cardiology/slots/
+test/                    node tests, run with npm test
+```
 
-## Refreshing the data
-
-The extractor under `extractors/cardiology` is the agreed method for every future
-pull; `extractors/cardiology/README.md` explains why and how to run it. In short:
-create the Python environment once (`python3 -m venv .venv`; the extractor needs
-only the standard library), run `npm run refresh:cardiology`, let it run to the
-end (AdventHealth takes most of a day), then `npm test` and commit the rebuilt
-`public/` folder.
-
-## Data sources
-
-- **Appointment availability** — the in-repo direct API extractors traverse
-  each system's anonymous Epic Cardiology workflow, save flow-level audit data,
-  deduplicate physical slots, retain AH booking categories, and promote the
-  latest valid system runs into `data/cardiology/current`. Every published
-  Florida slot is kept and shown by default. The Comparison filters
-  (`src/slot-rules.js`) narrow both sides the same way: physicians only,
-  because AdventHealth also opens nurse practitioner, physician assistant,
-  nurse and pharmacist schedules to online booking and Orlando Health does
-  not; in-person only, because Orlando Health publishes no video visits
-  online; and new patients only, the visit types a new patient can book.
-
-- **Orlando Health** — the physician-finder's Algolia records provide identity,
-  employment, specialty and every practice location. `npm run directory`
-  refreshes those records. Photo URLs come from the public finder UI and are
-  merged from `data/raw/oh-photo-scrape.json` when that optional browser capture
-  is present.
-- **AdventHealth** — the Medical Group directory's server-rendered result cards
-  provide identity, specialty, photo and every listed location. Run
-  `npm run adventhealth` to refresh `data/raw/ah-directory-scrape.json`.
-
-## Methodology in one line
-
-Employed clinicians in bookable clinic specialties, one specialty each. Primary
-mode shows distinct statewide providers; all-locations mode shows distinct
-provider-office assignments across all published Florida practice locations.
-The details live in comments in `src/specialty.js`, `src/sources/*.js`
-and `src/geo.js`.
-
-## Published data layout
-
-The built pages embed only a compact summary (`public/data/cardiology/slot-times-summary.json`: providers, facilities, totals, dates). The appointment slots themselves are published one file per bookable date under `public/data/cardiology/slots/`, and each page fetches just the dates in the selected period (the landing view is the next 90 days). `npm run build` writes both from `data/cardiology/current/slot-times-model.json`, which is build-only and not committed; a checkout without it keeps the published partitions.
+Edit the sources in `src/`, then run `npm run build`. Do not edit files in
+`public/` by hand.
