@@ -27,6 +27,12 @@ lists each specialty with the Epic catalog entries its extraction pulls and the
 directory labels its Provider Index counts together; the Node scripts and the
 Python extractor both read it.
 
+Within a specialty, the Provider Index's Comparison group has a Sub-specialty
+menu: the group's labels with each system's count, marking labels only one
+system publishes (a clinician counts under every label their directory lists).
+The slot pages show a Sub-specialty menu when a system's scheduling catalog has
+several entries for the specialty; it narrows to the slots pulled under one entry.
+
 ## Where the data comes from
 
 Both systems let anyone browse open appointment slots on their websites without
