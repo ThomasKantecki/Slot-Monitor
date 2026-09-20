@@ -24,7 +24,7 @@ export function slotDataChecks(model, zipCounty = {}) {
   const catalog = model.catalog ?? { ah: [], oh: [] };
   const entryList = (system) => (catalog[system] ?? []).map((name) => `${name} (${n(model.catalogSlots?.[system]?.[name] ?? 0)})`).join(", ");
   const catalogLine = (catalog.ah?.length > 1 || catalog.oh?.length > 1)
-    ? [{ ok: true, text: `Scheduling catalog entries pulled: AdventHealth ${entryList("ah") || "none"}; Orlando Health ${entryList("oh") || "none"}. The Sub-specialty filter narrows to one entry.` }]
+    ? [{ ok: true, text: `Scheduling catalog entries pulled: AdventHealth ${entryList("ah") || "none"}; Orlando Health ${entryList("oh") || "none"}. Their slots count together.` }]
     : [];
   return {
     pulled: { at: model.generatedAt, label: `Pulled ${stamp(model.generatedAt)}`, freshDays: 7 },

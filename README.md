@@ -30,8 +30,10 @@ Python extractor both read it.
 Within a specialty, the Provider Index's Comparison group has a Sub-specialty
 menu: the group's labels with each system's count, marking labels only one
 system publishes (a clinician counts under every label their directory lists).
-The slot pages show a Sub-specialty menu when a system's scheduling catalog has
-several entries for the specialty; it narrows to the slots pulled under one entry.
+The slot pages have no sub-specialty menu: the scheduling data files every
+appointment under one catalog entry per specialty, and where a system has several
+(AdventHealth's orthopedic entries) their slots count together; the page's data
+check names the entries pulled.
 
 ## Where the data comes from
 
