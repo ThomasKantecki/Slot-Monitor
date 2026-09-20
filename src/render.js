@@ -253,7 +253,7 @@ ${SUITE_NAV_STYLES}
 .cap{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
 .totbox{display:flex;flex-direction:column}
 .trow{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.tlogo{display:inline-block;width:120px;height:26px;background-repeat:no-repeat;background-position:left center;background-size:contain}
+.tlogo{display:inline-block;width:156px;height:42px;background-repeat:no-repeat;background-position:left center;background-size:contain}
 .tlogo.ah{background-image:var(--ah-logo-img)}.tlogo.oh{background-image:var(--oh-logo-img)}
 .tnum{font-weight:700;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
 .tnum.ah{color:var(--ah)}.tnum.oh{color:var(--oh)}
@@ -364,7 +364,7 @@ a{color:var(--accent-deep)}
  select.control{padding:4px 6px;font-size:9.5px;width:104px;max-width:104px}
  .side{gap:8px}
  .tpanel .panel-band{padding:5px 10px}
- .tpanel .cbody{padding:6px 12px}.tlogo{width:108px;height:22px}.tnum{font-size:26px}.tdiv{margin:6px 0}.map-key{font-size:9.5px;margin-top:5px;padding-top:5px}
+ .tpanel .cbody{padding:6px 12px}.tlogo{width:126px;height:32px}.tnum{font-size:26px}.tdiv{margin:6px 0}.map-key{font-size:9.5px;margin-top:5px;padding-top:5px}
  .ppanel{min-height:100px}
  .hint{right:8px;bottom:8px;font-size:9.5px}
 }
@@ -423,7 +423,7 @@ __LOGOVARS__
  </section>
  <div class="side">
   <section class="panel tpanel">
-   <div class="panel-band"><h2 class="mono" id="tot-title">Total providers available</h2><span class="band-meta" id="tot-scope">ZIP areas</span></div>
+   <div class="panel-band"><h2 class="mono" id="tot-title">Total providers available</h2></div>
    <div class="cbody totbox">
     <div class="trow"><span class="tlogo ah" role="img" aria-label="AdventHealth"></span><span class="tnum ah" id="tot-ah">0</span></div>
     <div class="tdiv"></div>
@@ -513,8 +513,7 @@ function paint(){const thr=scales();
 function setNum(id,val){const el=document.getElementById(id);if(!el)return;const s=val.toLocaleString();const ch=el.textContent!==s;el.textContent=s;if(ch)slideY(el);}
 function totals(){const headline=providerHeadline(L().data,{locationMode,gran,specialty});
  setNum("tot-ah",headline.ah); setNum("tot-oh",headline.oh);
- document.getElementById("tot-title").textContent=headline.title;
- document.getElementById("tot-scope").textContent=headline.scope;}
+ document.getElementById("tot-title").textContent=headline.title;}
 function updateColorKey(){const ah=document.getElementById("key-ah"),oh=document.getElementById("key-oh"),tie=document.getElementById("key-tie");
  if(view==="diff"){
   ah.hidden=!ACTIVE.includes("ah");oh.hidden=!ACTIVE.includes("oh");tie.hidden=false;

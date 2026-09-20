@@ -167,7 +167,8 @@
   function showMarkerTip(event, marker) {
     const row = rowByZip.get(marker.dataset.zip); if (!row) return;
     const tip = $("tip");
-    tip.innerHTML = `<div class="tip-facility"><strong>${esc(row.zip)} · ${esc(row.county)} County</strong><span class="tip-address">${state.marketMiles}-mile market · #${row.rank} of ${number(allRows.length)}</span><span class="oh">Orlando Health ${number(row.oh)}</span> · <span class="ah">AdventHealth ${number(row.ah)}</span><br>${esc(leadLine(row))}${exactGapByZip.has(row.zip) ? '<br><span class="oh">No AdventHealth slots in this ZIP</span>' : ""}</div><div class="tip-hint">Click to open the market</div>`;
+    const lead = row.ah === row.oh ? "Even" : row.ah > row.oh ? `AdventHealth +${number(row.ah - row.oh)}` : `Orlando Health +${number(row.oh - row.ah)}`;
+    tip.innerHTML = `<span class="zh">${esc(row.zip)}</span> <span class="cty">${esc(row.county)} County</span><div class="r"><span class="ah">AdventHealth</span><b>${number(row.ah)}</b></div><div class="r"><span class="oh">Orlando Health</span><b>${number(row.oh)}</b></div><div class="lead">${lead}</div>`;
     tip.style.left = `${event.clientX + 14}px`; tip.style.top = `${event.clientY + 14}px`; tip.style.opacity = "1";
   }
 

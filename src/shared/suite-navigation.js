@@ -39,7 +39,7 @@ export const SUITE_NAV_STYLES = String.raw`
 .hdr .mark{display:flex;flex-direction:column;align-items:flex-start;font-size:17px;line-height:1.05;letter-spacing:.105em;white-space:normal}
 .pixel-heart{position:absolute;right:12px;top:50%;margin-top:-7px;width:15px;height:14px;color:#b40046;transform-origin:center;animation:pixel-heartbeat 1.25s steps(2,end) infinite}
 .pixel-heart svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
-.pixel-bone{position:absolute;right:11px;top:50%;margin-top:-6px;width:20px;height:12px;color:#14233e}
+.pixel-bone{position:absolute;right:8px;top:50%;margin-top:-9px;width:30px;height:18px;color:#14233e}
 .pixel-bone svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
 .specialty-pick{position:relative;display:inline-block;margin-right:.25em;vertical-align:baseline}
 .specialty-sizer{display:inline-block;visibility:hidden;padding-right:12px;white-space:nowrap}

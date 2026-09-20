@@ -110,7 +110,7 @@ test("opportunity browser source parses and uses the shared score implementation
   assert.match(client, /radiusDrag = \{ mode: target\.id === "origin-grip" \? "move" : "resize" \};/);
   assert.match(client, /onSettle: \(Z\) => \{ if \(Z\.k !== currentZoom\) \{ scaleMarkers\(Z\.k\); motion\.queue\(\); \} \}/);
   assert.match(client, /function showMarkerTip\(event, marker\)/);
-  assert.match(client, /class="tip-facility"/);
+  assert.match(client, /class="zh"[\s\S]*class="cty"[\s\S]*class="r"/);
   assert.match(client, /SUITE_MAP_MOTION\.create\(\{ svg, viewport: vp, raster: \$\("map-raster"\)/);
   assert.match(client, /motion\.panBy\(/);
   assert.match(client, /motion\.queue\(\);/);

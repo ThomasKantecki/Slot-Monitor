@@ -261,14 +261,15 @@
     const id = Number(marker.dataset.facility), facility = DATA.facilities[id], summary = facilitySummary.get(id) || { ah: 0, oh: 0, providers: new Set() };
     const slots = summary.ah + summary.oh, distance = state.radiusActive ? ` · ${facilityDistance(id).toFixed(1)} mi` : "";
     const tip = $("tip");
-    tip.innerHTML = `<div class="tip-facility"><strong>${esc(facility.n)}</strong><span class="tip-address">${esc([facility.a, facility.c].filter(Boolean).join(", "))}</span><span class="${facility.y}">${facility.y === "ah" ? "AdventHealth" : "Orlando Health"} · ${number(slots)} slot${slots === 1 ? "" : "s"} · ${number(summary.providers.size)} provider${summary.providers.size === 1 ? "" : "s"}${distance}</span></div><div class="tip-hint">Click to open the doctors and times</div>`;
+    tip.innerHTML = `<span class="zh">${esc(facility.n)}</span> <span class="cty">${esc([facility.a, facility.c].filter(Boolean).join(", "))}${esc(distance)}</span><div class="r"><span class="${facility.y}">${facility.y === "ah" ? "AdventHealth" : "Orlando Health"}</span><b>${number(slots)} slot${slots === 1 ? "" : "s"}</b></div><div class="lead">${number(summary.providers.size)} provider${summary.providers.size === 1 ? "" : "s"}</div>`;
     tip.style.left = `${event.clientX + 14}px`; tip.style.top = `${event.clientY + 14}px`; tip.style.opacity = "1";
   }
   function showTip(event, key) {
     const counts = areaCounts(key);
-    const label = state.granularity === "county" ? `${key} County` : `${key}${DATA.zipCounty?.[key] ? ` · ${DATA.zipCounty[key]} County` : ""}`;
+    const title = state.granularity === "county" ? `${key} County` : key, sub = state.granularity === "zip" && DATA.zipCounty?.[key] ? `${DATA.zipCounty[key]} County` : "";
+    const lead = counts.ah === counts.oh ? "Even" : counts.ah > counts.oh ? `AdventHealth +${number(counts.ah - counts.oh)}` : `Orlando Health +${number(counts.oh - counts.ah)}`;
     const tip = $("tip");
-    tip.innerHTML = `<strong>${esc(label)}</strong><span class="ah">AdventHealth ${number(counts.ah)}</span><br><span class="oh">Orlando Health ${number(counts.oh)}</span>`;
+    tip.innerHTML = `<span class="zh">${esc(title)}</span> <span class="cty">${esc(sub)}</span><div class="r"><span class="ah">AdventHealth</span><b>${number(counts.ah)}</b></div><div class="r"><span class="oh">Orlando Health</span><b>${number(counts.oh)}</b></div><div class="lead">${lead}</div>`;
     tip.style.left = `${event.clientX + 14}px`; tip.style.top = `${event.clientY + 14}px`; tip.style.opacity = "1";
   }
   function areaSearchLabel(key) {
@@ -436,8 +437,6 @@
     $("kpi-oh-sub").textContent = noRadiusResults ? `No appointments within ${state.radius} miles — expand radius` : slotLabel;
     $("kpi-providers").textContent = number(providers.size);
     $("kpi-facilities-ah").textContent = number(facilities.ah.size); $("kpi-facilities-oh").textContent = number(facilities.oh.size);
-    $("kpi-dates").textContent = `${number(dates.size)} bookable date${dates.size === 1 ? "" : "s"} represented`;
-    const first = indices.length ? DATA.slots[indices[0]].d : ""; $("kpi-period").textContent = first ? `Earliest: ${longDate(first)}` : "No appointments in period";
   }
   function refresh() { if (state.selected && !slotsByArea[state.granularity].has(state.selected)) state.selected = ""; selectArea(state.selected); }
   function setPressed(prefix, value, choices) { choices.forEach((choice) => $(`${prefix}-${choice}`)?.setAttribute("aria-pressed", String(choice === value))); }
