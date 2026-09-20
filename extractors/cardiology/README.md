@@ -247,6 +247,37 @@ Independent extraction writes raw output under
 `data/cardiology/extractions/<run-id>/<system>`. Use the full refresh command
 for automatic promotion and site rebuilding.
 
+## Questionnaires
+
+Some visit types ask a scheduling questionnaire before Epic will search for
+openings (a search without answers is refused with `LqfAnswersRequired`). The
+walker in `enumerate_paths` answers it the way a patient would, and every
+complete set of answers becomes a flow. Two rules keep that affordable:
+
+- Epic keeps one in-progress answer record per traversal, so a stored answer
+  cannot be branched twice: the first answer to a question continues the same
+  traversal (one request); every other answer replays the path from the root.
+- The walker learns which answers matter. Before anything is walked, a long
+  numeric list (an age picker) is sampled to its middle and last value and a
+  left/right question keeps its first answer. The first time a question is met
+  every answer is walked and each complete path is resolved: which visit type,
+  providers and reason it selects, or that it stops scheduling. From then on,
+  answers whose paths lead to the same searches are asked once and answers that
+  only stop scheduling are skipped. At the 12th, 60th and 250th meeting of a
+  question it is walked in full again; a rule that fails that re-check is
+  withdrawn and everything it skipped is walked after all. Audit rows with
+  status `sampled` record every rule, `rule_conflict` a withdrawn one, and the
+  paging trace gets a `walk` record per learned rule and per 25 paths.
+
+Orlando Health's orthopedics questionnaire is why: 27 to 29 body parts, then
+side, prior surgery, car accident, litigation and insurance questions, for two
+visit types and two sampled ages. Walked in full that is more than 100,000
+requests; with the rules it is about 2,000. Mapped on 2026-09-20: only the body
+part and the age change the providers, while prior surgery, an accident,
+litigation, HMO and Medicaid all stop scheduling. The limit of the approach is
+that a difference which only appears between two re-checks is not seen;
+`walk_check.py` shows both the saving and that limit on a simulated tree.
+
 ## Specialties
 
 The same extractor serves every specialty. `src/shared/specialties.json` names,

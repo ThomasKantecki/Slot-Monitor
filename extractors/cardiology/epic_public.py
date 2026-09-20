@@ -13,7 +13,6 @@ import re
 import time
 import traceback
 from datetime import date
-from collections import deque
 from dataclasses import dataclass
 from http.cookiejar import CookieJar
 from pathlib import Path
@@ -247,33 +246,119 @@ def representative_choices(options: list[str]) -> list[str]:
     return options
 
 
-def enumerate_paths(client: PublicEpicClient, visit: dict[str, Any], workflow: dict[str, Any], max_paths: int, max_depth: int, max_answers: int):
+VERIFY_AT = (12, 60, 250)  # meetings of a question that are walked in full again to re-check its learned rule
+
+
+def enumerate_paths(client: PublicEpicClient, visit: dict[str, Any], workflow: dict[str, Any], max_paths: int, max_depth: int, max_answers: int, resolve=None, note=None):
+    """Walk a visit type's scheduling questionnaire and return every answer path worth searching, plus audit rows
+    about what was sampled instead of walked.
+
+    Epic keeps one in-progress answer record per traversal, so a stored response cannot be branched twice (checked
+    against Orlando Health on 2026-09-20): the first answer to a question continues the traversal in one request,
+    every other answer replays the path from the root. A questionnaire that multiplies a long body-part list by
+    yes/no and insurance questions has thousands of paths, so the walker learns as it goes. `resolve(path)` says
+    where a complete path leads (the openings search it would run, or a scheduling stop). The first time a question
+    is met every answer is walked; answers whose paths lead to the same searches are then asked once from that
+    point on, and answers that only stop scheduling are skipped. At later meetings (VERIFY_AT) the question is
+    walked in full again; a rule that no longer holds is withdrawn and the answers it skipped are walked after all.
+    Without `resolve` nothing is learned and every path is walked. `note(record)` receives progress records."""
     if not visit.get("AnonymousSchedulingDecisionTreeId"):
         return [{"answers": [], "prompts": [], "tree_answer_id": None}], []
-    queue, seen, complete, audit = deque([[]]), set(), [], []
-    while queue and len(complete) < max_paths:
-        path = queue.popleft(); key = tuple(path)
-        if key in seen: continue
-        seen.add(key); response, prompts = replay(client, visit, workflow, path)
+    complete: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    rules: dict[str, dict[str, Any]] = {}  # prompt -> {"classes": {answer: "STOP" or the answer it routes like}, "withdrawn": bool}
+    meetings: dict[str, int] = {}
+    skipped: dict[str, list[tuple[list[str], list[dict[str, Any]], str]]] = {}  # prompt -> answers a rule skipped, in case it is withdrawn
+    capped = [False]
+    noted: set[str] = set()  # prompts whose list sampling was already written to the audit
+    tell = note or (lambda record: None)
+
+    def outcome_of(info: dict[str, Any]) -> str:
+        if resolve is None: return "walked"
+        resolved = resolve(info); info["resolved"] = resolved
+        if len(complete) % 25 == 0: tell({"walk": "progress", "paths": len(complete), "rules": len(rules)})
+        return "STOP" if resolved["stop"] else str(resolved["search_key"])
+
+    def classify(by_answer: dict[str, set[str]]) -> dict[str, str]:
+        """An answer's class is STOP when every path under it stops, else the set of searches under it (a stop that
+        sits next to searches does not matter: it yields no openings). Answers with the same class route alike."""
+        classes: dict[str, str] = {}; representative: dict[str, str] = {}
+        for answer, outcomes in by_answer.items():
+            searches = sorted(outcome for outcome in outcomes if outcome != "STOP")
+            classes[answer] = "STOP" if not searches else representative.setdefault("|".join(searches), answer)
+        return classes
+
+    def same_partition(learned: dict[str, str], found: dict[str, str]) -> bool:
+        answers = [answer for answer in found if answer in learned]
+        return all((learned[a] == "STOP") == (found[a] == "STOP") and (learned[a] == learned[b]) == (found[a] == found[b])
+                   for a in answers for b in answers)
+
+    def describe(prompt: str, classes: dict[str, str], path: list[str]) -> None:
+        stops = [answer for answer, cls in classes.items() if cls == "STOP"]
+        groups: dict[str, list[str]] = {}
+        for answer, cls in classes.items():
+            if cls != "STOP": groups.setdefault(cls, []).append(answer)
+        notes = [f"{stops} only stop scheduling and are skipped from here on"] if stops else []
+        notes += [f"{members} route alike; only {rep!r} is walked from here on" for rep, members in groups.items() if len(members) > 1]
+        if notes: audit.append({"status": "sampled", "answer_path": json.dumps(path), "message": f"{prompt[:70]!r}: " + "; ".join(notes)})
+
+    def walk(path: list[str], prompts: list[dict[str, Any]], response: dict[str, Any]):
+        """Walks everything under one questionnaire node; returns the outcomes found, or None when a cap cut it short."""
         traversal = response.get("TraversalInfo") or {}
         if traversal.get("IsTraversalComplete"):
-            complete.append({"answers": path, "prompts": prompts, "tree_answer_id": traversal.get("TreeAnswerID")}); continue
-        question = ((response.get("NextInputNode") or {}).get("Question") or {})
+            info = {"answers": list(path), "prompts": list(prompts), "tree_answer_id": traversal.get("TreeAnswerID")}
+            complete.append(info); return {outcome_of(info)}
+        question = ((response.get("NextInputNode") or {}).get("Question") or {}); prompt = question.get("Prompt", "")
         if len(path) >= max_depth:
-            audit.append({"status": "excluded", "answer_path": json.dumps(path), "message": f"depth cap {max_depth}"}); continue
+            audit.append({"status": "excluded", "answer_path": json.dumps(path), "message": f"depth cap {max_depth}"}); return None
         options = choices(question)
         if not options:
             answer = fallback_answer(question); options = [answer] if answer else []
         sampled = representative_choices(options)
         if sampled is not options:
-            audit.append({"status": "sampled", "answer_path": json.dumps(path), "message": f"numeric list of {len(options)} answers sampled to {sampled}"})
+            if prompt not in noted:
+                noted.add(prompt); audit.append({"status": "sampled", "answer_path": json.dumps(path), "message": f"{prompt[:70]!r}: list of {len(options)} answers sampled to {sampled}"})
             options = sampled
         if len(options) > max_answers:
-            audit.append({"status": "excluded", "answer_path": json.dumps(path), "message": f"answer cap {max_answers}"})
-        queue.extend(path + [answer] for answer in options[:max_answers])
-    if queue: audit.append({"status": "excluded", "message": f"path cap {max_paths}; {len(queue)} prefixes remained"})
-    return complete, audit
+            audit.append({"status": "excluded", "answer_path": json.dumps(path), "message": f"answer cap {max_answers}"}); options = options[:max_answers]
+        meetings[prompt] = meetings.get(prompt, 0) + 1
+        rule = rules.get(prompt)
+        full = rule is None or rule["withdrawn"] or meetings[prompt] in VERIFY_AT or len(options) < 2
+        chosen = list(options)
+        if not full:
+            chosen, kept = [], set()
+            for answer in options:
+                cls = rule["classes"].get(answer, answer)  # an answer never met before is walked
+                if cls == "STOP" or cls in kept: skipped.setdefault(prompt, []).append((list(path), list(prompts), answer)); continue
+                kept.add(cls); chosen.append(answer)
+        by_answer: dict[str, set[str]] = {}; cut = False
+        for index, answer in enumerate(chosen):
+            if len(complete) >= max_paths: capped[0] = True; cut = True; break
+            step = submit_answer(client, response, answer) if index == 0 else replay(client, visit, workflow, path + [answer])[0]
+            outcomes = walk(path + [answer], prompts + [{"prompt": prompt, "answer": answer}], step)
+            if outcomes is None: cut = True
+            else: by_answer[answer] = outcomes
+        found = set().union(*by_answer.values()) if by_answer else set()
+        if cut or not full or len(by_answer) < 2 or resolve is None: return None if cut else found
+        classes = classify(by_answer)
+        if rule is None:
+            rules[prompt] = {"classes": classes, "withdrawn": False}; describe(prompt, classes, path)
+            tell({"walk": "rule", "prompt": prompt[:70], "classes": classes, "paths": len(complete)})
+        elif not rule["withdrawn"]:
+            if same_partition(rule["classes"], classes):
+                audit.append({"status": "sampled", "answer_path": json.dumps(path), "message": f"{prompt[:70]!r}: rule re-checked at meeting {meetings[prompt]}, still holds"})
+            else:
+                rule["withdrawn"] = True; tell({"walk": "conflict", "prompt": prompt[:70], "paths": len(complete)})
+                audit.append({"status": "rule_conflict", "answer_path": json.dumps(path), "message": f"{prompt[:70]!r} routes differently here than where its rule was learned; the rule is withdrawn and every answer it skipped is walked"})
+                for skipped_path, skipped_prompts, answer in skipped.pop(prompt, []):
+                    if len(complete) >= max_paths: capped[0] = True; break
+                    outcomes = walk(skipped_path + [answer], skipped_prompts + [{"prompt": prompt, "answer": answer}], replay(client, visit, workflow, skipped_path + [answer])[0])
+                    if outcomes: found |= outcomes
+        return found
 
+    walk([], [], start_tree(client, visit, workflow))
+    if capped[0]: audit.append({"status": "excluded", "message": f"path cap {max_paths}; parts of the questionnaire were not walked"})
+    return complete, audit
 
 def evaluate_path(client: PublicEpicClient, workflow: dict[str, Any], visit: dict[str, Any], reason: dict[str, Any], path: dict[str, Any]):
     tree_id = visit.get("AnonymousSchedulingDecisionTreeId")
@@ -285,6 +370,28 @@ def evaluate_path(client: PublicEpicClient, workflow: dict[str, Any], visit: dic
     message = " ".join(re.sub(r"<[^>]+>", " ", str(evaluated.get("Instructions") or "")).split())
     return {"override": override, "evaluated": evaluated, "stop": bool(evaluated.get("StopScheduling")), "message": message}
 
+
+def resolve_path(client: PublicEpicClient, settings, workflow, specialty, detail, visit, reason, path):
+    """Where a complete questionnaire path leads: a scheduling stop, or the visit type, provider pairs and openings
+    search (with its signature) that the path's answers select."""
+    result = evaluate_path(client, workflow, visit, reason, path)
+    resolved: dict[str, Any] = {"stop": bool(result["stop"]), "message": result["message"], "reason_id": item_id(reason), "result": result}
+    if result["stop"]: return resolved
+    evaluated = result.get("evaluated") or {}; active = detail
+    if result.get("override"):
+        active = client.post_json("specialty", {"SpecialtyId": item_id(specialty), "isFirstLoad": "false",
+            "schedulingOverridesString": json.dumps(result["override"], separators=(",", ":"))})
+    active_visit_id = evaluated.get("VisitTypeId") or item_id(visit)
+    active_visit = next((item for item in active.get("VisitTypes", []) if item_id(item) == active_visit_id), visit)
+    pairs = [pair for pair in active.get("ProviderDepartmentPairs", []) if any(info.get("VisitTypeID") == item_id(active_visit) for info in pair.get("VisitTypeInformation", []))]
+    if not pairs: pairs = active.get("ProviderDepartmentPairs", []) or detail.get("ProviderDepartmentPairs", [])
+    selected = set(evaluated.get("ProvidersToSelect") or []) if evaluated.get("ReplacedAllOriginalProviders") else set()
+    if selected: pairs = [pair for pair in pairs if pair.get("ProviderId") in selected]
+    model = build_slot_request(settings, workflow, specialty, reason, active_visit, pairs, result)
+    resolved.update({"active_visit": active_visit, "pairs": pairs, "model": model, "search_key": search_signature(model),
+                     "providers": {item_id(item): item for item in active.get("Providers", [])},
+                     "departments": {item_id(item): item for item in active.get("Departments", [])}})
+    return resolved
 
 def build_slot_request(settings, workflow, specialty, reason, visit, pairs, result):
     override = result.get("override") or {}
@@ -508,10 +615,14 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
             for visit in visits:
                 visit_name = visit.get("DisplayName") or visit.get("Name", "")
                 if only_visits and norm(visit_name) not in only_visits: continue  # a split run: one visit type per process
-                paths, excluded = enumerate_paths(client, visit, workflow, args.max_paths, args.max_depth, args.max_answers)
-                audit.extend({"specialty": specialty.get("Name", ""), "appointment_type": visit_name, **item} for item in excluded)
                 reasons = [reason for reason in detail.get("ReasonsForVisit", []) if reason.get("CanDirectSchedule") is not False]
                 visit_id = item_id(visit); compatible = [reason for reason in reasons if not reason.get("DefaultVisitTypeId") or reason.get("DefaultVisitTypeId") == visit_id or reason.get("VisitTypeId") == visit_id]
+                first_reason = (compatible or reasons or [{}])[0]
+                paths, excluded = enumerate_paths(client, visit, workflow, args.max_paths, args.max_depth, args.max_answers,
+                    resolve=lambda path: resolve_path(client, settings, workflow, specialty, detail, visit, first_reason, path),
+                    note=lambda record: trace(output, {"visit": visit_name, **record}))
+                trace(output, {"visit": visit_name, "walk": "done", "paths": len(paths), "searches": len({p["resolved"]["search_key"] for p in paths if p.get("resolved") and not p["resolved"]["stop"]}), "stops": sum(1 for p in paths if (p.get("resolved") or {}).get("stop"))})
+                audit.extend({"specialty": specialty.get("Name", ""), "appointment_type": visit_name, **item} for item in excluded)
                 only = set(getattr(args, "only_answer_paths", None) or [])
                 for reason in compatible or reasons or [{}]:
                     for path in paths:
@@ -519,24 +630,16 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                         flow_id = hashlib.sha256("\x1f".join(map(str, [site.code, item_id(specialty), item_id(visit), item_id(reason), json.dumps(path["answers"])])).encode()).hexdigest()[:20]
                         if flow_id in done_flows: continue  # finished before the interruption; its rows and audit were kept
                         try:
-                            result = evaluate_path(client, workflow, visit, reason, path)
-                            if result["stop"]:
-                                audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "public_stop", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": result["message"]}); continue
-                            evaluated = result.get("evaluated") or {}; active = detail
-                            if result.get("override"):
-                                active = client.post_json("specialty", {"SpecialtyId": item_id(specialty), "isFirstLoad": "false",
-                                    "schedulingOverridesString": json.dumps(result["override"], separators=(",", ":"))})
-                            active_visit_id = evaluated.get("VisitTypeId") or item_id(visit)
-                            active_visit = next((item for item in active.get("VisitTypes", []) if item_id(item) == active_visit_id), visit)
-                            pairs = [pair for pair in active.get("ProviderDepartmentPairs", []) if any(info.get("VisitTypeID") == item_id(active_visit) for info in pair.get("VisitTypeInformation", []))]
-                            if not pairs: pairs = active.get("ProviderDepartmentPairs", []) or detail.get("ProviderDepartmentPairs", [])
-                            selected = set(evaluated.get("ProvidersToSelect") or []) if evaluated.get("ReplacedAllOriginalProviders") else set()
-                            if selected: pairs = [pair for pair in pairs if pair.get("ProviderId") in selected]
-                            model = build_slot_request(settings, workflow, specialty, reason, active_visit, pairs, result)
-                            providers = {item_id(item): item for item in active.get("Providers", [])}; departments = {item_id(item): item for item in active.get("Departments", [])}
+                            resolved = path.get("resolved") if (path.get("resolved") or {}).get("reason_id") == item_id(reason) else None
+                            if resolved is None: resolved = resolve_path(client, settings, workflow, specialty, detail, visit, reason, path)
+                            result = resolved["result"]
+                            if resolved["stop"]:
+                                audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "public_stop", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": resolved["message"]}); continue
+                            active_visit, pairs, model = resolved["active_visit"], resolved["pairs"], resolved["model"]
+                            providers, departments = resolved["providers"], resolved["departments"]
                             # Questionnaire paths that end in the same visit type, providers, reason and telehealth
                             # mode ask Epic the same question; the answer ids in the request do not change the openings.
-                            search_key = search_signature(model)
+                            search_key = resolved["search_key"]
                             cached = search_cache.get(search_key)
                             if cached:
                                 count = write_part(part_path(output, flow_id), (normalize_slot(slot, site, specialty, active_visit, reason, path["prompts"], providers, departments, load, flow_id) for slot, load in cached["raw"]))
@@ -568,7 +671,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                                 loads = load
                                 if load % CHECKPOINT_PAGES == 0:  # flush this flow's new rows to disk and rebuild the outputs
                                     write_part(part_path(output, flow_id, ".partial"), flow_rows, append=True); flow_rows.clear()
-                                    save(output, audit, system, [])
+                                    save(output, audit, system, [], spec_id)
                                 solutions = data.get("Solutions") or []
                                 signature = hashlib.sha256(json.dumps(solutions, sort_keys=True).encode()).hexdigest()
                                 continuation = data.get("ContinueInfo") or {}
@@ -627,5 +730,5 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
         (output / f"{system}-{spec_id}-error.txt").write_text(traceback.format_exc(), encoding="utf-8"); raise
     finally:
         if current["flow_id"] and current["rows"]: write_part(part_path(output, current["flow_id"], ".partial"), current["rows"], append=True); current["rows"].clear()
-        total_rows = save(output, audit, system, [])
+        total_rows = save(output, audit, system, [], spec_id)
     return {"system": site.code, "rows": total_rows, "auditRows": len(audit), "output": str(output)}

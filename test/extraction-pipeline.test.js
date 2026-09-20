@@ -28,7 +28,7 @@ const { command: PYTHON_COMMAND, prefix: PYTHON_PREFIX } = findPython();
 const python = (args, options) => spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX, ...args], options);
 
 test("Cardiology extraction scripts compile and expose an offline dry run", () => {
-  const scripts = ["epic_public.py", "extract_system.py", "extract_ah.py", "extract_oh.py", "deduplicate.py", "refresh.py"]
+  const scripts = ["epic_public.py", "extract_system.py", "extract_ah.py", "extract_oh.py", "deduplicate.py", "refresh.py", "walk_check.py", "catalog_probe.py"]
     .map((name) => join(ROOT, "extractors", "cardiology", name));
   const source = scripts.map((path) => readFileSync(path, "utf8"));
   source.forEach((code, index) => assert.doesNotThrow(() => {
@@ -50,6 +50,12 @@ test("slot paging survives Epic's empty closing pages, re-served pages and stall
   assert.match(result.stdout, /stall_same_token .* ok/);
   assert.match(result.stdout, /reserve_once .* restarts=  0 ok/);
   assert.match(result.stdout, /search identity ok/);
+});
+
+test("the questionnaire walker finds every search of an exhaustive walk with far fewer requests and withdraws a rule that fails its re-check", () => {
+  const result = python([join(ROOT, "extractors", "cardiology", "walk_check.py")], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /walk check ok/);
 });
 
 test("OH physical deduplication collapses flow overlap without losing counts", () => {
