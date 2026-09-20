@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -17,9 +18,16 @@ def run_id() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds").replace(":", "")
 
 
-def execute(command: list[str], dry_run: bool) -> None:
+# The promote and site-build steps hold every physical slot in memory (about 1 GB of JSON for a full
+# AdventHealth run); Node's default heap is 2 GB on an 8 GB machine, so both get the same 6 GB heap as
+# the AdventHealth import.
+NODE_HEAP = "--max-old-space-size=6144"
+
+
+def execute(command: list[str], dry_run: bool, node_heap: bool = False) -> None:
     print("+ " + subprocess.list2cmdline(command), flush=True)
-    if not dry_run: subprocess.run(command, cwd=REPO, check=True)
+    env = {**os.environ, "NODE_OPTIONS": NODE_HEAP} if node_heap else None
+    if not dry_run: subprocess.run(command, cwd=REPO, check=True, env=env)
 
 
 def main() -> None:
@@ -50,9 +58,9 @@ def main() -> None:
     ah_parts = extraction / "ah" / "parts"
     execute(["node", "--max-old-space-size=6144", "scripts/build-ah-physical-slots.mjs", "--source", str(ah_parts if ah_parts.exists() or args.dry_run else ah_json), "--run-id", args.run_id], args.dry_run)
     execute(["node", "scripts/import-oh-physical-slots.mjs", "--source", str(oh_unique), "--audit", str(oh_audit), "--run-id", args.run_id], args.dry_run)
-    execute(["node", "scripts/build-cardiology-current.mjs"], args.dry_run)
+    execute(["node", NODE_HEAP, "scripts/build-cardiology-current.mjs"], args.dry_run)
     if not args.skip_build:
-        execute([shutil.which("npm") or "npm", "run", "build"], args.dry_run)
+        execute([shutil.which("npm") or "npm", "run", "build"], args.dry_run, node_heap=True)
     if not args.dry_run:
         summary = {"status": "complete", "runId": args.run_id, "extraction": str(extraction),
                    "current": str(REPO / "data" / "cardiology" / "current"), "siteBuilt": not args.skip_build}

@@ -3,23 +3,23 @@
   "scope": "Florida Cardiology public appointment availability",
   "rule": "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
   "ah": {
-    "runId": "2026-09-15T103541-0400",
-    "source": "data/cardiology/runs/2026-09-15T103541-0400/ah/ah-cardiology-physical-slots.json",
-    "physicalSlots": 652873,
-    "nonPhysicianSlots": 305773,
-    "telemedicineOnlySlots": 1600,
-    "newPatientSlots": 314056,
+    "runId": "2026-09-19T201848-0400",
+    "source": "data/cardiology/runs/2026-09-19T201848-0400/ah/ah-cardiology-physical-slots.json",
+    "physicalSlots": 662942,
+    "nonPhysicianSlots": 307121,
+    "telemedicineOnlySlots": 1613,
+    "newPatientSlots": 325006,
     "bookingCategoriesRetained": true
   },
   "oh": {
-    "runId": "2026-09-18T101159-0400",
-    "source": "data/cardiology/runs/2026-09-18T101159-0400/oh/source-oh-unique-physical-slots.csv",
-    "physicalSlots": 63612,
+    "runId": "2026-09-19T201848-0400",
+    "source": "data/cardiology/runs/2026-09-19T201848-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 63469,
     "nonPhysicianSlots": 0,
     "telemedicineOnlySlots": 0,
-    "newPatientSlots": 63612,
+    "newPatientSlots": 48797,
     "bookingCategoriesRetained": false
   },
-  "totalPhysicalSlots": 716485,
-  "generatedAt": "2026-09-18T21:01:14.624Z"
+  "totalPhysicalSlots": 726411,
+  "generatedAt": "2026-09-20T10:59:51.644Z"
 }
