@@ -7,11 +7,11 @@ __pycache__/
 data/raw/*
 !data/raw/ah-directory-scrape.json
 !data/raw/oh-directory.json
-data/cardiology/extractions/
-data/cardiology/runs/
+data/*/extractions/
+data/*/runs/
 node_modules/
 # full-run slot exports and the local slot model are far over GitHub's file limits; the built pages and
 # public/data/cardiology (summary + per-day files) carry the data
-data/cardiology/current/cardiology-physical-slots.json
-data/cardiology/current/cardiology-physical-slots.csv
-data/cardiology/current/slot-times-model.json
+data/*/current/*-physical-slots.json
+data/*/current/*-physical-slots.csv
+data/*/current/slot-times-model.json

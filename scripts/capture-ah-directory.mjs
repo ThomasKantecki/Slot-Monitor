@@ -2,8 +2,15 @@
 // server-rendered directory. The listing cards already contain each provider's
 // profile photo and every published practice location, so profile pages are not
 // needed. No third-party packages are required.
+//
+// www.adventhealth.com sits behind Akamai and, since September 2026, answers this
+// script's direct fetches with 403. The working route is to run the same parser
+// inside a signed-in browser tab (paste `parseListingPage` and `mergeRecords`,
+// fetch the listing pages in-page, save the result as JSON) and then import that
+// file here with `node scripts/capture-ah-directory.mjs --import <file>`, which
+// applies the same completeness guards and writes the capture in the same shape.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -123,7 +130,7 @@ async function fetchPage(page, attempts = 4) {
 }
 
 const locationKey = (l) => [l.locName, l.street, l.city, l.state, l.zip].map((v) => String(v ?? "").toLowerCase()).join("|");
-function mergeRecords(rows) {
+export function mergeRecords(rows) {
   const byNpi = new Map();
   for (const row of rows) {
     const previous = byNpi.get(row.npi);
@@ -168,13 +175,38 @@ export async function capture({ onProgress = () => {} } = {}) {
   };
 }
 
+// The completeness guards every capture must pass before it replaces the committed file.
+export function validateCapture(result) {
+  const records = result?.records ?? [];
+  if (result?.scope !== "adventhealth-medical-group") throw new Error(`capture scope must be adventhealth-medical-group, got ${result?.scope}`);
+  if (!records.length || records.length < result.listedTotal * 0.98)
+    throw new Error(`capture looks incomplete: ${records.length} unique records from ${result.listedTotal} listed results`);
+  const located = records.filter((r) => r.locations.length).length;
+  if (located < records.length * 0.9)
+    throw new Error(`capture looks incomplete: only ${located} of ${records.length} records have a location`);
+  return { records: records.length, located };
+}
+
+// A capture made in a browser tab: the same record shape, merged and re-stamped here.
+export function importCapture(path) {
+  const raw = JSON.parse(readFileSync(path, "utf8"));
+  const records = mergeRecords((raw.records ?? []).filter((row) => /^\d{10}$/.test(String(row.npi ?? ""))));
+  return {
+    fetchedAt: raw.fetchedAt || new Date().toISOString(),
+    source: SOURCE,
+    scope: raw.scope ?? "adventhealth-medical-group",
+    listedTotal: Number(raw.listedTotal) || records.length,
+    pages: Number(raw.pages) || 0,
+    records,
+  };
+}
+
 async function main() {
-  const result = await capture({ onProgress: ({ done, pages }) => process.stdout.write(`  pages ${done}/${pages}\r`) });
-  if (result.records.length < result.listedTotal * 0.98)
-    throw new Error(`capture looks incomplete: ${result.records.length} unique records from ${result.listedTotal} listed results`);
-  const located = result.records.filter((r) => r.locations.length).length;
-  if (located < result.records.length * 0.9)
-    throw new Error(`capture looks incomplete: only ${located} of ${result.records.length} records have a location`);
+  const importIndex = process.argv.indexOf("--import");
+  const result = importIndex > 0
+    ? importCapture(process.argv[importIndex + 1])
+    : await capture({ onProgress: ({ done, pages }) => process.stdout.write(`  pages ${done}/${pages}\r`) });
+  validateCapture(result);
   mkdirSync(dirname(OUTPUT), { recursive: true });
   writeFileSync(OUTPUT, JSON.stringify(result));
   const photos = result.records.filter((r) => r.photo).length;

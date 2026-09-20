@@ -1,10 +1,12 @@
 // Refresh step 2 (AdventHealth): turns the raw slot rows the scraper wrote (one row per visit type) into physical slots,
-// one per provider + location + time, and stores them with their audit under data/cardiology/runs/<run-id>/ah. Called by extractors/cardiology/refresh.py.
+// one per provider + location + time, and stores them with their audit under data/<specialty>/runs/<run-id>/ah (`--specialty <id>`,
+// cardiology when absent). Called by extractors/cardiology/refresh.py.
 import { createHash } from "node:crypto";
 import { copyFileSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 
 const TYPE_ORDER = [
   "New Patient",
@@ -129,18 +131,19 @@ function writeStreamed(path, write) {
 async function main() {
   const source = argument("--source");
   const runId = argument("--run-id");
-  if (!source || !runId) throw new Error("Usage: node scripts/build-ah-physical-slots.mjs --source <slots.json | slots.jsonl | parts dir> --run-id <run-id>");
+  if (!source || !runId) throw new Error("Usage: node scripts/build-ah-physical-slots.mjs --source <slots.json | slots.jsonl | parts dir> --run-id <run-id> [--specialty <id>]");
 
+  const specialty = specialtyFromArgv();
   const sourcePath = resolve(source);
-  const runPath = join(process.cwd(), "data", "cardiology", "runs", runId, "ah");
+  const runPath = join(process.cwd(), specialtyPaths(specialty).runs, runId, "ah");
   if (!existsSync(sourcePath)) throw new Error(`Source does not exist: ${sourcePath}`);
   if (existsSync(runPath)) throw new Error(`Run path already exists: ${runPath}`);
 
   const accumulator = createAccumulator();
   const read = await readSource(sourcePath, accumulator);
   const physicalSlots = accumulator.finish();
-  const outputJson = join(runPath, "ah-cardiology-physical-slots.json");
-  const outputCsv = join(runPath, "ah-cardiology-physical-slots.csv");
+  const outputJson = join(runPath, `ah-${specialty.id}-physical-slots.json`);
+  const outputCsv = join(runPath, `ah-${specialty.id}-physical-slots.csv`);
   const headers = [
     "physical_slot_id", ...PHYSICAL_FIELDS, "appointment_types", "appointment_type_count", "duration_minutes", "booking_options_json",
   ];
@@ -163,7 +166,7 @@ async function main() {
     source: { originalPath: relative(process.cwd(), sourcePath).replaceAll("\\", "/"), files: read.files, sha256: read.sha256, rows: read.rows, streamed },
     physicalSlots: physicalSlots.length,
     overlapRowsCollapsed: read.rows - physicalSlots.length,
-    outputs: [...(streamed ? [] : ["source-ah-slots.json"]), "ah-cardiology-physical-slots.json", "ah-cardiology-physical-slots.csv"],
+    outputs: [...(streamed ? [] : ["source-ah-slots.json"]), `ah-${specialty.id}-physical-slots.json`, `ah-${specialty.id}-physical-slots.csv`],
     importedAt: new Date().toISOString(),
   }, null, 2)}\n`);
   console.log(`Imported ${read.rows.toLocaleString()} AH rows into ${physicalSlots.length.toLocaleString()} physical slots.`);

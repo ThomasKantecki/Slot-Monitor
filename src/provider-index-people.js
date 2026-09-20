@@ -9,11 +9,13 @@ import { nameKeys } from "./shared/dataset-facts.js";
 // Adult cardiology labels the page counts together. Pediatric cardiology and
 // cardiac surgery keep their own labels and stay off the page.
 export const ADULT_CARDIOLOGY = new Set(["Cardiology", "Cardiology - Interventional", "Cardiology - Electrophysiology", "Cardiology - Advanced Heart Failure"]);
+// A roster group as src/shared/specialties.json declares it: the directory labels counted together under `group`.
+export const CARDIOLOGY_GROUP = { group: "Cardiology", members: [...ADULT_CARDIOLOGY] };
 
-const SOURCE = {
-  all: "Each system's own published provider directory, plus clinicians who book Cardiology visits in MyChart but have no directory profile, placed at the clinics where they take appointments. Statewide totals are distinct people; ZIP and county footprints include every published Florida practice location. Hospital-based and support staff are excluded.",
-  primary: "Each system's own published provider directory, plus clinicians who book Cardiology visits in MyChart but have no directory profile, placed at the clinics where they take appointments. Statewide totals are distinct people; ZIP and county footprints use one primary or first-published Florida practice location. Hospital-based and support staff are excluded.",
-};
+const SOURCE = (group) => ({
+  all: `Each system's own published provider directory, plus clinicians who book ${group} visits in MyChart but have no directory profile, placed at the clinics where they take appointments. Statewide totals are distinct people; ZIP and county footprints include every published Florida practice location. Hospital-based and support staff are excluded.`,
+  primary: `Each system's own published provider directory, plus clinicians who book ${group} visits in MyChart but have no directory profile, placed at the clinics where they take appointments. Statewide totals are distinct people; ZIP and county footprints use one primary or first-published Florida practice location. Hospital-based and support staff are excluded.`,
+});
 const officeKey = (l) => `${l.z ?? l.zip ?? ""}|${String(l.a ?? l.addr ?? "").toLowerCase()}|${String(l.c ?? l.city ?? "").toLowerCase()}|${String(l.n ?? l.name ?? "").toLowerCase()}`;
 
 // One person per system and id from the ZIP rosters the pipeline wrote, with
@@ -37,13 +39,14 @@ export function peopleFromRoster(rosterAll, rosterPrimary = {}) {
   });
 }
 
-export function regroupSpecialties(people) {
-  return people.map((p) => (ADULT_CARDIOLOGY.has(p.specialty) && p.specialty !== "Cardiology" ? { ...p, specialty: "Cardiology", label: p.specialty } : p));
+export function regroupSpecialties(people, group = CARDIOLOGY_GROUP) {
+  const members = new Set(group.members);
+  return people.map((p) => (members.has(p.specialty) && p.specialty !== group.group ? { ...p, specialty: group.group, label: p.specialty } : p));
 }
 
 // Clinicians with bookable Cardiology slots who match no directory person by
 // name, placed at the clinics where they take appointments; busiest is primary.
-export function schedulingClinicians(people, slotModel, zipCounty = {}) {
+export function schedulingClinicians(people, slotModel, zipCounty = {}, group = CARDIOLOGY_GROUP) {
   const known = { ah: new Set(), oh: new Set() };
   for (const p of people) for (const k of nameKeys(p.name)) known[p.sys]?.add(k);
   const slotsByProvider = new Map();
@@ -65,15 +68,15 @@ export function schedulingClinicians(people, slotModel, zipCounty = {}) {
     if (!clinics.length) return;
     const [name, ...credParts] = String(provider.n).split(",");
     const cred = credParts.map((part) => part.trim()).filter(Boolean).join(", ") || fallbackCred[provider.c];
-    added.push({ sys: provider.y, npi: provider.i ? String(provider.i) : `mychart:${name.trim().toLowerCase()}`, name: name.trim(), cred, specialty: "Cardiology", photo: "", profile: "", src: "mychart",
+    added.push({ sys: provider.y, npi: provider.i ? String(provider.i) : `mychart:${name.trim().toLowerCase()}`, name: name.trim(), cred, specialty: group.group, photo: "", profile: "", src: "mychart",
       locations: clinics.map(({ facility }, i) => ({ name: facility.n, addr: facility.a, city: facility.c, zip: facility.z, primary: i === 0 })) });
   });
   return added;
 }
 
-export function buildProviderIndex({ rosterAll, rosterPrimary, slotModel, zipCounty, generatedAt }) {
-  const directory = regroupSpecialties(peopleFromRoster(rosterAll, rosterPrimary));
-  const scheduling = schedulingClinicians(directory, slotModel, zipCounty);
+export function buildProviderIndex({ rosterAll, rosterPrimary, slotModel, zipCounty, generatedAt, group = CARDIOLOGY_GROUP }) {
+  const directory = regroupSpecialties(peopleFromRoster(rosterAll, rosterPrimary), group);
+  const scheduling = schedulingClinicians(directory, slotModel, zipCounty, group);
   const people = [...directory, ...scheduling];
   const rosters = (mode) => {
     const split = { ah: [], oh: [] };
@@ -81,7 +84,7 @@ export function buildProviderIndex({ rosterAll, rosterPrimary, slotModel, zipCou
     return split;
   };
   const build = (mode) => {
-    const out = aggregate({ rosters: rosters(mode), zipCounty, locationMode: mode, source: SOURCE[mode] });
+    const out = aggregate({ rosters: rosters(mode), zipCounty, locationMode: mode, source: SOURCE(group.group)[mode] });
     if (generatedAt) { out.byZip.generatedAt = generatedAt; out.byCounty.generatedAt = generatedAt; }
     return out;
   };

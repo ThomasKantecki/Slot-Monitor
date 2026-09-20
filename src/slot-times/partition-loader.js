@@ -1,4 +1,4 @@
-// window.SLOT_PARTITIONS.load(from, through): fetches the per-day slot files under data/cardiology/slots for a date range
+// window.SLOT_PARTITIONS.load(from, through): fetches the per-day slot files under __SLOT_BASE__ for a date range
 // (cached per day) and puts them in window.SLOT_DATA.slots. Both slot pages call this instead of embedding every slot.
 (() => {
   const data = window.SLOT_DATA;
@@ -19,7 +19,7 @@
 
   async function readDate(date) {
     if (!cached.has(date)) {
-      cached.set(date, fetch(`data/cardiology/slots/${date}.json`).then(async (response) => {
+      cached.set(date, fetch(`__SLOT_BASE__/${date}.json`).then(async (response) => {
         if (!response.ok) throw new Error(`Could not load appointment data for ${date} (${response.status}).`);
         const payload = await response.json();
         return payload.slots || [];

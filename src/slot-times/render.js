@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../shared/suite-navigation.js";
 import { slotDataChecks } from "../shared/dataset-facts.js";
+import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "../shared/specialties.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const W = 1000, H = 940, PAD = 12;
@@ -40,9 +41,10 @@ export function escapeScriptJson(value) {
   return JSON.stringify(value).replaceAll("<", "\\u003c").replaceAll(String.fromCharCode(0x2028), "\\u2028").replaceAll(String.fromCharCode(0x2029), "\\u2029");
 }
 
-export function renderSlotTimes() {
-  // The page embeds the published summary; the slots themselves load by date from public/data/cardiology/slots.
-  const data = readJson("public/data/cardiology/slot-times-summary.json");
+export function renderSlotTimes(specialtyId = "cardiology") {
+  const specialty = specialtyOf(specialtyId), sp = specialtyPaths(specialty), copy = copyOf(specialty);
+  // The page embeds the published summary; the slots themselves load by date from public/data/<specialty>/slots.
+  const data = readJson(sp.summary);
   data.zipCounty = readJson("data/zip-county.json");
   const centroidSource = read("data/geography/florida-zip-centroids.js").trim();
   const centroidPrefix = "window.FLORIDA_ZIP_CENTROIDS=";
@@ -68,7 +70,9 @@ export function renderSlotTimes() {
     .replace("__FONTS__", optional("data/fonts.css"))
     .replace("__LOGO_VARS__", logoVars)
     .replace("__STYLES__", read("src/slot-times/styles.css"))
-    .replace("__BRAND__", suiteTitle("slot-times"))
+    .replace("__TITLE__", () => `${specialty.label} Slot Availability`)
+    .replace("__NEW_PATIENT_TIP__", () => copy.newPatientTip)
+    .replace("__BRAND__", suiteTitle("slot-times", specialty.id))
     .replace("__NAV__", suiteNavigation("slot-times"))
     .replace("__NAV_STYLES__", SUITE_NAV_STYLES)
     .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", slotDataChecks(data, data.zipCounty)))
@@ -78,14 +82,17 @@ export function renderSlotTimes() {
     .replace("__SLOT_OUTLINE__", escapeScriptJson(outlinePath))
     .replace("__DATE_CLIENT__", read("src/shared/date.js"))
     .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
-    .replace("__PARTITION_LOADER__", read("src/slot-times/partition-loader.js"))
+    .replace("__PARTITION_LOADER__", () => read("src/slot-times/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
     .replace("__MOTION_CLIENT__", read("src/shared/map-motion.js"))
     .replace("__CLIENT__", read("src/slot-times/client.js"));
 }
 
-export function writeSlotTimes() {
-  const html = renderSlotTimes(); const output = join(ROOT, "public"); mkdirSync(output, { recursive: true });
+export function writeSlotTimes(specialtyId = "cardiology") {
+  const specialty = specialtyOf(specialtyId);
+  const html = renderSlotTimes(specialty.id); const output = join(ROOT, specialtyPaths(specialty).pages); mkdirSync(output, { recursive: true });
   writeFileSync(join(output, "index.html"), html);
+  if (specialty.folder) return { bytes: html.length };
+  // the root pages: the old slot-times.html address and the repository-root launcher forward to Cardiology
   // slot-times.html was the page's earlier address; it now forwards to index.html instead of duplicating 1.7 MB
   writeFileSync(join(output, "slot-times.html"), '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./index.html"><title>Cardiology Slot Availability</title><script>location.replace("./index.html" + location.search + location.hash)</script></head><body><p><a href="./index.html">Open Cardiology Slot Availability</a></p></body></html>\n');
   writeFileSync(join(ROOT, "index.html"), ROOT_LANDING);
@@ -107,7 +114,7 @@ const ROOT_LANDING = String.raw`<!doctype html>
 </html>
 `;
 
-const PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cardiology Slot Availability</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>__FONTS__
+const PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>__TITLE__</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>__FONTS__
 __LOGO_VARS__
 __STYLES__
 __NAV_STYLES__</style></head><body>
@@ -115,7 +122,7 @@ __NAV_STYLES__</style></head><body>
 <main class="page">
 <section class="toolbar slot-toolbar" aria-label="Slot availability filters">
  <fieldset class="filter-group geography-group"><legend>Geography</legend><div class="filter-group-body"><div class="control-row"><div class="control-group" role="group" aria-label="Area type"><button id="gran-zip" class="toggle" aria-pressed="true">ZIP codes</button><button id="gran-county" class="toggle" aria-pressed="false">Counties</button></div><div class="control-group area-find"><input id="area-search" class="field search" list="area-options" autocomplete="off" aria-label="Find area"><datalist id="area-options"></datalist><button id="clear-area" class="plain" type="button" disabled>Clear</button></div></div><div class="control-row"><div class="control-group" role="group" aria-label="Radius center"><input id="origin-zip" class="field zip-field" list="origin-options" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="Center ZIP" aria-label="Center ZIP"><datalist id="origin-options"></datalist><button id="apply-radius" class="plain" type="button">Apply</button><button id="clear-radius" class="plain" type="button">All FL</button></div><div class="control-group radius-control"><input id="radius" type="range" min="5" max="250" step="5" value="140" aria-label="Distance in miles"><output id="radius-value" for="radius">140 miles</output></div></div><span id="radius-status" class="scope-status" role="status" hidden></span></div></fieldset>
- <fieldset class="filter-group comparison-group"><legend>Comparison</legend><div class="filter-group-body"><div class="filter-pairs"><div class="control-group view-group" role="group" aria-label="Health system view"><button id="view-diff" class="toggle" aria-pressed="true">AdventHealth + Orlando Health</button><button id="view-ah" class="toggle logo-toggle system-ah" aria-pressed="false" aria-label="AdventHealth" title="AdventHealth"><span class="comparison-logo ah" aria-hidden="true"></span></button><button id="view-oh" class="toggle logo-toggle system-oh" aria-pressed="false" aria-label="Orlando Health" title="Orlando Health"><span class="comparison-logo oh" aria-hidden="true"></span></button></div><div class="filter-row"><div class="control-group" role="group" aria-label="Visit type"><button id="vt-all" class="toggle" aria-pressed="true">All patients</button><span class="toggle-help"><button id="vt-new" class="toggle" aria-pressed="false">New patients</button><span class="location-help"><button id="vt-new-info" class="location-info" type="button" aria-label="About New patients" aria-describedby="vt-new-tip">i</button><span id="vt-new-tip" class="location-tip" role="tooltip">Keeps only the visit types a new patient can book: New Patient and New Cardiology Patient visits, and ED follow-up visits for new patients. Both systems also publish visits for existing patients, so use this to compare new-patient access.</span></span></span></div><div class="control-group" role="group" aria-label="Clinicians"><button id="clin-all" class="toggle" aria-pressed="true">All clinicians</button><span class="toggle-help"><button id="clin-phys" class="toggle" aria-pressed="false">Physicians</button><span class="location-help"><button id="clin-phys-info" class="location-info" type="button" aria-label="About Physicians" aria-describedby="clin-phys-tip">i</button><span id="clin-phys-tip" class="location-tip" role="tooltip">Counts only MD and DO schedules. AdventHealth also lets patients book nurse practitioners, physician assistants and nurse visits online; Orlando Health publishes physicians only. This makes the two sides like for like.</span></span></span></div><div class="control-group" role="group" aria-label="Telemedicine"><button id="tele-show" class="toggle" aria-pressed="true">All visits</button><span class="toggle-help"><button id="tele-hide" class="toggle" aria-pressed="false">In person</button><span class="location-help"><button id="tele-hide-info" class="location-info" type="button" aria-label="About In person" aria-describedby="tele-hide-tip">i</button><span id="tele-hide-tip" class="location-tip" role="tooltip">Leaves out slots that can only be booked as a video visit. AdventHealth offers video visits online; Orlando Health does not, so this compares office visits with office visits.</span></span></span></div></div></div></div></fieldset>
+ <fieldset class="filter-group comparison-group"><legend>Comparison</legend><div class="filter-group-body"><div class="filter-pairs"><div class="control-group view-group" role="group" aria-label="Health system view"><button id="view-diff" class="toggle" aria-pressed="true">AdventHealth + Orlando Health</button><button id="view-ah" class="toggle logo-toggle system-ah" aria-pressed="false" aria-label="AdventHealth" title="AdventHealth"><span class="comparison-logo ah" aria-hidden="true"></span></button><button id="view-oh" class="toggle logo-toggle system-oh" aria-pressed="false" aria-label="Orlando Health" title="Orlando Health"><span class="comparison-logo oh" aria-hidden="true"></span></button></div><div class="filter-row"><div class="control-group" role="group" aria-label="Visit type"><button id="vt-all" class="toggle" aria-pressed="true">All patients</button><span class="toggle-help"><button id="vt-new" class="toggle" aria-pressed="false">New patients</button><span class="location-help"><button id="vt-new-info" class="location-info" type="button" aria-label="About New patients" aria-describedby="vt-new-tip">i</button><span id="vt-new-tip" class="location-tip" role="tooltip">__NEW_PATIENT_TIP__</span></span></span></div><div class="control-group" role="group" aria-label="Clinicians"><button id="clin-all" class="toggle" aria-pressed="true">All clinicians</button><span class="toggle-help"><button id="clin-phys" class="toggle" aria-pressed="false">Physicians</button><span class="location-help"><button id="clin-phys-info" class="location-info" type="button" aria-label="About Physicians" aria-describedby="clin-phys-tip">i</button><span id="clin-phys-tip" class="location-tip" role="tooltip">Counts only MD and DO schedules. AdventHealth also lets patients book nurse practitioners, physician assistants and nurse visits online; Orlando Health publishes physicians only. This makes the two sides like for like.</span></span></span></div><div class="control-group" role="group" aria-label="Telemedicine"><button id="tele-show" class="toggle" aria-pressed="true">All visits</button><span class="toggle-help"><button id="tele-hide" class="toggle" aria-pressed="false">In person</button><span class="location-help"><button id="tele-hide-info" class="location-info" type="button" aria-label="About In person" aria-describedby="tele-hide-tip">i</button><span id="tele-hide-tip" class="location-tip" role="tooltip">Leaves out slots that can only be booked as a video visit. AdventHealth offers video visits online; Orlando Health does not, so this compares office visits with office visits.</span></span></span></div></div></div></div></fieldset>
  <fieldset class="filter-group period-group"><legend>Period</legend><div class="filter-group-body"><div class="control-group date-range"><input id="from-date" class="field" type="date" aria-label="From date"><span class="range-sep" aria-hidden="true">–</span><input id="through-date" class="field" type="date" aria-label="Through date"></div><div class="control-group"><select id="period-preset" class="field period-preset" aria-label="Quick period"><option value="all">Full window</option><option value="7">Next 7 days</option><option value="14">Next 14 days</option><option value="30">Next 30 days</option><option value="60">Next 60 days</option><option value="90">Next 90 days</option><option value="custom" hidden>Custom dates</option></select><button id="reset" class="plain" type="button">Reset all</button></div></div></fieldset>
 </section>
 <section class="workspace"><article class="panel map-panel"><div class="band"><h2 id="map-title">Physical appointments per ZIP code</h2><span id="map-meta" class="band-meta"></span></div><div class="map-wrap"><svg id="map" viewBox="0 0 1000 940" role="img" aria-label="Florida physical appointment availability map"><defs><pattern id="tie-pattern" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="#1a75aa"></rect><rect x="5" width="5" height="10" fill="#b20838"></rect></pattern></defs><g id="map-vp"></g></svg><canvas id="map-raster" width="1000" height="940" aria-hidden="true"></canvas><div class="legend"><div class="legend-row"><span class="swatch ah"></span>More AdventHealth</div><div class="legend-row"><span class="swatch tie"></span>Equal</div><div class="legend-row"><span class="swatch oh"></span>More Orlando Health</div></div><div class="zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset map">↻</button></div></div></article>
@@ -131,5 +138,8 @@ __MOTION_CLIENT__
 __CLIENT__
 __INFO_SCRIPT__</script></body></html>`;
 
-function main() { const result = writeSlotTimes(); console.log(`wrote index.html + public/index.html (+ slot-times.html redirect) — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }
+function main() {
+  const specialty = specialtyFromArgv(); const result = writeSlotTimes(specialty.id);
+  console.log(specialty.folder ? `wrote ${specialtyPaths(specialty).pages}index.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard` : `wrote index.html + public/index.html (+ slot-times.html redirect) — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`);
+}
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

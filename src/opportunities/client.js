@@ -86,7 +86,7 @@
       $("radius-ring").setAttribute("cx", origin.x); $("radius-ring").setAttribute("cy", origin.y); $("radius-ring").setAttribute("r", (state.radius * origin.m).toFixed(1));
       placeRadiusControls(origin);
     }
-    $("map-title").textContent = state.radiusActive ? `Markets within ${state.radius} miles of ${state.originZip}` : state.county ? `Markets in ${state.county} County` : "Cardiology markets across Florida";
+    $("map-title").textContent = state.radiusActive ? `Markets within ${state.radius} miles of ${state.originZip}` : state.county ? `Markets in ${state.county} County` : "__LABEL__ markets across Florida";
     $("map-meta").textContent = `${state.marketMiles}-mile markets · ${longDate(state.from)} – ${longDate(state.through)}`;
     renderMapMarkers();
     motion.queue();

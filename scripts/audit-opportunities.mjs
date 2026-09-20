@@ -1,10 +1,11 @@
 // Sanity check for the Market Opportunities numbers: the per-ZIP rows must add up to the slot total, then prints the top markets. `npm run audit:opportunities`.
 import { readFileSync } from "node:fs";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 import { buildOpportunityRows } from "../src/opportunities/scoring.js";
 import "../src/slot-times/radius.js";
 import "../src/shared/date.js";
 
-const model = JSON.parse(readFileSync("data/cardiology/current/slot-times-model.json", "utf8"));
+const model = JSON.parse(readFileSync(specialtyPaths(specialtyFromArgv()).model, "utf8"));
 const source = readFileSync("data/geography/florida-zip-centroids.js", "utf8").trim();
 model.origins = JSON.parse(source.replace(/^window\.FLORIDA_ZIP_CENTROIDS=/, "").replace(/;$/, "")).map((row) => ({ z: row.zip, a: row.latitude, o: row.longitude }));
 const through = model.commonMaxDate || model.maxDate;

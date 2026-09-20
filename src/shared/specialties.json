@@ -1,0 +1,29 @@
+[
+  {
+    "id": "cardiology",
+    "label": "Cardiology",
+    "folder": "",
+    "emblem": "heart",
+    "catalog": { "ah": ["Cardiology"], "oh": ["Cardiology"] },
+    "roster": {
+      "group": "Cardiology",
+      "members": ["Cardiology", "Cardiology - Interventional", "Cardiology - Electrophysiology", "Cardiology - Advanced Heart Failure"]
+    }
+  },
+  {
+    "id": "orthopedics",
+    "label": "Orthopedics",
+    "folder": "orthopedics/",
+    "emblem": "bone",
+    "catalog": { "ah": [], "oh": [] },
+    "roster": {
+      "group": "Orthopedics",
+      "members": [
+        "Orthopedics", "Orthopedics - Sports Medicine", "Orthopedics - Concussion", "Orthopedics - Electrodiagnostic Medicine",
+        "Orthopedic Surgery", "Orthopedic Surgery - Spine", "Orthopedic Surgery - Hand and Wrist", "Orthopedic Surgery - Foot and Ankle",
+        "Orthopedic Surgery - Knee", "Orthopedic Surgery - Hip", "Orthopedic Surgery - Shoulder", "Orthopedic Surgery - Elbow",
+        "Orthopedic Surgery - Trauma and Fractures"
+      ]
+    }
+  }
+]

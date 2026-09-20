@@ -76,7 +76,7 @@ test("OH physical deduplication collapses flow overlap without losing counts", (
 });
 
 test("current snapshot builder selects latest system files instead of pinned run IDs", () => {
-  const source = readFileSync(new URL("../scripts/build-cardiology-current.mjs", import.meta.url), "utf8");
+  const source = readFileSync(new URL("../scripts/build-specialty-current.mjs", import.meta.url), "utf8");
   assert.match(source, /latestSystemFile\("ah"/);
   assert.match(source, /latestSystemFile\("oh"/);
   assert.doesNotMatch(source, /2026-09-01T110649|2026-09-01T125802/);

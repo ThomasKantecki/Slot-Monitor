@@ -1,17 +1,21 @@
-// Build step: writes public/data/cardiology (the summary the pages embed and one slot file per day). `npm run build` runs it after build-slot-times-data.
+// Build step: writes public/data/<specialty> (the summary the pages embed and one slot file per day). `npm run build` runs it after
+// build-slot-times-data, once per specialty (`--specialty <id>`, cardiology when absent).
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 
 // Publishes the slot model the way the pages load it: a compact summary (the model without its slots and area
-// aggregates) plus one static file per bookable date under public/data/cardiology/slots. The pages fetch only the
+// aggregates) plus one static file per bookable date under public/data/<specialty>/slots. The pages fetch only the
 // dates in the selected period, so no page has to embed 700k slots. A checkout without the deep model keeps the
 // committed partitions.
-const MODEL = "data/cardiology/current/slot-times-model.json";
-const PUBLIC = join("public", "data", "cardiology");
-const SLOTS = join(PUBLIC, "slots");
+const SPECIALTY = specialtyFromArgv();
+const PATHS = specialtyPaths(SPECIALTY);
+const MODEL = PATHS.model;
+const PUBLIC = PATHS.publicData;
+const SLOTS = PATHS.slots;
 
 if (!existsSync(MODEL)) {
-  if (!existsSync(join(PUBLIC, "slot-times-summary.json"))) throw new Error("no slot-times-model.json and no published partitions: run the cardiology refresh first");
+  if (!existsSync(join(PUBLIC, "slot-times-summary.json"))) throw new Error(`no slot-times-model.json and no published partitions for ${SPECIALTY.id}: run its refresh first`);
   console.log("slot-times-model.json is not present; keeping the published date partitions");
   process.exit(0);
 }
@@ -30,4 +34,4 @@ for (const stale of readdirSync(SLOTS)) if (stale.endsWith(".json") && !byDate.h
 let bytes = 0;
 for (const date of dates) { const text = `${JSON.stringify({ date, slots: byDate.get(date) })}\n`; bytes += text.length; writeFileSync(join(SLOTS, `${date}.json`), text); }
 writeFileSync(join(PUBLIC, "slot-times-summary.json"), `${JSON.stringify(summary)}\n`);
-console.log(`wrote public/data/cardiology/slot-times-summary.json and ${dates.length} date partitions (${dates[0]} to ${dates[dates.length - 1]}, ${(bytes / 1e6).toFixed(1)} MB, ${model.slots.length.toLocaleString()} slots)`);
+console.log(`wrote ${PATHS.summary} and ${dates.length} date partitions (${dates[0]} to ${dates[dates.length - 1]}, ${(bytes / 1e6).toFixed(1)} MB, ${model.slots.length.toLocaleString()} slots)`);

@@ -46,7 +46,22 @@ SITES = {
     "ah": Site("AH", "AdventHealth", "https://mychart.adventhealth.com", "/mychartprd"),
     "oh": Site("OH", "Orlando Health", "https://mychart.orlandohealth.com", "/MyChart"),
 }
-SPECIALTY = "Cardiology"
+# The anonymous catalog names each extraction pulls come from src/shared/specialties.json (one list shared
+# with the Node scripts): a specialty maps to one or more catalog entry names per system.
+REGISTRY = Path(__file__).resolve().parents[2] / "src" / "shared" / "specialties.json"
+
+
+def load_specialty(spec_id: str) -> dict[str, Any]:
+    entries = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    for entry in entries:
+        if entry.get("id") == spec_id: return entry
+    raise RuntimeError(f"Unknown specialty {spec_id!r}; src/shared/specialties.json lists: {', '.join(e.get('id', '?') for e in entries)}")
+
+
+def select_catalog_entries(catalog: dict[str, Any], names: list[str]) -> list[dict[str, Any]]:
+    """The catalog specialties whose display name is one of `names` (case and whitespace do not matter)."""
+    wanted = {norm(name) for name in names}
+    return [item for item in catalog.get("Specialties", []) if norm(item.get("Name")) in wanted]
 SLOT_FIELDS = [
     "flow_id", "specialty", "appointment_type", "visit_type", "reason_for_visit",
     "questionnaire_path", "decision_tree_path", "provider_name", "provider_id", "provider_credentials",
@@ -364,10 +379,10 @@ def finish_part(output: Path, flow_id: str) -> int:
     return count
 
 
-def save(output: Path, audit: list[dict[str, Any]], system: str, memory_rows) -> int:
+def save(output: Path, audit: list[dict[str, Any]], system: str, memory_rows, spec_id: str = "cardiology") -> int:
     """Rebuild the CSV and JSON outputs by streaming every part file plus the rows still in memory."""
     seen, count = set(), 0
-    csv_path, json_path = output / f"{system}-cardiology-slots.csv", output / f"{system}-cardiology-slots.json"
+    csv_path, json_path = output / f"{system}-{spec_id}-slots.csv", output / f"{system}-{spec_id}-slots.json"
     with csv_path.open("w", newline="", encoding="utf-8-sig") as csv_handle, json_path.open("w", encoding="utf-8") as json_handle:
         writer = csv.DictWriter(csv_handle, fieldnames=SLOT_FIELDS, extrasaction="ignore"); writer.writeheader(); json_handle.write("[")
         sources = [iter_rows(path) for path in sorted((output / PARTS).glob("*.jsonl"))] + [iter(memory_rows)]
@@ -379,8 +394,8 @@ def save(output: Path, audit: list[dict[str, Any]], system: str, memory_rows) ->
                 if count: json_handle.write(",")
                 json_handle.write(json.dumps(row, ensure_ascii=False)); writer.writerow(row); count += 1
         json_handle.write("]")
-    write_csv(output / f"{system}-cardiology-flow-audit.csv", audit, AUDIT_FIELDS)
-    (output / f"{system}-cardiology-flow-audit.json").write_text(json.dumps(audit, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_csv(output / f"{system}-{spec_id}-flow-audit.csv", audit, AUDIT_FIELDS)
+    (output / f"{system}-{spec_id}-flow-audit.json").write_text(json.dumps(audit, indent=2, ensure_ascii=False), encoding="utf-8")
     return count
 
 
@@ -402,12 +417,12 @@ def stream_json_array(path: Path):
             buffer, position = buffer[position:] + chunk, 0
 
 
-def load_checkpoint(output: Path, system: str):
+def load_checkpoint(output: Path, system: str, spec_id: str = "cardiology"):
     """A run folder left by an interrupted extraction: finished flows keep their part files and audit rows,
     failed flows run again (continuing from their partial rows when they have some), and a flow that was
     mid-search resumes at the window of its last checkpointed page, re-walking that window (the physical
     dedup absorbs the overlap). A folder written before part files existed is split from its slots.json."""
-    audit_path, slots_path, trace_path, parts = output / f"{system}-cardiology-flow-audit.json", output / f"{system}-cardiology-slots.json", output / "paging-trace.jsonl", output / PARTS
+    audit_path, slots_path, trace_path, parts = output / f"{system}-{spec_id}-flow-audit.json", output / f"{system}-{spec_id}-slots.json", output / "paging-trace.jsonl", output / PARTS
     audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else []
     failed = {item.get("flow_id") for item in audit if item.get("status") in ("flow_error", "request_failed")}
     audit = [item for item in audit if item.get("flow_id") not in failed]
@@ -448,19 +463,24 @@ def load_checkpoint(output: Path, system: str):
 
 def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
     resume = bool(getattr(args, "resume", False))
+    spec_id = str(getattr(args, "specialty", "") or "cardiology")
+    names = list(load_specialty(spec_id).get("catalog", {}).get(site.code.lower(), []))
+    if not names: raise RuntimeError(f"src/shared/specialties.json lists no {site.name} catalog names for {spec_id}; run catalog_probe.py and fill them in")
     output.mkdir(parents=True, exist_ok=resume); (output / PARTS).mkdir(exist_ok=True); client = PublicEpicClient(site, args.retries, args.request_delay)
     audit, search_cache, total_rows, system = [], {}, 0, site.code.lower()
     resumed_flows, done_flows = {}, set()
     current: dict[str, Any] = {"flow_id": None, "rows": []}  # the flow in progress: rows not yet flushed to its partial file
     if resume:
-        audit, resumed_flows, done_flows = load_checkpoint(output, system)
+        audit, resumed_flows, done_flows = load_checkpoint(output, system, spec_id)
         trace(output, {"resume": True, "finished_flows": len(done_flows), "partial_flows": {k: v["kept_rows"] for k, v in resumed_flows.items()}})
     try:
         client.bootstrap()
         catalog = client.post_json("workflow", {"schedulingParameters.isAnonymous": "true", "schedulingParameters.workflow": "NewProvider", "nonce": client.page_nonce})
         settings, workflow = catalog.get("WorkflowSettings", {}), workflow_model(catalog.get("WorkflowSettings", {}))
-        specialties = [item for item in catalog.get("Specialties", []) if norm(item.get("Name")) == norm(SPECIALTY)]
-        if not specialties: raise RuntimeError("Cardiology was not found in the anonymous specialty catalog")
+        specialties = select_catalog_entries(catalog, names)
+        if not specialties:
+            available = ", ".join(sorted(str(item.get("Name", "")) for item in catalog.get("Specialties", [])))
+            raise RuntimeError(f"none of {names} was found in the anonymous specialty catalog; it offers: {available}")
         for specialty in specialties:
             detail = client.post_json("specialty", {"SpecialtyId": item_id(specialty), "isFirstLoad": "true", "schedulingOverridesString": "{}"})
             supported = {info.get("VisitTypeID") for pair in detail.get("ProviderDepartmentPairs", []) for info in pair.get("VisitTypeInformation", [])}
@@ -470,19 +490,19 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                 visit_name = visit.get("DisplayName") or visit.get("Name", "")
                 if only_visits and norm(visit_name) not in only_visits: continue  # a split run: one visit type per process
                 paths, excluded = enumerate_paths(client, visit, workflow, args.max_paths, args.max_depth, args.max_answers)
-                audit.extend({"specialty": SPECIALTY, "appointment_type": visit_name, **item} for item in excluded)
+                audit.extend({"specialty": specialty.get("Name", ""), "appointment_type": visit_name, **item} for item in excluded)
                 reasons = [reason for reason in detail.get("ReasonsForVisit", []) if reason.get("CanDirectSchedule") is not False]
                 visit_id = item_id(visit); compatible = [reason for reason in reasons if not reason.get("DefaultVisitTypeId") or reason.get("DefaultVisitTypeId") == visit_id or reason.get("VisitTypeId") == visit_id]
                 only = set(getattr(args, "only_answer_paths", None) or [])
                 for reason in compatible or reasons or [{}]:
                     for path in paths:
                         if only and json.dumps(path["answers"]) not in only: continue  # a retry of specific flows
-                        flow_id = hashlib.sha256("\x1f".join(map(str, [site.code, item_id(visit), item_id(reason), json.dumps(path["answers"])])).encode()).hexdigest()[:20]
+                        flow_id = hashlib.sha256("\x1f".join(map(str, [site.code, item_id(specialty), item_id(visit), item_id(reason), json.dumps(path["answers"])])).encode()).hexdigest()[:20]
                         if flow_id in done_flows: continue  # finished before the interruption; its rows and audit were kept
                         try:
                             result = evaluate_path(client, workflow, visit, reason, path)
                             if result["stop"]:
-                                audit.append({"flow_id": flow_id, "specialty": SPECIALTY, "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "public_stop", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": result["message"]}); continue
+                                audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "public_stop", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": result["message"]}); continue
                             evaluated = result.get("evaluated") or {}; active = detail
                             if result.get("override"):
                                 active = client.post_json("specialty", {"SpecialtyId": item_id(specialty), "isFirstLoad": "false",
@@ -501,7 +521,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                             cached = search_cache.get(search_key)
                             if cached:
                                 count = write_part(part_path(output, flow_id), (normalize_slot(slot, site, specialty, active_visit, reason, path["prompts"], providers, departments, load, flow_id) for slot, load in cached["raw"]))
-                                audit.append({"flow_id": flow_id, "specialty": SPECIALTY, "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": cached["status"], "slot_count": count, "loads_completed": cached["loads"], "answer_path": json.dumps(path["answers"]), "message": f"reused the search of flow {cached['flow_id']}; {cached['message']}".rstrip("; "), "search_restarts": cached["restarts"], "last_window_end": cached["last_end"], "search_reused_from": cached["flow_id"]})
+                                audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": cached["status"], "slot_count": count, "loads_completed": cached["loads"], "answer_path": json.dumps(path["answers"]), "message": f"reused the search of flow {cached['flow_id']}; {cached['message']}".rstrip("; "), "search_restarts": cached["restarts"], "last_window_end": cached["last_end"], "search_reused_from": cached["flow_id"]})
                                 continue
                             flow_rows, raw_slots, seen_pages, seen_tokens, status, message, loads = [], [], set(), set(), "natural_stop", "", 0
                             start_dte, last_end, restarts, restart_from, strikes = model.get("startDte"), None, 0, None, 0
@@ -578,14 +598,14 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                             else: status, message = "page_guard_reached", f"Maximum {args.max_slot_loads} pages reached"
                             write_part(part_path(output, flow_id, ".partial"), flow_rows, append=True); flow_rows.clear()
                             count = finish_part(output, flow_id); current["flow_id"] = None
-                            audit.append({"flow_id": flow_id, "specialty": SPECIALTY, "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": status, "slot_count": count, "loads_completed": loads, "answer_path": json.dumps(path["answers"]), "message": message, "search_restarts": restarts, "last_window_end": last_end})
+                            audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": status, "slot_count": count, "loads_completed": loads, "answer_path": json.dumps(path["answers"]), "message": message, "search_restarts": restarts, "last_window_end": last_end})
                             if cacheable and raw_slots is not None: search_cache[search_key] = {"raw": raw_slots, "status": status, "message": message, "loads": loads, "restarts": restarts, "last_end": last_end, "flow_id": flow_id}
                         except Exception as error:
                             if current["flow_id"] and current["rows"]: write_part(part_path(output, current["flow_id"], ".partial"), current["rows"], append=True); current["rows"].clear()
-                            audit.append({"flow_id": flow_id, "specialty": SPECIALTY, "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "flow_error", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": str(error)})
-                        save(output, audit, system, current["rows"])
+                            audit.append({"flow_id": flow_id, "specialty": specialty.get("Name", ""), "appointment_type": visit_name, "reason_for_visit": reason.get("DisplayName", ""), "status": "flow_error", "slot_count": 0, "answer_path": json.dumps(path["answers"]), "message": str(error)})
+                        save(output, audit, system, current["rows"], spec_id)
     except Exception:
-        (output / f"{system}-cardiology-error.txt").write_text(traceback.format_exc(), encoding="utf-8"); raise
+        (output / f"{system}-{spec_id}-error.txt").write_text(traceback.format_exc(), encoding="utf-8"); raise
     finally:
         if current["flow_id"] and current["rows"]: write_part(part_path(output, current["flow_id"], ".partial"), current["rows"], append=True); current["rows"].clear()
         total_rows = save(output, audit, system, [])

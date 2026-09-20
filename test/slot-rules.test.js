@@ -33,7 +33,7 @@ test("new-patient slots are recognised from the visit types", () => {
 });
 
 test("the current-snapshot builder keeps every published slot and records the mix the filters act on", () => {
-  const src = readFileSync(new URL("../scripts/build-cardiology-current.mjs", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../scripts/build-specialty-current.mjs", import.meta.url), "utf8");
   assert.match(src, /import \{ isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot \} from "\.\.\/src\/slot-rules\.js"/);
   assert.doesNotMatch(src, /\.filter\(isPhysicianSlot\)\s*\n?\s*\.map/, "rows are not dropped by credential");
   assert.match(src, /const ah = ahFlorida\s*\n\s*\.map/);

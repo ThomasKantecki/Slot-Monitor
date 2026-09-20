@@ -287,7 +287,8 @@ test("the header box carries each view's title with the pixel heart and no page 
   assert.doesNotMatch(slots, /<h1>|Cardiology <b>Access<\/b>/);
   assert.match(suiteTitle("opportunities"), /<b>AH Market Opportunities<\/b><\/span>/);
   assert.match(suiteTitle("provider-map"), /<b>Provider Index<\/b><\/span>/);
-  assert.match(providerSource, /\$\{suiteTitle\("provider-map"\)\}/);
+  assert.match(providerSource, /__BRAND__/);
+  assert.match(providerSource, /\.replace\("__BRAND__", \(\) => suiteTitle\("provider-map", specialty\.id\)\)/);
   assert.doesNotMatch(providerSource, /Cardiology <b>Access<\/b>/);
   assert.throws(() => suiteTitle("nope"), /Unknown suite page/);
   assert.match(SUITE_NAV_STYLES, /\.hdr \.brand-box\{width:auto;min-width:220px;padding-right:44px;justify-self:start/);
@@ -312,8 +313,8 @@ test("the header info button replaces the freshness line and opens a dataset dia
   assert.match(slots, /dialog\.showModal\(\)/);
   assert.match(providerSource, /__INFO_DIALOG__[\s\S]*<script id="cpaths"/);
   assert.match(providerSource, /__INFO_SCRIPT__\n<\/script>`;/);
-  assert.match(providerSource, /providerDataChecks\(\{ data: zData/);
-  assert.match(providerSource, /buildProviderIndex\(\{ rosterAll: readJson\("data\/roster\.json"/);
+  assert.match(providerSource, /providerDataChecks\(\{ specialty: \{ group: group\.group, label: specialty\.label, note: copyOf\(specialty\)\.rosterNote \}, data: zData/);
+  assert.match(providerSource, /buildProviderIndex\(\{ group, rosterAll: readJson\("data\/roster\.json"/);
   assert.match(providerSource, /class="psrc">MyChart scheduling/);
   const rendered = suiteInfoDialog("Data & check", { pulled: { at: "2026-09-14T00:00:00.000Z", label: "Pulled <now>", freshDays: 7 }, checks: [{ ok: true, text: "fine" }, { ok: false, text: "a <b>problem</b>" }] });
   assert.match(rendered, /<h2 id="dataset-info-title">Data &amp; check<\/h2>/);

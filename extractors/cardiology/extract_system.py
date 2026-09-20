@@ -1,4 +1,4 @@
-"""Run one self-contained Cardiology extractor."""
+"""Run one self-contained Epic open-scheduling extractor for one system and one specialty."""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from epic_public import SITES, extract
+from epic_public import SITES, extract, load_specialty
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -22,7 +22,8 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--system", choices=sorted(SITES), required=True)
     result.add_argument("--run-id", default="")
-    result.add_argument("--output-root", type=Path, default=REPO / "data" / "cardiology" / "extractions")
+    result.add_argument("--specialty", default="cardiology", help="An id from src/shared/specialties.json")
+    result.add_argument("--output-root", type=Path, default=None, help="Defaults to data/<specialty>/extractions")
     result.add_argument("--max-slot-loads", type=int, default=20000)
     result.add_argument("--max-days-ahead", type=int, default=560, help="Stop restarting a stalled search past this many days from the catalog date")
     result.add_argument("--max-paths", type=int, default=10000)
@@ -42,10 +43,13 @@ def parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = parser().parse_args()
     identifier = args.run_id or run_id()
-    output = args.output_root.resolve() / identifier / args.system
+    specialty = load_specialty(args.specialty)
+    output_root = args.output_root or (REPO / "data" / args.specialty / "extractions")
+    output = output_root.resolve() / identifier / args.system
     site = SITES[args.system]
     config = {
-        "system": site.code, "site": site.name, "specialty": "Cardiology",
+        "system": site.code, "site": site.name, "specialty": specialty["label"], "specialtyId": args.specialty,
+        "catalogNames": specialty.get("catalog", {}).get(args.system, []),
         "runId": identifier, "output": str(output), "maxSlotLoads": args.max_slot_loads,
         "maxPaths": args.max_paths, "requestDelay": args.request_delay,
     }

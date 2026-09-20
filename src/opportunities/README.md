@@ -1,7 +1,7 @@
 # AH Market Opportunities
 
-This view answers one question: where does Orlando Health have cardiology
-appointment availability that AdventHealth does not match?
+This view answers one question: where does Orlando Health have appointment
+availability in the page's specialty that AdventHealth does not match?
 
 A market is a circle around a ZIP that has at least one facility with active
 slots. Every active AdventHealth and Orlando Health facility inside the circle

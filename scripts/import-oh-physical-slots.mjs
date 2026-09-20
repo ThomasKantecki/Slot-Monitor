@@ -1,5 +1,7 @@
-// Refresh step 2 (Orlando Health): copies the deduplicated slot CSV and its audit into data/cardiology/runs/<run-id>/oh. Called by extractors/cardiology/refresh.py.
+// Refresh step 2 (Orlando Health): copies the deduplicated slot CSV and its audit into data/<specialty>/runs/<run-id>/oh
+// (`--specialty <id>`, cardiology when absent). Called by extractors/cardiology/refresh.py.
 import { createHash } from "node:crypto";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
@@ -16,7 +18,8 @@ function main() {
   if (!source || !audit || !runId) throw new Error("Usage: node scripts/import-oh-physical-slots.mjs --source <unique-slots.csv> --audit <flow-audit.json> --run-id <run-id>");
   const sourcePath = resolve(source);
   const auditPath = resolve(audit);
-  const output = join(process.cwd(), "data", "cardiology", "runs", runId, "oh");
+  const runsRoot = join(process.cwd(), specialtyPaths(specialtyFromArgv()).runs);
+  const output = join(runsRoot, runId, "oh");
   if (!existsSync(sourcePath) || !existsSync(auditPath)) throw new Error("OH source or audit file is missing.");
   if (existsSync(output)) throw new Error(`Run path already exists: ${output}`);
 
@@ -25,7 +28,7 @@ function main() {
   const flowAudit = JSON.parse(readFileSync(auditPath, "utf8"));
   const statuses = Object.fromEntries([...new Set(flowAudit.map((row) => row.status))].sort().map((status) => [status, flowAudit.filter((row) => row.status === status).length]));
 
-  mkdirSync(join(process.cwd(), "data", "cardiology", "runs", runId), { recursive: true });
+  mkdirSync(join(runsRoot, runId), { recursive: true });
   mkdirSync(output, { recursive: false });
   copyFileSync(sourcePath, join(output, "source-oh-unique-physical-slots.csv"));
   copyFileSync(auditPath, join(output, "source-oh-flow-audit.json"));

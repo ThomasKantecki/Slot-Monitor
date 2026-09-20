@@ -1,7 +1,7 @@
 // The specialty menu in the header, and the placeholder pages for a specialty without data.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { SPECIALTIES, specialtyHref, specialtyOf } from "../src/shared/specialties.js";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteTitle } from "../src/shared/suite-navigation.js";
 import { renderSpecialtyPlaceholder } from "../src/shared/specialty-placeholders.js";
@@ -46,4 +46,16 @@ test("a specialty without published data gets placeholder pages that carry the s
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   assert.match(pkg.scripts.build, /node src\/shared\/specialty-placeholders\.js$/);
   assert.match(pkg.scripts.all, /node src\/shared\/specialty-placeholders\.js$/);
+});
+
+test("a specialty whose data is published has real pages, not placeholders", () => {
+  for (const specialty of SPECIALTIES.filter((entry) => entry.folder)) {
+    const summary = new URL(`../public/${specialty.dataDir}/slot-times-summary.json`, import.meta.url);
+    if (!existsSync(summary)) continue;
+    for (const file of ["index.html", "market-opportunities.html", "provider-map.html"]) {
+      const html = readFileSync(new URL(`../public/${specialty.folder}${file}`, import.meta.url), "utf8");
+      assert.doesNotMatch(html, /data is coming soon/, `${specialty.id}/${file} is still a placeholder`);
+      assert.match(html, new RegExp(`<option value="${specialty.id}"[^>]*selected>`));
+    }
+  }
 });

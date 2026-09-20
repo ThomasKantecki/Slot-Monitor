@@ -41,7 +41,8 @@ export function opportunityDataChecks(model, zipCounty = {}) {
 }
 
 // Provider Index: directory snapshot plus how far it is from the scheduling catalog.
-export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 } }) {
+export const CARDIOLOGY_CHECK = { group: "Cardiology", label: "Cardiology", note: "counting general, interventional, electrophysiology and heart failure cardiology together. Pediatric cardiology and cardiac surgery are not shown." };
+export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 }, specialty = CARDIOLOGY_CHECK }) {
   const people = { ah: new Set(), oh: new Set() };
   let missingNpi = 0;
   for (const entries of Object.values(roster)) for (const person of entries) {
@@ -51,7 +52,7 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
   const totals = data.totals ?? { ah: 0, oh: 0 };
   const reconciles = people.ah.size === totals.ah && people.oh.size === totals.oh;
   const unmapped = Object.keys(roster).filter((zip) => !zipCounty[zip] || !zipShapes.has(zip)).length;
-  const cardiology = (data.specialties ?? []).find((s) => s.name === "Cardiology") ?? { ah: 0, oh: 0 };
+  const grouped = (data.specialties ?? []).find((s) => s.name === specialty.group) ?? { ah: 0, oh: 0 };
   const gapCount = (gaps?.ah ?? 0) + (gaps?.oh ?? 0), addedCount = (added?.ah ?? 0) + (added?.oh ?? 0);
   return {
     pulled: {
@@ -63,8 +64,8 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
       { ok: reconciles, text: reconciles ? `Totals reconcile: ${n(totals.ah)} AdventHealth and ${n(totals.oh)} Orlando Health clinicians.` : `Totals do not reconcile: ${n(people.ah.size)} and ${n(people.oh.size)} people in the roster against ${n(totals.ah)} and ${n(totals.oh)} in the totals.` },
       { ok: unmapped === 0, text: unmapped === 0 ? "Every office maps to a Florida ZIP and county." : `${n(unmapped)} ZIPs in the roster have no map shape or county.` },
       { ok: missingNpi === 0, text: missingNpi === 0 ? `Every directory clinician has an NPI.${addedCount ? ` The ${n(addedCount)} added from MyChart scheduling carry their scheduling ID instead.` : ""}` : `${n(missingNpi)} directory entries have no NPI.` },
-      { ok: true, text: `Cardiology roster: ${n(cardiology.ah)} AdventHealth and ${n(cardiology.oh)} Orlando Health clinicians, counting general, interventional, electrophysiology and heart failure cardiology together. Pediatric cardiology and cardiac surgery are not shown.` },
-      { ok: gapCount === 0, text: gapCount === 0 ? (addedCount ? `Everyone who books Cardiology visits in MyChart is in the index. ${n(added.ah)} AdventHealth and ${n(added.oh)} Orlando Health clinicians came from the scheduling catalog because the directories do not list them.` : "The directories cover everyone who books Cardiology visits in MyChart.") : `${n(gaps.ah)} AdventHealth and ${n(gaps.oh)} Orlando Health clinicians who book Cardiology visits in MyChart are missing from the index.` },
+      { ok: true, text: `${specialty.label} roster: ${n(grouped.ah)} AdventHealth and ${n(grouped.oh)} Orlando Health clinicians, ${specialty.note}` },
+      { ok: gapCount === 0, text: gapCount === 0 ? (addedCount ? `Everyone who books ${specialty.label} visits in MyChart is in the index. ${n(added.ah)} AdventHealth and ${n(added.oh)} Orlando Health clinicians came from the scheduling catalog because the directories do not list them.` : `The directories cover everyone who books ${specialty.label} visits in MyChart.`) : `${n(gaps.ah)} AdventHealth and ${n(gaps.oh)} Orlando Health clinicians who book ${specialty.label} visits in MyChart are missing from the index.` },
     ],
   };
 }

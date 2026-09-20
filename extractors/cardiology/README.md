@@ -156,7 +156,7 @@ still fails, it is treated as an outage: the same page is asked again after
 90-second pauses, up to 6 times (line 303), keeping every page gathered. Rows are
 flushed to part files every 250 pages (line 302). `--resume` continues an
 interrupted run from the last checkpointed window of the flow it was in
-(`load_checkpoint`, lines 405-446). `--only-type` and `--only-flow` re-run
+(`load_checkpoint`, lines 405-446). `--only-visit` and `--only-answer-path` re-run
 specific flows and `refresh.py` merges them; in the September 15 run that pass
 merged 54,010 retried Orlando Health rows and left no failed flow.
 
@@ -247,6 +247,28 @@ Independent extraction writes raw output under
 `data/cardiology/extractions/<run-id>/<system>`. Use the full refresh command
 for automatic promotion and site rebuilding.
 
+## Specialties
+
+The same extractor serves every specialty. `src/shared/specialties.json` names,
+per specialty and per system, the entries of the anonymous scheduling catalog
+to pull (`catalog.ah`, `catalog.oh`); every listed entry is walked and its
+visit types, reasons and questionnaire paths become flows, with the catalog
+entry's id in each flow id so two entries cannot share a part file.
+
+```sh
+npm run probe:catalog -- --system oh                      # every catalog specialty name
+npm run probe:catalog -- --system ah --detail "Orthopedics"   # its visit types, reasons, provider-department pairs
+npm run refresh:orthopedics                               # refresh.py --specialty orthopedics
+npm run extract:ah -- --specialty orthopedics --run-id <id> --resume
+```
+
+Each specialty has its own roots: `data/<id>/extractions/<run-id>/<system>`,
+`data/<id>/runs/<run-id>`, `data/<id>/current`, and its artifacts carry the id
+(`ah-orthopedics-slots.json`, `oh-orthopedics-flow-audit.json`, ...).
+Cardiology keeps the names it always had. Flow ids changed on 2026-09-20 when
+the catalog entry joined them, so a run folder started before that date cannot
+be resumed; start a new run id instead.
+
 ## How slot paging works
 
 Epic's `GetSlots` searches one short date window per request (one or two
@@ -289,7 +311,7 @@ if any of them loses a slot.
 - `--retries`: bounded network retries.
 - `--resume`: continue an interrupted run from its checkpoint files (same
   `--run-id`).
-- `--only-type` / `--only-flow`: run only one visit type or one questionnaire
+- `--only-visit` / `--only-answer-path`: run only one visit type or one questionnaire
   path, for example to retry a failed flow.
 - `--run-id`: explicit timestamp/run identifier for reproducibility.
 

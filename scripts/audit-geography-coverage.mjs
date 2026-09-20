@@ -1,10 +1,12 @@
 // Sanity check: every facility and ZIP in the slot data has a map shape, and the per-facility slot totals add up. `npm run audit:geography`.
 import { existsSync, readFileSync } from "node:fs";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));
 // The deep model when it is present; otherwise the published summary, whose provider-facility counts give the same per-facility totals.
-const hasModel = existsSync("data/cardiology/current/slot-times-model.json");
-const model = hasModel ? read("data/cardiology/current/slot-times-model.json") : read("public/data/cardiology/slot-times-summary.json");
+const PATHS = specialtyPaths(specialtyFromArgv());
+const hasModel = existsSync(PATHS.model);
+const model = hasModel ? read(PATHS.model) : read(PATHS.summary);
 const slotCount = hasModel ? model.slots.length : model.totalPhysicalSlots;
 const zipCounty = read("data/zip-county.json");
 const countyGeo = read("data/fl-county.geojson");

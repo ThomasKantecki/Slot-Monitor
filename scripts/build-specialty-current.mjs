@@ -1,12 +1,16 @@
-// Refresh step 3: picks the newest complete AdventHealth and Orlando Health runs under data/cardiology/runs, joins them into
-// data/cardiology/current (the slot export + manifest.json) that the page builds read. Called by extractors/cardiology/refresh.py.
+// Refresh step 3: picks the newest complete AdventHealth and Orlando Health runs under data/<specialty>/runs, joins them into
+// data/<specialty>/current (the slot export + manifest.json) that the page builds read. Called by extractors/cardiology/refresh.py
+// with `--specialty <id>` (cardiology when absent).
 import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "../src/slot-rules.js";
+import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
 
 const ROOT = process.cwd();
-const RUNS = join(ROOT, "data", "cardiology", "runs");
-const OUT = join(ROOT, "data", "cardiology", "current");
+const SPECIALTY = specialtyFromArgv();
+const PATHS = specialtyPaths(SPECIALTY);
+const RUNS = join(ROOT, PATHS.runs);
+const OUT = join(ROOT, PATHS.current);
 
 export function latestSystemFile(system, filename) {
   const candidates = readdirSync(RUNS, { withFileTypes: true })
@@ -14,7 +18,7 @@ export function latestSystemFile(system, filename) {
     .map((entry) => ({ runId: entry.name, path: join(RUNS, entry.name, system, filename) }))
     .filter((entry) => existsSync(entry.path))
     .sort((a, b) => b.runId.localeCompare(a.runId));
-  if (!candidates.length) throw new Error(`No ${system.toUpperCase()} Cardiology run contains ${filename}`);
+  if (!candidates.length) throw new Error(`No ${system.toUpperCase()} ${SPECIALTY.label} run contains ${filename}`);
   return candidates[0];
 }
 
@@ -59,7 +63,7 @@ function writeCsv(path, rows) {
   return writeLines(path, `${headers.join(",")}\n`, rows.map((row) => `${headers.map((header) => csvValue(row[header])).join(",")}\n`), "");
 }
 
-const ahSource = latestSystemFile("ah", "ah-cardiology-physical-slots.json");
+const ahSource = latestSystemFile("ah", `ah-${SPECIALTY.id}-physical-slots.json`);
 const ohSource = latestSystemFile("oh", "source-oh-unique-physical-slots.csv");
 // A full AdventHealth run's physical-slot file is written one row per line and can exceed what Node will
 // read into one string, so it is parsed line by line (a plain single-line JSON array still works).
@@ -105,14 +109,14 @@ const oh = ohFlorida
 const slots = [...ah, ...oh].sort((a, b) => a.display_datetime_utc.localeCompare(b.display_datetime_utc) || a.system.localeCompare(b.system));
 mkdirSync(OUT, { recursive: true });
 // written one row per line so downstream readers can stream it; still a valid JSON array
-await writeLines(join(OUT, "cardiology-physical-slots.json"), "[\n", slots.map((slot, index) => `${index ? ",\n" : ""}${JSON.stringify(slot)}`), "\n]\n");
-await writeCsv(join(OUT, "cardiology-physical-slots.csv"), slots);
+await writeLines(join(ROOT, PATHS.export), "[\n", slots.map((slot, index) => `${index ? ",\n" : ""}${JSON.stringify(slot)}`), "\n]\n");
+await writeCsv(join(ROOT, PATHS.exportCsv), slots);
 writeFileSync(join(OUT, "manifest.json"), `${JSON.stringify({
-  status: "completed_with_warnings", scope: "Florida Cardiology public appointment availability",
+  status: "completed_with_warnings", scope: `Florida ${SPECIALTY.label} public appointment availability`,
   rule: "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
   ah: { runId: ahSource.runId, source: relative(ROOT, ahSource.path).replaceAll("\\", "/"), physicalSlots: ah.length, ...mix(ahFlorida), bookingCategoriesRetained: true },
   oh: { runId: ohSource.runId, source: relative(ROOT, ohSource.path).replaceAll("\\", "/"), physicalSlots: oh.length, ...mix(ohFlorida), bookingCategoriesRetained: false },
   totalPhysicalSlots: slots.length, generatedAt: new Date().toISOString(),
 }, null, 2)}\n`);
 const ahMix = mix(ahFlorida), ohMix = mix(ohFlorida);
-console.log(`Built ${slots.length.toLocaleString()} Florida physical Cardiology slots (${ah.length.toLocaleString()} AH, ${oh.length.toLocaleString()} OH). Mix: non-physician ${ahMix.nonPhysicianSlots.toLocaleString()} AH / ${ohMix.nonPhysicianSlots.toLocaleString()} OH, video-only ${ahMix.telemedicineOnlySlots.toLocaleString()} AH / ${ohMix.telemedicineOnlySlots.toLocaleString()} OH, new-patient ${ahMix.newPatientSlots.toLocaleString()} AH / ${ohMix.newPatientSlots.toLocaleString()} OH.`);
+console.log(`Built ${slots.length.toLocaleString()} Florida physical ${SPECIALTY.label} slots (${ah.length.toLocaleString()} AH, ${oh.length.toLocaleString()} OH). Mix: non-physician ${ahMix.nonPhysicianSlots.toLocaleString()} AH / ${ohMix.nonPhysicianSlots.toLocaleString()} OH, video-only ${ahMix.telemedicineOnlySlots.toLocaleString()} AH / ${ohMix.telemedicineOnlySlots.toLocaleString()} OH, new-patient ${ahMix.newPatientSlots.toLocaleString()} AH / ${ohMix.newPatientSlots.toLocaleString()} OH.`);

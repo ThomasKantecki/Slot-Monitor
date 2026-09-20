@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "./shared/suite-navigation.js";
+import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "./shared/specialties.js";
 import { directoryGaps, providerDataChecks } from "./shared/dataset-facts.js";
 import { buildProviderIndex } from "./provider-index-people.js";
 
@@ -154,17 +155,18 @@ export function withOtherOffices(roster) {
   })]));
 }
 
-export function render() {
+export function render(specialtyId = "cardiology") {
+  const specialty = specialtyOf(specialtyId), sp = specialtyPaths(specialty), group = specialty.roster;
   const countyGeo = readJson("data/fl-county.geojson");
   const zipGeo = readJson("data/fl-zcta.geojson");
   const cty = readJson("data/zip-county.json");
   const directoryData = readJson("data/providers-by-zip.json", EMPTY_DATA);
   // The deep slot model is build-only; a checkout without it uses the published summary, which carries the same providers, facilities and provider-facility counts.
-  const slotModel = existsSync(join(ROOT, "data/cardiology/current/slot-times-model.json")) ? readJson("data/cardiology/current/slot-times-model.json", {}) : readJson("public/data/cardiology/slot-times-summary.json", {});
+  const slotModel = existsSync(join(ROOT, sp.model)) ? readJson(sp.model, {}) : readJson(sp.summary, {});
   // Rebuilt from the pipeline's rosters at render time: adult cardiology labels
   // count together, and clinicians who book in MyChart but have no directory
   // profile join at their clinics (see src/provider-index-people.js).
-  const index = buildProviderIndex({ rosterAll: readJson("data/roster.json", {}), rosterPrimary: readJson("data/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
+  const index = buildProviderIndex({ group, rosterAll: readJson("data/roster.json", {}), rosterPrimary: readJson("data/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
   const zData = index.all.byZip, cData = index.all.byCounty, zDataPrimary = index.primary.byZip, cDataPrimary = index.primary.byCounty;
   const zRoster = withOtherOffices(index.all.rosterZip), cRoster = withOtherOffices(index.all.rosterCounty);
   const zRosterPrimary = withOtherOffices(index.primary.rosterZip), cRosterPrimary = withOtherOffices(index.primary.rosterCounty);
@@ -205,18 +207,23 @@ export function render() {
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
     .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__LOGOVARS__", logoVars)
-    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
+    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ specialty: { group: group.group, label: specialty.label, note: copyOf(specialty).rosterNote }, data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
     .replace("__INFO_SCRIPT__", SUITE_INFO_SCRIPT)
+    .replace("__TITLE__", () => `${specialty.label} Provider Index`)
+    .replace("__BRAND__", () => suiteTitle("provider-map", specialty.id))
+    .replace("__NAV__", () => suiteNavigation("provider-map"))
+    .replaceAll("__LABEL__", () => specialty.label)
+    .replaceAll("__GROUP__", () => group.group)
     .replace("__FONTS__", fontsCss)
     .replace("__VIEWBOX__", `0 0 ${W} ${H}`)
     .replaceAll("__W__", String(W)).replaceAll("__H__", String(H));
-  mkdirSync(join(ROOT, "public"), { recursive: true });
-  writeFileSync(join(ROOT, "public", "provider-map.html"), html);
+  mkdirSync(join(ROOT, sp.pages), { recursive: true });
+  writeFileSync(join(ROOT, sp.pages, "provider-map.html"), html);
   return { counties: cPaths.length, zips: zPaths.length, bytes: html.length };
 }
 
 const PAGE = String.raw`<meta charset="utf-8">
-<title>Cardiology Provider Index</title>
+<title>__TITLE__</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23005C99'/%3E%3Crect y='12' width='16' height='4' fill='%231FA9E1'/%3E%3C/svg%3E">
 <style>
@@ -388,14 +395,14 @@ a{color:var(--accent-deep)}
 __LOGOVARS__
 </style>
 <header class="hdr"><div class="hdr-in">
- ${suiteTitle("provider-map")}
+ __BRAND__
  <div class="header-health-brand" aria-label="AdventHealth"><span class="header-health-logo" aria-hidden="true"></span></div>
- ${suiteNavigation("provider-map")}
+ __NAV__
 </div></header>
 <div class="wrap">
 <div class="stage">
  <section class="panel mapbox">
-  <div class="panel-band"><h2 class="mono" id="mapband">Cardiology providers per ZIP code</h2><span class="band-meta" id="mapmeta">Cardiology · all published locations</span></div>
+  <div class="panel-band"><h2 class="mono" id="mapband">__LABEL__ providers per ZIP code</h2><span class="band-meta" id="mapmeta">__LABEL__ · all published locations</span></div>
   <div class="controls">
    <fieldset class="control-section geography-controls"><legend>Geography</legend><div class="control-section-body">
     <span class="control-stack"><span class="pill-group" role="group" aria-label="Area type"><button id="g-zip" class="filter-pill pill" aria-pressed="true">ZIP codes</button><button id="g-county" class="filter-pill pill" aria-pressed="false">Counties</button></span></span>
@@ -479,7 +486,7 @@ function fade(el){if(!REDUCE&&el&&el.animate)el.animate([{opacity:0},{opacity:1}
 const SYS=DATASETS.all.zip.data.systems;
 const ACTIVE=["ah","oh"].filter(k=>DATASETS.all.zip.data.totals[k]>0);
 const SOLO=ACTIVE.length===1?ACTIVE[0]:null;
-let gran="zip", locationMode="all", view=SOLO??"diff", specialty="Cardiology", selected=null;
+let gran="zip", locationMode="all", view=SOLO??"diff", specialty="__GROUP__", selected=null;
 const L=()=>DATASETS[locationMode][gran];
 const tc=(s)=>String(s||"").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -520,7 +527,7 @@ function updateColorKey(){const ah=document.getElementById("key-ah"),oh=document
 function updateMapLabels(){const s=specialty?(L().data.specialties.find(x=>x.name===specialty)||{}).label||specialty:"All specialties";
  const per=gran==="zip"?"ZIP code":"county";
  const mode=locationMode==="all"?"all published locations":"primary location only";
- document.getElementById("mapband").textContent="Cardiology providers per "+per;
+ document.getElementById("mapband").textContent="__LABEL__ providers per "+per;
  document.getElementById("mapmeta").textContent=s+" · "+mode;}
 
 function showProviders(k){selected=k;
@@ -697,5 +704,5 @@ if(typeof ResizeObserver==="function")new ResizeObserver(syncMapFrame).observe(s
 __INFO_SCRIPT__
 </script>`;
 
-function main() { const r = render(); console.log(`wrote public/provider-map.html — ${r.counties} counties + ${r.zips} ZIPs, ${(r.bytes / 1e6).toFixed(2)} MB`); }
+function main() { const specialty = specialtyFromArgv(); const r = render(specialty.id); console.log(`wrote ${specialtyPaths(specialty).pages}provider-map.html — ${r.counties} counties + ${r.zips} ZIPs, ${(r.bytes / 1e6).toFixed(2)} MB`); }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

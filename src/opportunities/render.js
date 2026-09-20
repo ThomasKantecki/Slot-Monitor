@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../shared/suite-navigation.js";
+import { specialtyFromArgv, specialtyOf, specialtyPaths } from "../shared/specialties.js";
 import { opportunityDataChecks } from "../shared/dataset-facts.js";
 import { escapeScriptJson } from "../slot-times/render.js";
 
@@ -40,9 +41,10 @@ function geometryPath(geometry, fit) {
   return path;
 }
 
-export function renderOpportunities() {
-  // The page embeds the published summary; the slots themselves load by date from public/data/cardiology/slots.
-  const data = readJson("public/data/cardiology/slot-times-summary.json");
+export function renderOpportunities(specialtyId = "cardiology") {
+  const specialty = specialtyOf(specialtyId), sp = specialtyPaths(specialty);
+  // The page embeds the published summary; the slots themselves load by date from public/data/<specialty>/slots.
+  const data = readJson(sp.summary);
   data.zipCounty = readJson("data/zip-county.json");
   const centroidSource = read("data/geography/florida-zip-centroids.js").trim();
   const centroidPrefix = "window.FLORIDA_ZIP_CENTROIDS=";
@@ -68,7 +70,9 @@ export function renderOpportunities() {
     .replace("__BASE_STYLES__", read("src/slot-times/styles.css"))
     .replace("__STYLES__", read("src/opportunities/styles.css"))
     .replace("__NAV_STYLES__", SUITE_NAV_STYLES)
-    .replace("__BRAND__", suiteTitle("opportunities"))
+    .replace("__LABEL__", () => specialty.label)
+    .replace("__LABEL_LOWER__", () => specialty.label.toLowerCase())
+    .replace("__BRAND__", suiteTitle("opportunities", specialty.id))
     .replace("__NAV__", suiteNavigation("opportunities"))
     .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", opportunityDataChecks(data, data.zipCounty)))
     .replace("__INFO_SCRIPT__", SUITE_INFO_SCRIPT)
@@ -77,15 +81,16 @@ export function renderOpportunities() {
     .replace("__OUTLINE__", escapeScriptJson(outlinePath))
     .replace("__DATE_CLIENT__", read("src/shared/date.js"))
     .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
-    .replace("__PARTITION_LOADER__", read("src/slot-times/partition-loader.js"))
+    .replace("__PARTITION_LOADER__", () => read("src/slot-times/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
     .replace("__MOTION_CLIENT__", read("src/shared/map-motion.js"))
     .replace("__SCORING_CLIENT__", scoringClient)
-    .replace("__CLIENT__", read("src/opportunities/client.js"));
+    .replace("__CLIENT__", () => read("src/opportunities/client.js").replaceAll("__LABEL__", specialty.label));
 }
 
-export function writeOpportunities() {
-  const html = renderOpportunities();
-  const output = join(ROOT, "public");
+export function writeOpportunities(specialtyId = "cardiology") {
+  const specialty = specialtyOf(specialtyId);
+  const html = renderOpportunities(specialty.id);
+  const output = join(ROOT, specialtyPaths(specialty).pages);
   mkdirSync(output, { recursive: true });
   writeFileSync(join(output, "market-opportunities.html"), html);
   return { bytes: html.length };
@@ -102,7 +107,7 @@ __NAV_STYLES__</style></head><body>
  <fieldset class="filter-group opportunity-group"><legend>Opportunity</legend><div class="filter-group-body"><div class="control-group market-filter"><select id="opportunity-filter" class="field" aria-label="Show markets"><option value="all">All markets</option><option value="lead">Orlando Health leads the market</option><option value="gap">No AdventHealth slots in the ZIP</option><option value="sooner">Orlando Health books a week sooner</option></select></div></div></fieldset>
  <fieldset class="filter-group period-group"><legend>Period</legend><div class="filter-group-body"><div class="control-group date-range"><input id="from-date" class="field" type="date" aria-label="From date"><span class="range-sep" aria-hidden="true">–</span><input id="through-date" class="field" type="date" aria-label="Through date"></div><div class="control-group"><select id="period-preset" class="field period-preset" aria-label="Quick period"><option value="all">Full window</option><option value="7">Next 7 days</option><option value="14">Next 14 days</option><option value="30">Next 30 days</option><option value="60">Next 60 days</option><option value="90">Next 90 days</option><option value="custom" hidden>Custom dates</option></select><button id="reset" class="plain" type="button">Reset all</button></div></div></fieldset>
 </section>
-<section class="workspace"><article class="panel map-panel"><div class="band"><h2 id="map-title">Cardiology markets</h2><span id="map-meta" class="band-meta"></span></div><div class="map-wrap"><svg id="map" viewBox="0 0 1000 940" role="img" tabindex="0" aria-label="Florida cardiology market map"><g id="map-vp"></g></svg><canvas id="map-raster" width="1000" height="940" aria-hidden="true"></canvas><div class="legend"><div class="legend-row"><span class="swatch dot oh"></span>Orlando Health leads the market</div><div class="legend-row"><span class="swatch dot gap"></span>No AdventHealth slots in the ZIP</div><div class="legend-row"><span class="swatch dot ah"></span>AdventHealth leads</div></div><div class="zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset map">↻</button></div></div></article>
+<section class="workspace"><article class="panel map-panel"><div class="band"><h2 id="map-title">__LABEL__ markets</h2><span id="map-meta" class="band-meta"></span></div><div class="map-wrap"><svg id="map" viewBox="0 0 1000 940" role="img" tabindex="0" aria-label="Florida __LABEL_LOWER__ market map"><g id="map-vp"></g></svg><canvas id="map-raster" width="1000" height="940" aria-hidden="true"></canvas><div class="legend"><div class="legend-row"><span class="swatch dot oh"></span>Orlando Health leads the market</div><div class="legend-row"><span class="swatch dot gap"></span>No AdventHealth slots in the ZIP</div><div class="legend-row"><span class="swatch dot ah"></span>AdventHealth leads</div></div><div class="zoom"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset map">↻</button></div></div></article>
  <aside class="side"><article class="card summary"><div id="summary-overview"><div id="area-name" class="summary-title">—</div><div class="compare"><div class="compare-box oh"><div id="kpi-coverage" class="n">—</div><div class="t">Markets where Orlando Health leads</div></div><div class="compare-box oh"><div id="kpi-priority" class="n">—</div><div class="t">ZIPs with no AdventHealth slots</div></div><div class="compare-box"><div id="kpi-earlier" class="n">—</div><div class="t">Markets booking a week or more sooner at Orlando Health</div></div><div class="compare-box"><div id="kpi-slot-gap" class="n">—</div><div class="t">Largest Orlando Health lead</div><div id="kpi-slot-gap-sub" class="s">—</div></div></div><div id="area-lead" class="lead">—</div></div><div id="summary-market" hidden><div id="market-name" class="summary-title">—</div><div id="market-rank" class="summary-sub">—</div><div class="compare"><div class="compare-box oh"><div id="market-oh" class="n">—</div><div class="t"><span class="system-logo oh" role="img" aria-label="Orlando Health"></span> slots</div><div id="market-oh-sub" class="s">—</div></div><div class="compare-box ah"><div id="market-ah" class="n">—</div><div class="t"><span class="system-logo ah" role="img" aria-label="AdventHealth"></span> slots</div><div id="market-ah-sub" class="s">—</div></div><div class="compare-box"><div class="n pair dates"><span id="market-earliest-oh" class="oh">—</span><small>OH</small><span id="market-earliest-ah" class="ah">—</span><small>AH</small></div><div class="t">Earliest appointment</div></div><div class="compare-box"><div id="market-nearest" class="n">—</div><div class="t">Nearest AdventHealth</div><div id="market-nearest-sub" class="s">—</div></div></div><div id="market-reasons" class="reasons"></div><div id="market-lead" class="lead">—</div><div class="summary-actions"><button id="open-market" class="plain" type="button">Facilities and providers</button><button id="back-overview" class="plain" type="button">Back to overview</button></div></div></article><article class="panel rank-panel"><div class="band"><h2>Ranked markets</h2><span id="market-count" class="band-meta"></span></div><div id="market-table" class="rank-list"></div></article></aside>
 </section>
 </main>
@@ -116,5 +121,5 @@ __SCORING_CLIENT__
 __CLIENT__
 __INFO_SCRIPT__</script></body></html>`;
 
-function main() { const result = writeOpportunities(); console.log(`wrote public/market-opportunities.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }
+function main() { const specialty = specialtyFromArgv(); const result = writeOpportunities(specialty.id); console.log(`wrote ${specialtyPaths(specialty).pages}market-opportunities.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`); }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
