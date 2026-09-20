@@ -24,7 +24,7 @@ export function peopleFromRoster(rosterAll, rosterPrimary = {}) {
   const people = new Map();
   for (const entries of Object.values(rosterAll ?? {})) for (const e of entries) {
     const id = `${e.y}:${e.i}`;
-    if (!people.has(id)) people.set(id, { sys: e.y, npi: String(e.i), name: e.n, cred: e.cr ?? "", specialty: e.s, photo: e.ph ?? "", profile: e.u ?? "", offices: new Map() });
+    if (!people.has(id)) people.set(id, { sys: e.y, npi: String(e.i), name: e.n, cred: e.cr ?? "", specialty: e.s, labels: [...(e.ls ?? [])], photo: e.ph ?? "", profile: e.u ?? "", offices: new Map() });
     const person = people.get(id);
     for (const l of e.l ?? []) if (!person.offices.has(officeKey(l))) person.offices.set(officeKey(l), { name: l.n, addr: l.a, city: l.c, zip: l.z, primary: false });
   }
@@ -39,9 +39,18 @@ export function peopleFromRoster(rosterAll, rosterPrimary = {}) {
   });
 }
 
+// A person belongs to the group when ANY label they carry is a member (their primary label or a later
+// one). Grouped people keep every label in `labels`, so the sub-specialty counts still see them, and
+// `via` says whether the primary label or a secondary one brought them in.
 export function regroupSpecialties(people, group = CARDIOLOGY_GROUP) {
   const members = new Set(group.members);
-  return people.map((p) => (members.has(p.specialty) && p.specialty !== group.group ? { ...p, specialty: group.group, label: p.specialty } : p));
+  return people.map((p) => {
+    const carried = [...new Set([p.specialty, ...(p.labels ?? [])].filter(Boolean))];
+    const memberLabels = carried.filter((label) => members.has(label));
+    if (!memberLabels.length) return p;
+    const primary = members.has(p.specialty) ? p.specialty : memberLabels[0];
+    return { ...p, specialty: group.group, ...(primary !== group.group ? { label: primary } : {}), labels: carried, via: members.has(p.specialty) ? "primary" : "secondary" };
+  });
 }
 
 // Clinicians with bookable Cardiology slots who match no directory person by
@@ -78,6 +87,7 @@ export function buildProviderIndex({ rosterAll, rosterPrimary, slotModel, zipCou
   const directory = regroupSpecialties(peopleFromRoster(rosterAll, rosterPrimary), group);
   const scheduling = schedulingClinicians(directory, slotModel, zipCounty, group);
   const people = [...directory, ...scheduling];
+  const viaSecondary = { ah: directory.filter((p) => p.via === "secondary" && p.sys === "ah").length, oh: directory.filter((p) => p.via === "secondary" && p.sys === "oh").length };
   const rosters = (mode) => {
     const split = { ah: [], oh: [] };
     for (const p of people) split[p.sys]?.push({ ...p, locations: mode === "primary" ? p.locations.filter((l) => l.primary).slice(0, 1) : p.locations });
@@ -88,5 +98,5 @@ export function buildProviderIndex({ rosterAll, rosterPrimary, slotModel, zipCou
     if (generatedAt) { out.byZip.generatedAt = generatedAt; out.byCounty.generatedAt = generatedAt; }
     return out;
   };
-  return { all: build("all"), primary: build("primary"), people, added: { ah: scheduling.filter((p) => p.sys === "ah").length, oh: scheduling.filter((p) => p.sys === "oh").length } };
+  return { all: build("all"), primary: build("primary"), people, viaSecondary, added: { ah: scheduling.filter((p) => p.sys === "ah").length, oh: scheduling.filter((p) => p.sys === "oh").length } };
 }

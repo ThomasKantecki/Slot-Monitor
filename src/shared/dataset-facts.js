@@ -21,6 +21,11 @@ export function slotDataChecks(model, zipCounty = {}) {
   const credential = (slot) => model.providers?.[slot.p]?.c;
   const otherClinicians = model.nonPhysicianSlots ?? { ah: slots.filter((slot) => slot.y === "ah" && credential(slot) && credential(slot) !== "Physician").length, oh: slots.filter((slot) => slot.y === "oh" && credential(slot) && credential(slot) !== "Physician").length };
   const videoOnly = { ah: model.telemedicineSlots ?? slots.filter((slot) => slot.y === "ah" && slot.v).length, oh: slots.filter((slot) => slot.y === "oh" && slot.v).length };
+  const catalog = model.catalog ?? { ah: [], oh: [] };
+  const entryList = (system) => (catalog[system] ?? []).map((name) => `${name} (${n(model.catalogSlots?.[system]?.[name] ?? 0)})`).join(", ");
+  const catalogLine = (catalog.ah?.length > 1 || catalog.oh?.length > 1)
+    ? [{ ok: true, text: `Scheduling catalog entries pulled: AdventHealth ${entryList("ah") || "none"}; Orlando Health ${entryList("oh") || "none"}. The Sub-specialty filter narrows to one entry.` }]
+    : [];
   return {
     pulled: { at: model.generatedAt, label: `Pulled ${stamp(model.generatedAt)}`, freshDays: 7 },
     checks: [
@@ -28,6 +33,7 @@ export function slotDataChecks(model, zipCounty = {}) {
       { ok: reconciles, text: reconciles ? `Totals reconcile: ${n(totals.ah)} AdventHealth and ${n(totals.oh)} Orlando Health slots.` : `Totals do not reconcile: ${n(totals.ah)} AdventHealth and ${n(totals.oh)} Orlando Health against ${n(slotCount)} slots in the model.` },
       { ok: unmapped === 0, text: unmapped === 0 ? "Every facility maps to a Florida ZIP and county." : `${n(unmapped)} facilities have no map location.` },
       { ok: Boolean(window), text: window ? `Comparison window runs ${day(model.minDate)} to ${day(model.commonMaxDate)} with slots on both sides.` : "One system has no slots in the comparison window." },
+      ...catalogLine,
       { ok: true, text: `Video-only slots: ${n(videoOnly.ah)} AdventHealth, ${n(videoOnly.oh)} Orlando Health. Orlando Health publishes no video visits online; the In person filter leaves them out.` },
       { ok: true, text: `Other clinicians: ${n(otherClinicians.ah)} AdventHealth and ${n(otherClinicians.oh)} Orlando Health slots belong to nurse practitioners, physician assistants or nurse schedules. Orlando Health publishes physicians only; the Physicians filter leaves them out.` },
     ],
@@ -42,7 +48,7 @@ export function opportunityDataChecks(model, zipCounty = {}) {
 
 // Provider Index: directory snapshot plus how far it is from the scheduling catalog.
 export const CARDIOLOGY_CHECK = { group: "Cardiology", label: "Cardiology", note: "counting general, interventional, electrophysiology and heart failure cardiology together. Pediatric cardiology and cardiac surgery are not shown." };
-export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 }, specialty = CARDIOLOGY_CHECK }) {
+export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 }, specialty = CARDIOLOGY_CHECK, viaSecondary = { ah: 0, oh: 0 } }) {
   const people = { ah: new Set(), oh: new Set() };
   let missingNpi = 0;
   for (const entries of Object.values(roster)) for (const person of entries) {
@@ -54,6 +60,12 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
   const unmapped = Object.keys(roster).filter((zip) => !zipCounty[zip] || !zipShapes.has(zip)).length;
   const grouped = (data.specialties ?? []).find((s) => s.name === specialty.group) ?? { ah: 0, oh: 0 };
   const gapCount = (gaps?.ah ?? 0) + (gaps?.oh ?? 0), addedCount = (added?.ah ?? 0) + (added?.oh ?? 0);
+  // the sub-specialty labels inside the group: which both systems publish, which only one does
+  const members = (specialty.members ?? []).filter((name) => name !== specialty.group);
+  const present = (data.specialties ?? []).filter((s) => members.includes(s.name) && (s.ah > 0 || s.oh > 0));
+  const shared = present.filter((s) => s.ah > 0 && s.oh > 0).length, ohOnly = present.filter((s) => s.ah === 0).length, ahOnly = present.filter((s) => s.oh === 0).length;
+  const viaCount = (viaSecondary?.ah ?? 0) + (viaSecondary?.oh ?? 0);
+  const subSpecialtyLine = members.length ? [{ ok: true, text: `Sub-specialty labels: ${n(shared)} published by both systems, ${n(ohOnly)} by Orlando Health only and ${n(ahOnly)} by AdventHealth only; the filter marks the one-sided ones. ${n(viaCount)} clinicians joined the roster through a secondary label.` }] : [];
   return {
     pulled: {
       at: [ahCapturedAt, ohCapturedAt].filter(Boolean).sort()[0] ?? data.generatedAt,
@@ -65,6 +77,7 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
       { ok: unmapped === 0, text: unmapped === 0 ? "Every office maps to a Florida ZIP and county." : `${n(unmapped)} ZIPs in the roster have no map shape or county.` },
       { ok: missingNpi === 0, text: missingNpi === 0 ? `Every directory clinician has an NPI.${addedCount ? ` The ${n(addedCount)} added from MyChart scheduling carry their scheduling ID instead.` : ""}` : `${n(missingNpi)} directory entries have no NPI.` },
       { ok: true, text: `${specialty.label} roster: ${n(grouped.ah)} AdventHealth and ${n(grouped.oh)} Orlando Health clinicians, ${specialty.note}` },
+      ...subSpecialtyLine,
       { ok: gapCount === 0, text: gapCount === 0 ? (addedCount ? `Everyone who books ${specialty.label} visits in MyChart is in the index. ${n(added.ah)} AdventHealth and ${n(added.oh)} Orlando Health clinicians came from the scheduling catalog because the directories do not list them.` : `The directories cover everyone who books ${specialty.label} visits in MyChart.`) : `${n(gaps.ah)} AdventHealth and ${n(gaps.oh)} Orlando Health clinicians who book ${specialty.label} visits in MyChart are missing from the index.` },
     ],
   };

@@ -207,13 +207,14 @@ export function render(specialtyId = "cardiology") {
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
     .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__LOGOVARS__", logoVars)
-    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ specialty: { group: group.group, label: specialty.label, note: copyOf(specialty).rosterNote }, data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
+    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ specialty: { group: group.group, label: specialty.label, note: copyOf(specialty).rosterNote, members: group.members }, viaSecondary: index.viaSecondary, data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
     .replace("__INFO_SCRIPT__", SUITE_INFO_SCRIPT)
     .replace("__TITLE__", () => `${specialty.label} Provider Index`)
     .replace("__BRAND__", () => suiteTitle("provider-map", specialty.id))
     .replace("__NAV__", () => suiteNavigation("provider-map"))
     .replaceAll("__LABEL__", () => specialty.label)
     .replaceAll("__GROUP__", () => group.group)
+    .replace("__MEMBERS__", () => escapeScriptJson(group.members))
     .replace("__FONTS__", fontsCss)
     .replace("__VIEWBOX__", `0 0 ${W} ${H}`)
     .replaceAll("__W__", String(W)).replaceAll("__H__", String(H));
@@ -290,6 +291,8 @@ ${SUITE_NAV_STYLES}
 .location-help:hover .location-tip,.location-help:focus-within .location-tip{opacity:1;visibility:visible}
 .pill-help{display:inline-flex;align-items:center;border:2px solid #000;background:#fff;padding-right:4px}
 .pill-help>.filter-pill{border:0;background:transparent;padding-right:3px}
+.sub-specialty{display:inline-flex;align-items:center;gap:6px;margin-left:8px}.sub-specialty select.control{width:150px;max-width:150px;text-overflow:ellipsis}
+@media (max-width:1200px){.sub-specialty .cap{display:none}.sub-specialty select.control{width:124px;max-width:124px}}
 .pill-help>.location-help{margin-left:0}
 .pill-help:hover{background:var(--accent-tint)}.pill-help>.filter-pill:hover{background:transparent}
 .pill-help:has(>.filter-pill[aria-pressed="true"]){background:var(--accent);border-color:var(--accent)}
@@ -408,9 +411,8 @@ __LOGOVARS__
     <span class="control-stack"><span class="pill-group" role="group" aria-label="Area type"><button id="g-zip" class="filter-pill pill" aria-pressed="true">ZIP codes</button><button id="g-county" class="filter-pill pill" aria-pressed="false">Counties</button></span></span>
     <span class="control-stack search-stack"><span class="fgroup"><input id="area-search" class="control" list="area-options" placeholder="ZIP code" autocomplete="off" aria-label="Find area"><datalist id="area-options"></datalist></span></span>
    </div></fieldset>
-   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span></div></fieldset>
+   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span><span class="fgroup sub-specialty"><label class="cap" for="spec">Sub-specialty</label><select id="spec" class="control" aria-label="Sub-specialty"></select></span></div></fieldset>
    <fieldset class="control-section location-controls"><legend>Locations</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><span class="pill-help pill"><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span></span></span></div></fieldset>
-   <span class="fgroup" hidden><label class="cap" for="spec">Specialty</label><select id="spec" class="control" aria-label="Specialty"></select></span>
   </div>
   <div class="mapwrap">
    <svg viewBox="__VIEWBOX__" id="map" class="g-zip" aria-label="Florida provider map"><defs><pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><rect width="25" height="25" fill="#c6d3dc"></rect><path d="M25 0H0V25" fill="none" stroke="#a6bac8" stroke-width="1"></path></pattern><pattern id="tie-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#b3284e"></rect><rect x="4" width="4" height="8" fill="#1a6ba3"></rect></pattern></defs><rect id="sea" x="-3000" y="-3000" width="7000" height="7000" fill="url(#grid)"></rect><g id="vp"></g></svg>
@@ -534,7 +536,7 @@ function showProviders(k){selected=k;
  document.querySelectorAll("path.z.sel").forEach(p=>p.classList.remove("sel"));
  const pel=document.querySelector('#lay-'+gran+' path.z[data-k="'+cssq(k)+'"]'); if(pel)pel.classList.add("sel");
  queueRaster();
- let list=(L().roster[k]||[]).slice(); if(specialty) list=list.filter(x=>x.s===specialty);
+ let list=(L().roster[k]||[]).slice(); if(specialty) list=list.filter(x=>x.s===specialty||x.sl===specialty||(x.ls||[]).includes(specialty));
  if(view!=="diff") list=list.filter(x=>x.y===view);
  const counts=val(k)||{ah:0,oh:0};
  const label=gran==="county"?(esc(k)+" County"):(esc(k)+' <span class="pcty">'+(CTY[k]?esc(CTY[k])+" County":"")+'</span>');
@@ -636,7 +638,11 @@ function switchLayer(){
   drawTimer=setTimeout(()=>{if(tok!==switchTok)return;newLay.classList.remove("draw");paths.forEach(p=>{p.style.animationDelay="";});drawTimer=null;},900); // reveal colors after lines finish
  };
 }
-document.getElementById("spec").innerHTML=['<option value="">All specialties</option>'].concat(DATASETS.all.zip.data.specialties.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.label)+' ('+(s.ah+s.oh)+')</option>')).join("");
+const MEMBERS=__MEMBERS__;
+const subLabels=DATASETS.all.zip.data.specialties.filter(s=>s.name!=="__GROUP__"&&MEMBERS.includes(s.name)&&(s.ah+s.oh)>0).sort((a,b)=>MEMBERS.indexOf(a.name)-MEMBERS.indexOf(b.name));
+const oneSided=(s)=>s.ah===0?" · not published by AdventHealth":s.oh===0?" · not published by Orlando Health":"";
+document.getElementById("spec").innerHTML=['<option value="__GROUP__">All __LABEL__</option>'].concat(subLabels.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.label)+' · AH '+s.ah+' · OH '+s.oh+esc(oneSided(s))+'</option>')).join("");
+document.querySelector(".sub-specialty").hidden=subLabels.length===0;
 document.getElementById("spec").value=specialty;
 document.getElementById("spec").onchange=(e)=>{specialty=e.target.value;paint();if(selected)showProviders(selected);};
 function setView(v){view=v;["diff","ah","oh"].forEach(x=>{const b=document.getElementById("v-"+x);if(b)b.setAttribute("aria-pressed",String(x===v));});paint();if(selected)showProviders(selected);else resetPanel();}

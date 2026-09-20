@@ -59,7 +59,7 @@ function writeLines(path, head, lines, tail) {
 }
 
 function writeCsv(path, rows) {
-  const headers = ["system", "physical_slot_id", "provider_name", "provider_id", "provider_credentials", "facility_name", "facility_id", "address", "city", "state", "zip", "appointment_date", "appointment_time", "display_datetime_utc", "days_ahead", "duration_minutes", "booking_categories", "booking_category_count", "visit_types", "reasons", "matching_flow_count"];
+  const headers = ["system", "physical_slot_id", "provider_name", "provider_id", "provider_credentials", "facility_name", "facility_id", "address", "city", "state", "zip", "appointment_date", "appointment_time", "display_datetime_utc", "days_ahead", "duration_minutes", "booking_categories", "booking_category_count", "visit_types", "reasons", "matching_flow_count", "specialty"];
   return writeLines(path, `${headers.join(",")}\n`, rows.map((row) => `${headers.map((header) => csvValue(row[header])).join(",")}\n`), "");
 }
 
@@ -95,6 +95,7 @@ const ah = ahFlorida
     duration_minutes: row.duration_minutes, booking_categories: row.appointment_types, booking_category_count: row.appointment_type_count,
     visit_types: "", reasons: "",
     matching_flow_count: "",
+    specialty: row.specialty ?? "",
   }));
 const oh = ohFlorida
   .map((row) => ({
@@ -105,6 +106,7 @@ const oh = ohFlorida
     duration_minutes: row.length_minutes, booking_categories: "", booking_category_count: 0,
     visit_types: row.matching_visit_types || "", reasons: row.matching_reasons || "",
     matching_flow_count: row.matching_flow_count,
+    specialty: row.specialty ?? "",
   }));
 const slots = [...ah, ...oh].sort((a, b) => a.display_datetime_utc.localeCompare(b.display_datetime_utc) || a.system.localeCompare(b.system));
 mkdirSync(OUT, { recursive: true });

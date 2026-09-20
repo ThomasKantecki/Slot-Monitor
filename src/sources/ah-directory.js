@@ -141,6 +141,8 @@ export function toAhRoster(raw) {
       npi: String(rec.npi), name, cred,
       specialty: primarySpecialty(rec.spec),
       specialties: [primarySpecialty(rec.spec)],
+      // their specialty field is a comma-joined taxonomy list; every segment is a label the person carries
+      labels: [...new Set(String(rec.spec ?? "").split(",").map((s) => canonicalSpecialty(s.replace(/\s+/g, " ").trim())).filter(Boolean))],
       slug: rec.profile ? String(rec.profile).split("/").filter(Boolean).at(-1) : null,
       photo: String(rec.photo ?? "").trim(), profile: String(rec.profile ?? "").trim(),
       updated: raw.fetchedAt ?? "", locations,

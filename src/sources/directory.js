@@ -136,6 +136,8 @@ export function toRoster(raw, photoCapture = []) {
       cred: rec.title ?? "",
       specialty: specialtyOf(rec),
       specialties: (rec.specialties ?? []).map((s) => tidy(s.name)),
+      // every specialty label the directory lists for the person, canonical and distinct; the first is `specialty`
+      labels: [...new Set((rec.specialties ?? []).map((s) => canonicalSpecialty(tidy(s.name))).filter(Boolean))],
       isPrimaryCare: !!rec.isPrimaryCareProvider,
       isApp: !!rec.isAppProvider,
       slug: rec.slug,

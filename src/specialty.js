@@ -39,6 +39,14 @@ const VARIANTS = new Map(Object.entries({
   "Cancer - Surgery": ["Surgery - Cancer", "Surgical Oncology"],
   "Pediatric and Adolescent Psychiatry": ["Pediatric Psychiatry"],
   "Obesity Medicine": ["Weight Management"],
+  // Orthopedics (added 2026-09-20 for the Orthopedics pages): AH's spellings and OH's internal duplicate.
+  "Orthopedic Surgery": ["Orthopaedic Surgery", "Surgery - Orthopedics"],
+  "Orthopedic Surgery - Spine": ["Spine Surgery", "Surgery - Spine", "Spine"],
+  "Orthopedic Surgery - Hand and Wrist": ["Hand Surgery", "Surgery - Hand"],
+  "Orthopedic Surgery - Foot and Ankle": ["Foot And Ankle Surgery"],
+  "Orthopedics - Sports Medicine": ["Sports Medicine"],
+  "Pediatric Orthopedics": ["Pediatric Orthopaedics"],
+  "Physical Medicine and Rehabilitation": ["Physical Medicine And Rehabilitation"],
 }));
 const LOOKUP = new Map();
 for (const [canon, aliases] of VARIANTS) for (const a of aliases) LOOKUP.set(a.toLowerCase(), canon);

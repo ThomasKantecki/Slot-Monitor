@@ -52,6 +52,14 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
   const reasonList = [...reasons].sort();
   const typeIndex = new Map(typeList.map((type, index) => [type, index]));
   const reasonIndex = new Map(reasonList.map((reason, index) => [reason, index]));
+  // The scheduling catalog entry each slot was pulled under (the export's `specialty` column), per system. A slot
+  // carries `sp` (its entry's index) only when its system has more than one entry; the pages' sub-specialty
+  // filter shows up only then. Older exports without the column leave the lists empty.
+  const systemOf = (row) => SYSTEM.get(row.system) ?? text(row.system).toLowerCase();
+  const catalogSets = { ah: new Set(), oh: new Set() }, catalogSlots = { ah: {}, oh: {} };
+  for (const row of physical) { const entry = text(row.specialty); if (entry && catalogSets[systemOf(row)]) { catalogSets[systemOf(row)].add(entry); catalogSlots[systemOf(row)][entry] = (catalogSlots[systemOf(row)][entry] ?? 0) + 1; } }
+  const catalog = { ah: [...catalogSets.ah].sort(), oh: [...catalogSets.oh].sort() };
+  const catalogIndex = { ah: new Map(catalog.ah.map((name, index) => [name, index])), oh: new Map(catalog.oh.map((name, index) => [name, index])) };
   const providers = [], facilities = [];
   const indexProvider = (row, system) => {
     const key = `${system}|${text(row.provider_id)}`;
@@ -81,6 +89,7 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
       rv: row.reasons.map((reason) => reasonIndex.get(reason)),
       ...(isTelemedicineSlot(row.categories) ? { v: 1 } : {}),
       ...(row.categories.some(isNewPatientType) ? { np: 1 } : {}),
+      ...(catalog[system]?.length > 1 ? { sp: catalogIndex[system].get(text(row.specialty)) ?? 0 } : {}),
     };
   }).sort((a, b) => a.u.localeCompare(b.u) || a.y.localeCompare(b.y));
   const area = () => ({ ah: 0, oh: 0 });
@@ -98,7 +107,7 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
   for (const slot of slots) if (slot.d > maxDateBySystem[slot.y]) maxDateBySystem[slot.y] = slot.d;
   const systemMaxDates = Object.values(maxDateBySystem).filter(Boolean);
   return {
-    types: typeList, reasons: reasonList, providers, facilities, slots,
+    types: typeList, reasons: reasonList, providers, facilities, slots, catalog, catalogSlots,
     areas: { zip: zipAreas, county: countyAreas },
     totals: { ah: slots.filter((slot) => slot.y === "ah").length, oh: slots.filter((slot) => slot.y === "oh").length },
     telemedicineSlots: slots.filter((slot) => slot.v).length,

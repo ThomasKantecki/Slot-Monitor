@@ -14,6 +14,8 @@
   const typeLabel = (value) => value.replace(/\b\w/g, (letter) => letter.toUpperCase());
   const slotTypes = (slot) => (slot.ty || []).map((index) => DATA.types[index]).filter(Boolean);
   const slotReasons = (slot) => (slot.rv || []).map((index) => (DATA.reasons || [])[index]).filter(Boolean);
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+  const catalogKey = (slot) => `${slot.y}|${(DATA.catalog?.[slot.y] ?? [])[slot.sp ?? 0] ?? ""}`;
   const origins = DATA.origins || [];
   const originByZip = new Map(origins.map((origin) => [origin.z, origin]));
   const defaultOriginZip = originByZip.has("32804") ? "32804" : origins[0]?.z || "";
@@ -30,7 +32,7 @@
   const miles = window.SLOT_RADIUS.miles;
 
   const state = {
-    granularity: "zip", view: "diff", hideTelemedicine: false, physiciansOnly: false, newPatientOnly: false, selected: "", selectedDate: initialSlotDate,
+    granularity: "zip", view: "diff", hideTelemedicine: false, physiciansOnly: false, newPatientOnly: false, subSpecialty: "", selected: "", selectedDate: initialSlotDate,
     from: defaultFrom, through: defaultThrough,
     originZip: defaultOriginZip, radius: landingRadius, radiusActive: Boolean(defaultOriginZip), areaQuery: "",
     month: new Date(`${initialSlotDate}T12:00:00`), zoom: { k: 1, x: 0, y: 0 },
@@ -81,7 +83,7 @@
   // publishes no video visits), new patients only (the visit types a new patient can book).
   const visibleVisit = (index) => {
     const slot = DATA.slots[index];
-    return (!state.hideTelemedicine || !slot.v) && (!state.physiciansOnly || DATA.providers[slot.p].c === "Physician") && (!state.newPatientOnly || Boolean(slot.np));
+    return (!state.hideTelemedicine || !slot.v) && (!state.physiciansOnly || DATA.providers[slot.p].c === "Physician") && (!state.newPatientOnly || Boolean(slot.np)) && (!state.subSpecialty || catalogKey(slot) === state.subSpecialty);
   };
 
   function filteredIndices(key = state.selected) {
@@ -446,6 +448,15 @@
   ["show", "hide"].forEach((value) => $(`tele-${value}`).addEventListener("click", () => { state.hideTelemedicine = value === "hide"; setPressed("tele", value, ["show", "hide"]); refresh(); }));
   ["phys", "all"].forEach((value) => $(`clin-${value}`).addEventListener("click", () => { state.physiciansOnly = value === "phys"; setPressed("clin", value, ["phys", "all"]); refresh(); }));
   ["all", "new"].forEach((value) => $(`vt-${value}`).addEventListener("click", () => { state.newPatientOnly = value === "new"; setPressed("vt", value, ["all", "new"]); refresh(); }));
+  // The sub-specialty menu lists the scheduling catalog entries the slots were pulled under, per system, and appears
+  // only when a system has more than one (a single entry per side is the whole specialty, so there is nothing to narrow).
+  const catalogEntries = ["ah", "oh"].flatMap((system) => (DATA.catalog?.[system] ?? []).map((name) => ({ system, name, slots: DATA.catalogSlots?.[system]?.[name] ?? 0 })));
+  if (catalogEntries.length && ["ah", "oh"].some((system) => (DATA.catalog?.[system] ?? []).length > 1)) {
+    const systemName = { ah: "AdventHealth", oh: "Orlando Health" };
+    $("sub-specialty").innerHTML = ['<option value="">All sub-specialties</option>', ...catalogEntries.map((entry) => `<option value="${escapeHtml(`${entry.system}|${entry.name}`)}">${escapeHtml(entry.name)} · ${systemName[entry.system]} · ${entry.slots.toLocaleString()}</option>`)].join("");
+    $("sub-specialty").closest(".sub-specialty-group").hidden = false;
+    $("sub-specialty").addEventListener("change", (event) => { state.subSpecialty = event.target.value; refresh(); });
+  }
   $("from-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.from = event.target.value; if (state.through < state.from) { state.through = state.from; $("through-date").value = state.from; } refreshPeriod(); });
   $("through-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.through = event.target.value; if (state.from > state.through) { state.from = state.through; $("from-date").value = state.through; } refreshPeriod(); });
   // Quick periods: today through the next N days (capped at the last published day), or the full comparison window.
@@ -463,7 +474,7 @@
     const resetThrough = landingThrough(resetFrom);
     const resetSlotDate = DATA.slots.find((slot) => slot.d >= resetFrom && slot.d <= resetThrough)?.d || resetFrom;
     state.granularity = "zip"; state.selected = ""; state.selectedDate = resetSlotDate;
-    state.month = new Date(`${resetSlotDate}T12:00:00`); state.from = resetFrom; state.through = resetThrough; state.view = "diff"; state.hideTelemedicine = false; state.physiciansOnly = false; state.newPatientOnly = false;
+    state.month = new Date(`${resetSlotDate}T12:00:00`); state.from = resetFrom; state.through = resetThrough; state.view = "diff"; state.hideTelemedicine = false; state.physiciansOnly = false; state.newPatientOnly = false; state.subSpecialty = ""; if ($("sub-specialty")) $("sub-specialty").value = "";
     state.originZip = defaultOriginZip; state.radius = landingRadius; state.radiusActive = Boolean(defaultOriginZip); state.areaQuery = "";
     $("from-date").value = state.from; $("through-date").value = state.through;
     $("origin-zip").value = ""; $("radius").value = state.radius; $("area-search").value = "";

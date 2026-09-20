@@ -7,6 +7,11 @@
 // so that headline is invariant when the same locations are grouped by ZIP or
 // county. Within one area the roster groups a person once and lists every
 // published office in that area.
+//
+// Labels: a clinician's `specialty` is their primary label; `labels` holds every
+// label the directory lists for them. Per-specialty counts (statewide and per
+// area) count a person once under each label they carry; people totals still
+// count each person once. Roster records carry the extra labels as `ls`.
 
 const titleCase = (s) => String(s ?? "").trim();
 const SYSTEMS = ["ah", "oh"];
@@ -39,10 +44,14 @@ export function aggregate({ rosters, zipCounty, source, locationMode = "all",
       const uid = p.npi ?? `${sys}:${p.slug ?? p.name}`;
       const rosterUid = `${sys}:${uid}`;
       const spec = p.specialty;
+      const labels = [...new Set([spec, ...(p.labels ?? [])].filter(Boolean))];
+      const extraLabels = labels.filter((label) => label !== spec);
       total[sys].add(uid);
-      if (!specTotal.has(spec)) specTotal.set(spec, blank());
-      specTotal.get(spec)[sys].add(uid);
-      if (!specLocationTotal.has(spec)) specLocationTotal.set(spec, blank());
+      for (const label of labels) {
+        if (!specTotal.has(label)) specTotal.set(label, blank());
+        specTotal.get(label)[sys].add(uid);
+        if (!specLocationTotal.has(label)) specLocationTotal.set(label, blank());
+      }
 
       const addRoster = (kind, key, l) => {
         if (!key) return;
@@ -52,6 +61,7 @@ export function aggregate({ rosters, zipCounty, source, locationMode = "all",
           i: uid, n: p.name, s: spec, y: sys, cr: p.cred ?? "",
           ph: p.photo ?? "", u: p.profile ?? "", l: [],
           ...(p.src ? { src: p.src } : {}), ...(p.label && p.label !== spec ? { sl: p.label } : {}),
+          ...(extraLabels.length ? { ls: extraLabels } : {}),
         });
         const entry = byProvider.get(rosterUid);
         const locKey = locationKey(l);
@@ -66,17 +76,17 @@ export function aggregate({ rosters, zipCounty, source, locationMode = "all",
         seenLocations.add(locKey);
         const assignment = `${rosterUid}|${locKey}`;
         locationTotal[sys].add(assignment);
-        specLocationTotal.get(spec)[sys].add(assignment);
+        for (const label of labels) specLocationTotal.get(label)[sys].add(assignment);
         if (!seenZip.has(l.z)) {
           seenZip.add(l.z);
-          bump("zip", l.z, spec, sys, uid);
+          for (const label of labels) bump("zip", l.z, label, sys, uid);
         }
         addRoster("zip", l.z, l);
         const county = zipCounty[l.z];
         if (county) {
           if (!seenCounty.has(county)) {
             seenCounty.add(county);
-            bump("county", county, spec, sys, uid);
+            for (const label of labels) bump("county", county, label, sys, uid);
           }
           addRoster("county", county, l);
         }

@@ -51,7 +51,7 @@ test("the rebuilt index counts adult cardiology together and reconciles by const
   const cardiology = index.all.byZip.specialties.find((s) => s.name === "Cardiology");
   assert.deepEqual(index.added, { ah: 2, oh: 0 });
   assert.deepEqual([cardiology.ah, cardiology.oh, cardiology.ahLocations, cardiology.ohLocations], [3, 2, 5, 2]);
-  assert.deepEqual(index.all.byZip.zips["34972"], { ah: 0, oh: 1, spec: { Cardiology: { a: 0, o: 1 } } }, "Okeechobee shows the interventional cardiologist");
+  assert.deepEqual(index.all.byZip.zips["34972"], { ah: 0, oh: 1, spec: { Cardiology: { a: 0, o: 1 }, "Cardiology - Interventional": { a: 0, o: 1 } } }, "Okeechobee shows the interventional cardiologist under the group and under her own label");
   assert.equal(index.all.byZip.zips["32806"].spec["Pediatric Cardiology"].o, 1, "pediatric cardiology keeps its own label");
   assert.deepEqual(index.all.byZip.totals, { ah: 3, oh: 3, note: index.all.byZip.totals.note });
   assert.equal(index.all.byZip.generatedAt, "2026-08-31T19:22:44.469Z");
