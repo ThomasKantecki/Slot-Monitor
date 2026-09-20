@@ -427,15 +427,15 @@
   }
   function renderKpis() {
     const indices = filteredIndices();
-    const counts = { ah: 0, oh: 0 }, providers = new Set(), facilities = { ah: new Set(), oh: new Set() }, dates = new Set();
-    indices.forEach((index) => { const slot = DATA.slots[index]; counts[slot.y] += 1; providers.add(slot.p); facilities[slot.y].add(slot.f); dates.add(slot.d); });
+    const counts = { ah: 0, oh: 0 }, providers = { ah: new Set(), oh: new Set() }, facilities = { ah: new Set(), oh: new Set() }, dates = new Set();
+    indices.forEach((index) => { const slot = DATA.slots[index]; counts[slot.y] += 1; providers[slot.y].add(slot.p); facilities[slot.y].add(slot.f); dates.add(slot.d); });
     $("kpi-ah").textContent = number(counts.ah); $("kpi-oh").textContent = number(counts.oh);
     const noRadiusResults = !indices.length && state.radiusActive;
     const filtered = state.physiciansOnly || state.hideTelemedicine || state.newPatientOnly;
     const slotLabel = filtered ? `${state.physiciansOnly ? "Physician " : ""}${state.hideTelemedicine ? "in-person " : ""}${state.newPatientOnly ? "new-patient " : ""}slots`.replace(/^\w/, (c) => c.toUpperCase()) : "Available appointment slots";
     $("kpi-ah-sub").textContent = noRadiusResults ? `No appointments within ${state.radius} miles — expand radius` : slotLabel;
     $("kpi-oh-sub").textContent = noRadiusResults ? `No appointments within ${state.radius} miles — expand radius` : slotLabel;
-    $("kpi-providers").textContent = number(providers.size);
+    $("kpi-providers-ah").textContent = number(providers.ah.size); $("kpi-providers-oh").textContent = number(providers.oh.size);
     $("kpi-facilities-ah").textContent = number(facilities.ah.size); $("kpi-facilities-oh").textContent = number(facilities.oh.size);
   }
   function refresh() { if (state.selected && !slotsByArea[state.granularity].has(state.selected)) state.selected = ""; selectArea(state.selected); }
