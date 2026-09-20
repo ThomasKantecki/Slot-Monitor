@@ -1,18 +1,34 @@
-// The header shared by all three pages: the page switcher, the title box, and the "Data check" info dialog.
-const PAGES = [
-  { id: "slot-times", label: "Slot Availability", href: "./index.html", title: ["Cardiology", "Slot Availability"] },
-  { id: "opportunities", label: "Market Opportunities", href: "./market-opportunities.html", title: ["AH Market", "Opportunities"] },
-  { id: "provider-map", label: "Provider Index", href: "./provider-map.html", title: ["Cardiology", "Provider Index"] },
-];
-const PIXEL_HEART = '<span class="pixel-heart" aria-hidden="true"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg></span>';
+// The header shared by all three pages: the specialty menu and title box, the page switcher, and the "Data check" info dialog.
+import { SPECIALTIES, specialtyHref, specialtyOf } from "./specialties.js";
 
-// The header box carries the current view's title (two lines, accent on the
-// second) plus the pixel heart; there is no separate page heading below it.
-export function suiteTitle(activePage) {
-  const page = PAGES.find((candidate) => candidate.id === activePage);
-  if (!page) throw new Error(`Unknown suite page: ${activePage}`);
-  const [lead, accent] = page.title;
-  return `<div class="brand-box"><span class="mark">${lead} <b>${accent}</b></span>${PIXEL_HEART}</div>`;
+// `view` is the accent line under the specialty menu; `name` is the plain view name used in document titles.
+const PAGES = [
+  { id: "slot-times", label: "Slot Availability", href: "./index.html", view: "Slot Availability", name: "Slot Availability" },
+  { id: "opportunities", label: "Market Opportunities", href: "./market-opportunities.html", view: "AH Market Opportunities", name: "Market Opportunities" },
+  { id: "provider-map", label: "Provider Index", href: "./provider-map.html", view: "Provider Index", name: "Provider Index" },
+];
+export const SUITE_PAGES = PAGES;
+export function suitePage(id) {
+  const page = PAGES.find((candidate) => candidate.id === id);
+  if (!page) throw new Error(`Unknown suite page: ${id}`);
+  return page;
+}
+const PIXEL_HEART = '<span class="pixel-heart" aria-hidden="true"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg></span>';
+const PIXEL_BONE = '<span class="pixel-bone" aria-hidden="true"><svg viewBox="0 0 9 6" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h2v1H1zM6 0h2v1H6zM0 1h4v1H0zM5 1h4v1H5zM0 2h9v2H0zM0 4h4v1H0zM5 4h4v1H5zM1 5h2v1H1zM6 5h2v1H6z"/></svg></span>';
+const EMBLEMS = { heart: PIXEL_HEART, bone: PIXEL_BONE };
+const PIXEL_CARET = '<span class="specialty-caret" aria-hidden="true"><svg viewBox="0 0 9 5" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h9v1H0zM1 1h7v1H1zM2 2h5v1H2zM3 3h3v1H3zM4 4h1v1H4z"/></svg></span>';
+
+// The header box carries the specialty menu (the lead line) over the current view's name (the
+// accent line) plus the specialty's pixel emblem; there is no separate page heading below it.
+// Each menu entry links to the same view under that specialty, so a choice is a plain navigation.
+// The hidden sizer gives the menu the width of the selected name in the page's own type.
+export function suiteTitle(activePage, specialtyId = "cardiology") {
+  const page = suitePage(activePage);
+  const specialty = specialtyOf(specialtyId);
+  const file = page.href.replace(/^\.\//, "");
+  const options = SPECIALTIES.map((candidate) => `<option value="${candidate.id}" data-href="${specialtyHref(specialty, candidate, file)}"${candidate.id === specialty.id ? " selected" : ""}>${candidate.label}</option>`).join("");
+  const menu = `<span class="specialty-pick"><span class="specialty-sizer" aria-hidden="true">${specialty.label}</span><select class="specialty-select" aria-label="Specialty">${options}</select>${PIXEL_CARET}</span>`;
+  return `<div class="brand-box"><span class="mark">${menu}<b>${page.view}</b></span>${EMBLEMS[specialty.emblem]}</div>`;
 }
 
 export const SUITE_NAV_STYLES = String.raw`
@@ -23,13 +39,21 @@ export const SUITE_NAV_STYLES = String.raw`
 .hdr .mark{display:flex;flex-direction:column;align-items:flex-start;font-size:17px;line-height:1.05;letter-spacing:.105em;white-space:normal}
 .pixel-heart{position:absolute;right:12px;top:50%;margin-top:-7px;width:15px;height:14px;color:#b40046;transform-origin:center;animation:pixel-heartbeat 1.25s steps(2,end) infinite}
 .pixel-heart svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
+.pixel-bone{position:absolute;right:12px;top:50%;margin-top:-5px;width:15px;height:10px;color:#1fa9e1}
+.pixel-bone svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
+.specialty-pick{position:relative;display:inline-block;margin-right:.25em;vertical-align:baseline}
+.specialty-sizer{display:inline-block;visibility:hidden;padding-right:12px;white-space:nowrap}
+.specialty-select{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0 12px 0 0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;line-height:inherit;white-space:nowrap;cursor:pointer;appearance:none;-webkit-appearance:none}
+.specialty-select:focus-visible{outline:2px solid #1fa9e1;outline-offset:3px}
+.specialty-caret{position:absolute;right:0;top:50%;width:9px;height:5px;margin-top:-2px;pointer-events:none}
+.specialty-caret svg{display:block;width:100%;height:100%}
 .header-health-brand{display:flex;align-items:center;justify-content:center;align-self:stretch}
 .header-health-logo{display:block;width:228px;height:48px;background:var(--ah-logo-img) center/contain no-repeat;filter:brightness(0) invert(1);opacity:.96}
 @keyframes pixel-heartbeat{0%,64%,100%{transform:scale(1)}14%{transform:scale(1.28)}28%{transform:scale(1)}42%{transform:scale(1.16)}}
 @media (prefers-reduced-motion:reduce){.pixel-heart{animation:none}}
 .hdr-tools{display:flex;align-items:stretch;align-self:stretch;gap:8px;justify-self:end;min-width:0}
 .suite-switcher{display:inline-flex;align-items:stretch;justify-content:center;flex-wrap:wrap;gap:3px;min-width:0;padding:3px;background:#fff;border:3px solid #000;font-family:var(--mono);flex:0 1 auto}
-@media (min-width:1401px){.hdr .brand-box,.hdr .suite-switcher{width:466px}.hdr .brand-box{height:56px}.hdr .mark{display:block;font-size:20px;line-height:1;white-space:nowrap}}
+@media (min-width:1401px){.hdr .brand-box,.hdr .suite-switcher{width:466px}.hdr .brand-box{height:56px}}
 .hdr{position:relative}
 .info-button{position:absolute;right:14px;top:50%;transform:translateY(-50%);height:56px;flex:none;width:44px;border:3px solid #000;background:#fff;color:#14233e;font:700 15px/1 var(--mono);cursor:pointer;display:grid;place-items:center}
 @media (min-width:701px) and (max-width:1400px){.hdr .hdr-in{padding-right:78px}}
@@ -113,6 +137,15 @@ export function suiteInfoDialog(title, report) {
 }
 
 export const SUITE_INFO_SCRIPT = String.raw`(() => {
+  const select = document.querySelector(".specialty-select");
+  if (!select) return;
+  select.addEventListener("change", () => {
+    const chosen = select.options[select.selectedIndex];
+    const href = chosen && chosen.dataset.href;
+    if (href) location.href = href;
+  });
+})();
+(() => {
   const button = document.getElementById("dataset-info-button"), dialog = document.getElementById("dataset-info");
   if (!button || !dialog || typeof dialog.showModal !== "function") return;
   const pulled = dialog.querySelector("[data-pulled]");

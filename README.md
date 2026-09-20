@@ -17,6 +17,11 @@ Three pages, all static HTML in `public/`:
 - **Provider Index** (`provider-map.html`): which Cardiology providers each
   system lists, by ZIP and county, from the two public provider directories.
 
+The title box on every page is a specialty menu. Cardiology is the site root;
+Orthopedics has the same three pages under `public/orthopedics/`, which the
+build writes as placeholders until that specialty's slot data is published
+under `public/data/orthopedics/` (`src/shared/specialties.js` lists them).
+
 ## Where the data comes from
 
 Both systems let anyone browse open appointment slots on their websites without

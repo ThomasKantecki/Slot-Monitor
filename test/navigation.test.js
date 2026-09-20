@@ -283,10 +283,10 @@ test("telemedicine slots can be hidden from every filtered view and Reset shows 
 test("the header box carries each view's title with the pixel heart and no page heading remains", () => {
   const slots = renderSlotTimes();
   const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
-  assert.match(slots, /<div class="brand-box"><span class="mark">Cardiology <b>Slot Availability<\/b><\/span><span class="pixel-heart" aria-hidden="true">/);
+  assert.match(slots, /<div class="brand-box"><span class="mark"><span class="specialty-pick"><span class="specialty-sizer" aria-hidden="true">Cardiology<\/span><select class="specialty-select" aria-label="Specialty"><option value="cardiology"[^>]*selected>Cardiology<\/option>[\s\S]*?<\/select><span class="specialty-caret" aria-hidden="true">[\s\S]*?<\/span><\/span><b>Slot Availability<\/b><\/span><span class="pixel-heart" aria-hidden="true">/);
   assert.doesNotMatch(slots, /<h1>|Cardiology <b>Access<\/b>/);
-  assert.match(suiteTitle("opportunities"), /<span class="mark">AH Market <b>Opportunities<\/b><\/span>/);
-  assert.match(suiteTitle("provider-map"), /<span class="mark">Cardiology <b>Provider Index<\/b><\/span>/);
+  assert.match(suiteTitle("opportunities"), /<b>AH Market Opportunities<\/b><\/span>/);
+  assert.match(suiteTitle("provider-map"), /<b>Provider Index<\/b><\/span>/);
   assert.match(providerSource, /\$\{suiteTitle\("provider-map"\)\}/);
   assert.doesNotMatch(providerSource, /Cardiology <b>Access<\/b>/);
   assert.throws(() => suiteTitle("nope"), /Unknown suite page/);
@@ -327,7 +327,8 @@ test("the header info button replaces the freshness line and opens a dataset dia
   assert.match(SUITE_NAV_STYLES, /@media \(min-width:701px\) and \(max-width:1400px\)\{\.hdr \.hdr-in\{padding-right:78px\}\}/);
   assert.match(SUITE_NAV_STYLES, /@media \(min-width:1401px\) and \(max-width:1595px\)\{\.hdr \.hdr-in\{padding-left:78px;padding-right:78px\}\}/);
   assert.match(SUITE_NAV_STYLES, /\.info-button\{position:static;transform:none;height:auto\}/);
-  assert.match(SUITE_NAV_STYLES, /@media \(min-width:1401px\)\{\.hdr \.brand-box,\.hdr \.suite-switcher\{width:466px\}\.hdr \.brand-box\{height:56px\}\.hdr \.mark\{display:block;font-size:20px;line-height:1;white-space:nowrap\}\}/);
+  assert.match(SUITE_NAV_STYLES, /@media \(min-width:1401px\)\{\.hdr \.brand-box,\.hdr \.suite-switcher\{width:466px\}\.hdr \.brand-box\{height:56px\}\}/);
+  assert.doesNotMatch(SUITE_NAV_STYLES, /\.hdr \.mark\{display:block;font-size:20px/, "the title stays two lines at every width so the specialty menu always fits");
 });
 
 test("slot and market maps share the smooth zoom used by Provider Index", () => {
