@@ -1,0 +1,25 @@
+{
+  "status": "completed_with_warnings",
+  "scope": "Florida Orthopedics public appointment availability",
+  "rule": "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
+  "ah": {
+    "runId": "2026-09-20T095029-0400",
+    "source": "data/orthopedics/runs/2026-09-20T095029-0400/ah/ah-orthopedics-physical-slots.json",
+    "physicalSlots": 368850,
+    "nonPhysicianSlots": 151841,
+    "telemedicineOnlySlots": 205,
+    "newPatientSlots": 226017,
+    "bookingCategoriesRetained": true
+  },
+  "oh": {
+    "runId": "2026-09-20T095029-0400",
+    "source": "data/orthopedics/runs/2026-09-20T095029-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 10740,
+    "nonPhysicianSlots": 729,
+    "telemedicineOnlySlots": 0,
+    "newPatientSlots": 8478,
+    "bookingCategoriesRetained": false
+  },
+  "totalPhysicalSlots": 379590,
+  "generatedAt": "2026-09-20T22:40:33.798Z"
+}
