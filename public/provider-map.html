@@ -33,7 +33,7 @@ button,input,select{font:inherit;color:inherit}
 .hdr .mark{display:flex;flex-direction:column;align-items:flex-start;font-size:17px;line-height:1.05;letter-spacing:.105em;white-space:normal}
 .pixel-heart{position:absolute;right:12px;top:50%;margin-top:-7px;width:15px;height:14px;color:#b40046;transform-origin:center;animation:pixel-heartbeat 1.25s steps(2,end) infinite}
 .pixel-heart svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
-.pixel-bone{position:absolute;right:12px;top:50%;margin-top:-5px;width:15px;height:10px;color:#1fa9e1}
+.pixel-bone{position:absolute;right:11px;top:50%;margin-top:-6px;width:20px;height:12px;color:#14233e}
 .pixel-bone svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
 .specialty-pick{position:relative;display:inline-block;margin-right:.25em;vertical-align:baseline}
 .specialty-sizer{display:inline-block;visibility:hidden;padding-right:12px;white-space:nowrap}
@@ -132,10 +132,10 @@ button,input,select{font:inherit;color:inherit}
 .control-section legend{padding:0 5px;color:var(--chrome);font-family:var(--mono);font-size:9px;font-weight:700;line-height:1;letter-spacing:.09em;text-transform:uppercase}
 .control-section-body{display:flex;align-items:flex-end;gap:7px;flex-wrap:wrap}
 .control-stack{display:grid;gap:3px}.control-stack .cap{line-height:1}
-.geography-controls{flex:1 1 300px;min-width:0}.geography-controls .control-section-body{flex-wrap:nowrap}.geography-controls .search-stack{flex:1 1 110px;min-width:0}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none;min-width:56px}
+.geography-controls{flex:1 1 300px;min-width:0}.geography-controls .control-section-body{flex-wrap:nowrap}.geography-controls .search-stack{flex:1 1 150px;min-width:0}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none;min-width:96px}
 .comparison-controls{flex:0 0 auto}.comparison-controls .control-section-body{flex-wrap:nowrap}
 .location-controls{flex:0 0 auto}.location-controls .control-section-body{flex-wrap:nowrap}
-@container (max-width:699px){.comparison-controls,.location-controls{flex:1 0 auto}}
+@container (max-width:699px){.comparison-controls,.location-controls,.subspecialty-controls{flex:1 0 auto}}
 .pill-group{display:inline-flex;gap:2px;flex:none}
 .filter-pill{padding:4px 6px;border:2px solid #000;background:#fff;color:var(--mute);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.035em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
 .filter-pill{white-space:nowrap}
@@ -148,8 +148,7 @@ button,input,select{font:inherit;color:inherit}
 .location-help:hover .location-tip,.location-help:focus-within .location-tip{opacity:1;visibility:visible}
 .pill-help{display:inline-flex;align-items:center;border:2px solid #000;background:#fff;padding-right:4px}
 .pill-help>.filter-pill{border:0;background:transparent;padding-right:3px}
-.sub-specialty{display:inline-flex;align-items:center;gap:6px;margin-left:8px}.sub-specialty[hidden]{display:none}.sub-specialty select.control{width:150px;max-width:150px;text-overflow:ellipsis}
-@media (max-width:1200px){.sub-specialty .cap{display:none}.sub-specialty select.control{width:124px;max-width:124px}}
+.subspecialty-controls{flex:0 0 auto}.subspecialty-controls[hidden]{display:none}.subspecialty-controls select.control{width:196px;max-width:196px;text-overflow:ellipsis}
 .pill-help>.location-help{margin-left:0}
 .pill-help:hover{background:var(--accent-tint)}.pill-help>.filter-pill:hover{background:transparent}
 .pill-help:has(>.filter-pill[aria-pressed="true"]){background:var(--accent);border-color:var(--accent)}
@@ -245,7 +244,7 @@ a{color:var(--accent-deep)}
  .controls{gap:6px;padding:8px 10px}
  .control-section{width:100%}.control-section-body{align-items:stretch}.comparison-controls .control-section-body{flex-wrap:wrap}.pill-group{flex:0 1 auto;flex-wrap:wrap}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
- .fgroup{width:100%;justify-content:space-between}.fgroup select.control{flex:1;width:auto;max-width:none}
+ .fgroup{width:100%;justify-content:space-between}.fgroup select.control,.subspecialty-controls select.control{flex:1;width:auto;max-width:none}
 }
 @media (max-width:340px){
  .tpanel .panel-band{padding-inline:7px;gap:3px}
@@ -268,7 +267,8 @@ a{color:var(--accent-deep)}
     <span class="control-stack"><span class="pill-group" role="group" aria-label="Area type"><button id="g-zip" class="filter-pill pill" aria-pressed="true">ZIP codes</button><button id="g-county" class="filter-pill pill" aria-pressed="false">Counties</button></span></span>
     <span class="control-stack search-stack"><span class="fgroup"><input id="area-search" class="control" list="area-options" placeholder="ZIP code" autocomplete="off" aria-label="Find area"><datalist id="area-options"></datalist></span></span>
    </div></fieldset>
-   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span><span class="fgroup sub-specialty"><label class="cap" for="spec">Sub-specialty</label><select id="spec" class="control" aria-label="Sub-specialty"></select></span></div></fieldset>
+   <fieldset id="comparison-controls" class="control-section comparison-controls"><legend>Comparison</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Health system view"><button id="v-diff" class="filter-pill pill" aria-pressed="true">Difference</button><button id="v-ah" class="filter-pill pill logo-pill" aria-pressed="false" title="AdventHealth"><span class="pill-logo ah" aria-label="AdventHealth"></span></button><button id="v-oh" class="filter-pill pill logo-pill" aria-pressed="false" title="Orlando Health"><span class="pill-logo oh" aria-label="Orlando Health"></span></button></span></span></div></fieldset>
+   <fieldset class="control-section subspecialty-controls" hidden><legend>Sub-specialty</legend><div class="control-section-body"><select id="spec" class="control" aria-label="Sub-specialty"></select></div></fieldset>
    <fieldset class="control-section location-controls"><legend>Locations</legend><div class="control-section-body"><span class="control-stack"><span class="pill-group" role="group" aria-label="Provider locations"><button id="m-all" class="filter-pill pill" aria-pressed="true">All locations</button><span class="pill-help pill"><button id="m-primary" class="filter-pill pill" aria-pressed="false">Primary only</button><span class="location-help"><button id="primary-location-info" class="location-info" type="button" aria-label="About Primary Only" aria-describedby="primary-location-note">i</button><span id="primary-location-note" class="location-tip" role="tooltip">Some providers work at multiple locations. Switch to Primary Only to show each provider only at their main location.</span></span></span></span></span></div></fieldset>
   </div>
   <div class="mapwrap">
@@ -541,7 +541,7 @@ const MEMBERS=["Cardiology","Cardiology - Interventional","Cardiology - Electrop
 const subLabels=DATASETS.all.zip.data.specialties.filter(s=>s.name!=="Cardiology"&&MEMBERS.includes(s.name)&&(s.ah+s.oh)>0).sort((a,b)=>MEMBERS.indexOf(a.name)-MEMBERS.indexOf(b.name));
 const oneSided=(s)=>s.ah===0?" · not published by AdventHealth":s.oh===0?" · not published by Orlando Health":"";
 document.getElementById("spec").innerHTML=['<option value="Cardiology">All Cardiology</option>'].concat(subLabels.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.label)+' · AH '+s.ah+' · OH '+s.oh+esc(oneSided(s))+'</option>')).join("");
-document.querySelector(".sub-specialty").hidden=subLabels.length===0;
+document.querySelector(".subspecialty-controls").hidden=subLabels.length===0;
 document.getElementById("spec").value=specialty;
 document.getElementById("spec").onchange=(e)=>{specialty=e.target.value;paint();if(selected)showProviders(selected);};
 function setView(v){view=v;["diff","ah","oh"].forEach(x=>{const b=document.getElementById("v-"+x);if(b)b.setAttribute("aria-pressed",String(x===v));});paint();if(selected)showProviders(selected);else resetPanel();}

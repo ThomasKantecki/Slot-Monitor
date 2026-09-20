@@ -14,7 +14,7 @@ export function suitePage(id) {
   return page;
 }
 const PIXEL_HEART = '<span class="pixel-heart" aria-hidden="true"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg></span>';
-const PIXEL_BONE = '<span class="pixel-bone" aria-hidden="true"><svg viewBox="0 0 9 6" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h2v1H1zM6 0h2v1H6zM0 1h4v1H0zM5 1h4v1H5zM0 2h9v2H0zM0 4h4v1H0zM5 4h4v1H5zM1 5h2v1H1zM6 5h2v1H6z"/></svg></span>';
+const PIXEL_BONE = '<span class="pixel-bone" aria-hidden="true"><svg viewBox="0 0 15 9" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h2v1H1zM12 0h2v1h-2zM0 1h4v2H0zM11 1h4v2h-4zM1 3h13v1H1zM2 4h11v1H2zM1 5h13v1H1zM0 6h4v2H0zM11 6h4v2h-4zM1 8h2v1H1zM12 8h2v1h-2z"/></svg></span>';
 const EMBLEMS = { heart: PIXEL_HEART, bone: PIXEL_BONE };
 const PIXEL_CARET = '<span class="specialty-caret" aria-hidden="true"><svg viewBox="0 0 9 5" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h9v1H0zM1 1h7v1H1zM2 2h5v1H2zM3 3h3v1H3zM4 4h1v1H4z"/></svg></span>';
 
@@ -39,7 +39,7 @@ export const SUITE_NAV_STYLES = String.raw`
 .hdr .mark{display:flex;flex-direction:column;align-items:flex-start;font-size:17px;line-height:1.05;letter-spacing:.105em;white-space:normal}
 .pixel-heart{position:absolute;right:12px;top:50%;margin-top:-7px;width:15px;height:14px;color:#b40046;transform-origin:center;animation:pixel-heartbeat 1.25s steps(2,end) infinite}
 .pixel-heart svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
-.pixel-bone{position:absolute;right:12px;top:50%;margin-top:-5px;width:15px;height:10px;color:#1fa9e1}
+.pixel-bone{position:absolute;right:11px;top:50%;margin-top:-6px;width:20px;height:12px;color:#14233e}
 .pixel-bone svg{display:block;width:100%;height:100%;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.2))}
 .specialty-pick{position:relative;display:inline-block;margin-right:.25em;vertical-align:baseline}
 .specialty-sizer{display:inline-block;visibility:hidden;padding-right:12px;white-space:nowrap}

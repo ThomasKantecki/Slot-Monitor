@@ -289,7 +289,7 @@
       return;
     }
     $("origin-zip").removeAttribute("aria-invalid"); $("radius-status").classList.remove("error");
-    state.originZip = zip; state.radiusActive = true; state.county = ""; refresh();
+    state.originZip = zip; state.radius = searchedZipRadius; state.radiusActive = true; state.county = ""; $("radius").value = searchedZipRadius; $("radius-value").textContent = `${searchedZipRadius} miles`; refresh();
   }
 
   function applyAreaSearch() {
@@ -378,8 +378,8 @@
     }
     ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke(rasterPaths.land);
   }
-  const motion = window.SUITE_MAP_MOTION.create({ svg, viewport: vp, raster: $("map-raster"), width: W, height: H, maxZoom: 20, draw: drawSnapshot, tip: $("tip"), onSettle: (Z) => { if (Z.k !== currentZoom) { scaleMarkers(Z.k); motion.queue(); } } });
-  $("zoom-in").addEventListener("click", () => motion.zoomBy(1.35)); $("zoom-out").addEventListener("click", () => motion.zoomBy(1 / 1.35));
+  const motion = window.SUITE_MAP_MOTION.create({ svg, viewport: vp, raster: $("map-raster"), width: W, height: H, maxZoom: 60, draw: drawSnapshot, tip: $("tip"), onSettle: (Z) => { if (Z.k !== currentZoom) { scaleMarkers(Z.k); motion.queue(); } } });
+  $("zoom-in").addEventListener("click", () => motion.zoomBy(1.5)); $("zoom-out").addEventListener("click", () => motion.zoomBy(1 / 1.5));
   $("zoom-reset").addEventListener("click", () => motion.reset());
   svg.addEventListener("keydown", (event) => {
     const arrows = { ArrowLeft: [45, 0], ArrowRight: [-45, 0], ArrowUp: [0, 45], ArrowDown: [0, -45] };

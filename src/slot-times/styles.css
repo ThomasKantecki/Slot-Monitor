@@ -1,6 +1,6 @@
 /* Styles for the Slot Availability page. The Market Opportunities page reuses this file and adds src/opportunities/styles.css on top. */
 :root{--navy:#14233e;--cream:#f5f1e8;--cream2:#eee9dc;--chrome:#005c99;--sky:#1fa9e1;--pale:#dcebf5;--ink:#14233e;--muted:#52627b;--faint:#708098;--ah:#005c99;--oh:#b20838;--nodata:#e6e2dc;--line:#cbd4dd;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--display:"Helvetica Neue",Inter,Arial,sans-serif}
-*,*::before,*::after{box-sizing:border-box}*{margin:0}html{background:var(--cream)}body{min-width:320px;background:var(--cream);color:var(--ink);font:15px/1.45 var(--display)}button,input,select{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+*,*::before,*::after{box-sizing:border-box}*{margin:0}html{background:var(--cream);overflow-x:hidden}body{min-width:320px;overflow-x:hidden;background:var(--cream);color:var(--ink);font:15px/1.45 var(--display)}button,input,select{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
 .hdr{background:var(--chrome);border-bottom:2px solid #000}.hdr-in{max-width:1500px;min-height:64px;margin:auto;padding:10px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}.brand-box{display:inline-flex;align-items:center;background:#fff;border:3px solid #000;padding:7px 14px}.mark{font:700 17px/1 var(--mono);letter-spacing:.105em;text-transform:uppercase}.mark b{color:var(--sky)}
 .page{max-width:1500px;margin:auto;padding:14px 20px 28px}
 .toolbar,.card,.panel{background:#fff;border:3px solid #000}.toolbar{padding:8px 10px;margin-bottom:10px}.control-group{display:flex;gap:3px;align-items:center;min-width:0}.toggle{height:27px;border:2px solid #000;border-radius:999px;background:#fff;padding:0 9px;font:700 9.5px/1 var(--mono);letter-spacing:.035em;text-transform:uppercase;white-space:nowrap}.toggle:hover,.plain:hover:not(:disabled){background:#e8f5fb}.toggle[aria-pressed=true]{border-color:var(--sky);background:var(--sky);color:var(--navy)}.system-ah[aria-pressed=true]{background:var(--ah);border-color:var(--ah);color:#fff}.system-oh[aria-pressed=true]{background:var(--oh);border-color:var(--oh);color:#fff}.plain{height:27px;border:2px solid #000;border-radius:999px;background:#fff;padding:0 10px;font:700 9.5px/1 var(--mono);letter-spacing:.035em;text-transform:uppercase;white-space:nowrap}.plain:disabled{cursor:not-allowed;opacity:.4}.field{height:27px;border:2px solid #000;background:#fff;padding:3px 7px;font:600 10px/1 var(--mono)}.search{flex:1 1 150px;min-width:0;width:auto}.spacer{flex:1}
@@ -65,6 +65,11 @@
 .toggle-help:hover{background:#e8f5fb}.toggle-help>.toggle:hover{background:transparent}
 .toggle-help:has(>.toggle[aria-pressed=true]){border-color:var(--sky);background:var(--sky)}
 .filter-row>.control-group:not(:last-child) .location-tip{left:0;right:auto}
+/* under 1200px the toolbar is tight: only the first group opens its tip to the right, the rest open leftward so nothing leaves the viewport */
+@media (max-width:1200px){.filter-row>.control-group:not(:first-child) .location-tip{left:auto;right:0}}
+@media (max-width:900px){.filter-row>.control-group:not(:last-child) .location-tip,.filter-row>.control-group:last-child .location-tip{left:auto;right:0}}
+/* Phones: a tip spans the whole filter row instead of hanging off its little button */
+@media (max-width:560px){.filter-row{position:relative}.filter-row .location-help{position:static}.filter-row>.control-group:not(:last-child) .location-tip,.filter-row>.control-group:last-child .location-tip{left:0;right:0;width:auto;max-width:none}}
 @media(max-width:1260px){.slot-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:1200px){.toolbar,.slot-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.toolbar,.slot-toolbar{grid-template-columns:minmax(0,1fr)}.geography-group .filter-group-body{grid-template-columns:minmax(0,1fr)}.filter-group-body{grid-template-rows:auto;height:auto}.filter-group-body>.scope-status,.filter-group-body>.group-note{grid-row:auto}}
@@ -108,3 +113,34 @@
 .detail-providers{display:flex;flex-direction:column;min-height:480px;min-width:0}
 .detail-providers .provider-list{flex:1}
 @media(max-width:980px){.detail{grid-template-columns:1fr}.detail-calendar{border-right:0;border-bottom:2px solid var(--line)}.detail-providers{min-height:0}}
+
+/* Doctor cards: the system mark reads at a glance */
+.provider-card .system-logo{width:92px;height:26px}
+/* Summary card, shared with Market Opportunities: a band title, one row per system with its mark and figure, thin rules, a facts strip */
+.summary{padding:0;overflow:hidden}
+.summary-band{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:39px;padding:7px 12px;background:var(--chrome);color:#fff}
+.summary-band .summary-title{margin:0;font:700 13px/1.15 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:#fff}
+.summary-meta{font:700 10.5px/1.2 var(--mono);letter-spacing:.04em;color:var(--pale);white-space:nowrap}
+.summary-rows{padding:6px 14px 0}
+.summary-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0}
+.summary-row .tlogo{display:inline-block;flex:none;width:108px;height:22px;background:left center/contain no-repeat}
+.summary-row .tlogo.ah{background-image:var(--ah-logo-img)}.summary-row .tlogo.oh{background-image:var(--oh-logo-img)}
+.row-label{flex:1 1 auto;min-width:0;font:700 9.5px/1.35 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.summary-figure{flex:none;text-align:right;min-width:0}
+.summary-figure .n{font:700 30px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.summary-row.ah .n{color:var(--ah)}.summary-row.oh .n{color:var(--oh)}
+.summary-figure .s{margin-top:3px;font-size:10.5px;line-height:1.25;color:var(--muted)}
+.summary-rule{height:2px;background:#000}.summary-rule.thin{height:1px;background:var(--line)}
+.summary-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;margin:6px 14px 0;padding:8px 0 2px;border-top:1px solid var(--line)}
+.fact{padding:4px 0;min-width:0}
+.fact-n{display:block;font:700 18px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.fact-n.pair{display:flex;align-items:baseline;gap:5px}.fact-n.pair small{font:700 9px/1 var(--mono);color:var(--faint)}.fact-n.pair small+span{margin-left:6px;padding-left:8px;border-left:1px solid var(--line)}.fact-n .ah{color:var(--ah)}.fact-n .oh{color:var(--oh)}
+.fact-t{display:block;margin-top:3px;font:700 9px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.fact-s{display:block;font-size:10.5px;line-height:1.3;color:var(--muted)}
+.summary-facts>.fact-s{grid-column:1/-1;padding:4px 0 2px}
+.summary .reasons{margin:8px 14px 0}
+.summary .lead{margin:6px 14px 12px;padding:9px 0 0;border:0;border-top:1px solid var(--line);background:transparent;font:700 11px/1.35 var(--mono)}
+.summary .lead .system-logo{width:76px;height:21px}
+
+/* Phones: the side cards stack, facility buttons never exceed their column */
+@media(max-width:680px){.side{grid-template-columns:1fr}.facility-list{grid-template-columns:minmax(0,1fr)}.facility{min-width:0}.facility-line>*{min-width:0}.facility-counts{white-space:normal}.facility-name{white-space:normal}}

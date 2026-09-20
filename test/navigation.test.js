@@ -160,7 +160,7 @@ test("slot area selection can be cleared and Reset restores today's period and v
   assert.doesNotMatch(slots, /id="period-status"|Common endpoint:/);
   // the four headline figures live in the summary card on the right; the KPI strip above the map is gone
   assert.doesNotMatch(slots, /class="kpis"|class="card kpi"/);
-  assert.match(slots, /<article class="card summary"><div id="area-name" class="summary-title">—<\/div><div class="compare"><div class="compare-box ah"><div id="kpi-ah" class="n">—<\/div><div class="t">AdventHealth appointments<\/div><div id="kpi-ah-sub" class="s">[\s\S]*?<div id="kpi-providers" class="n">[\s\S]*?<span id="kpi-facilities-ah" class="ah">[\s\S]*?<div id="kpi-dates" class="s">—<\/div><\/div><\/div><div id="area-lead" class="lead">—<\/div><\/article>/);
+  assert.match(slots, /<article class="card summary"><div class="summary-band"><h2 id="area-name" class="summary-title">—<\/h2><span class="summary-meta">available slots<\/span><\/div><div class="summary-rows"><div class="summary-row ah"><span class="tlogo ah" role="img" aria-label="AdventHealth"><\/span><div class="summary-figure"><div id="kpi-ah" class="n">—<\/div><div id="kpi-ah-sub" class="s">Available appointment slots<\/div><\/div><\/div><div class="summary-rule"><\/div><div class="summary-row oh">[\s\S]*?<div id="kpi-oh" class="n">—<\/div>[\s\S]*?<div class="summary-facts"><div class="fact"><span id="kpi-providers" class="fact-n">—<\/span><span class="fact-t">Available providers<\/span><\/div>[\s\S]*?<span id="kpi-facilities-ah" class="ah">—<\/span>[\s\S]*?<div class="fact-s"><span id="kpi-period">—<\/span> · <span id="kpi-dates">—<\/span><\/div><\/div><div id="area-lead" class="lead">—<\/div><\/article>/);
   assert.doesNotMatch(client, /\$\("area-ah"\)|\$\("area-oh"\)|\$\("area-sub"\)/);
   // the lead line names the leader with its logo inside a white box
   assert.match(client, /<span class="system-logo \$\{delta > 0 \? "ah" : "oh"\}" role="img" aria-label="\$\{delta > 0 \? "AdventHealth" : "Orlando Health"\}"><\/span><span>leads by \$\{number\(Math\.abs\(delta\)\)\} appointments<\/span>/);
@@ -342,7 +342,8 @@ test("slot and market maps share the smooth zoom used by Provider Index", () => 
   assert.match(motion, /Math\.exp\(-dy \* 0\.0019\)/);
   const slots = renderSlotTimes();
   assert.match(slots, /<canvas id="map-raster" width="1000" height="940" aria-hidden="true"><\/canvas>/);
-  assert.match(slots, /SUITE_MAP_MOTION\.create\(\{ svg, viewport: vp, raster: \$\("map-raster"\), width: W, height: H, maxZoom: 20/);
+  assert.match(slots, /SUITE_MAP_MOTION\.create\(\{ svg, viewport: vp, raster: \$\("map-raster"\), width: W, height: H, maxZoom: 60/);
+  assert.match(readFileSync(new URL("../src/opportunities/client.js", import.meta.url), "utf8"), /maxZoom: 60,[\s\S]*zoomBy\(1\.5\)/, "the market map zooms like the slot map");
   const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
   assert.match(client, /renderMapMarkers\(\);\n    motion\.queue\(\);/);
   assert.match(client, /if \(motion\.moved\(\)\) return; selectArea\(/);

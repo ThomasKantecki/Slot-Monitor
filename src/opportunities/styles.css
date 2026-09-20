@@ -8,7 +8,7 @@
 @media(max-width:1260px){.op-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.op-toolbar{grid-template-columns:minmax(0,1fr)}}
 /* Map: flat ZIP outlines, one dot per market centre; red where Orlando Health leads, blue where AdventHealth leads, a white core where the ZIP has no AdventHealth slots. */
-.op-area{fill:#e6e2dc;stroke:#c6d0d8;stroke-width:.35;vector-effect:non-scaling-stroke;pointer-events:none;transition:none}.op-area.selected{stroke:#111;stroke-width:1.6}
+.op-area{fill:#e6e2dc;stroke:#111;stroke-width:.35;vector-effect:non-scaling-stroke;pointer-events:none;transition:none}.op-area.selected{stroke:#111;stroke-width:1.6}
 .market-marker{cursor:pointer}.market-marker .dot{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}.market-marker.oh .dot{fill:var(--oh)}.market-marker.ah .dot{fill:var(--ah)}.market-marker .gap{fill:#fff;pointer-events:none}.market-marker:hover .dot,.market-marker:focus .dot,.market-marker.selected .dot{stroke:#000;stroke-width:3}.market-marker:focus{outline:none}
 .swatch.dot{width:11px;height:11px;border-radius:50%;border:1px solid #333;background:#fff}.swatch.dot.oh{background:var(--oh)}.swatch.dot.ah{background:var(--ah)}.swatch.dot.gap{background:radial-gradient(#fff 0 30%,var(--oh) 32%)}
 /* Right column: the summary card (area overview or the selected market) above the ranked markets. */
@@ -28,3 +28,6 @@
 .dialog-summary .system-logo{vertical-align:-3px}
 .dialog-facilities{display:grid;gap:12px;padding:12px 16px 18px}.market-facility{border:1px solid var(--line)}.market-facility>.facility-line{padding:8px 10px;background:var(--cream2)}.market-facility>.facility-meta{padding:5px 10px 0;white-space:normal}.market-facility .doctor-list{padding:8px 10px 10px}
 .outside-tag{flex:none;padding:2px 6px;border:1px solid var(--line);background:#fff;font:700 8.5px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+
+.summary .summary-actions{margin:8px 14px 12px}
+.summary .fact-s{grid-column:auto;padding:2px 0 0}

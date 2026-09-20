@@ -232,6 +232,21 @@ def replay(client: PublicEpicClient, visit: dict[str, Any], workflow: dict[str, 
     return response, prompts
 
 
+LATERALITY = {"left", "right", "both", "bilateral", "na", "n/a", "not applicable", "unsure", "not sure"}
+
+
+def representative_choices(options: list[str]) -> list[str]:
+    """Answers that do not change where the questionnaire routes are sampled instead of walked: a long list of
+    numbers (an age picker, 0..100) becomes its middle and last value (an adult and an elder; the site's pediatric
+    routing is out of scope), and a laterality question (Left / Right / Both / NA) keeps its first answer. Every
+    other list is walked whole, so body parts and yes/no branches all get their own flows."""
+    if len(options) >= 20 and all(re.fullmatch(r"\d+", option.strip()) for option in options):
+        return [options[len(options) // 2], options[-1]]
+    if len(options) > 1 and all(norm(option) in LATERALITY for option in options):
+        return options[:1]
+    return options
+
+
 def enumerate_paths(client: PublicEpicClient, visit: dict[str, Any], workflow: dict[str, Any], max_paths: int, max_depth: int, max_answers: int):
     if not visit.get("AnonymousSchedulingDecisionTreeId"):
         return [{"answers": [], "prompts": [], "tree_answer_id": None}], []
@@ -249,6 +264,10 @@ def enumerate_paths(client: PublicEpicClient, visit: dict[str, Any], workflow: d
         options = choices(question)
         if not options:
             answer = fallback_answer(question); options = [answer] if answer else []
+        sampled = representative_choices(options)
+        if sampled is not options:
+            audit.append({"status": "sampled", "answer_path": json.dumps(path), "message": f"numeric list of {len(options)} answers sampled to {sampled}"})
+            options = sampled
         if len(options) > max_answers:
             audit.append({"status": "excluded", "answer_path": json.dumps(path), "message": f"answer cap {max_answers}"})
         queue.extend(path + [answer] for answer in options[:max_answers])
