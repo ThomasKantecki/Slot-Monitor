@@ -1,9 +1,14 @@
-// Provider directory sources: Orlando Health records and the AdventHealth capture become one provider format.
+// The two provider directories: reading each system's capture into one roster shape, the Orlando Health
+// record fixes, and the AdventHealth listing parser plus the Chrome-capture import guards.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanName, specialtyOf, isFlZip, zip5, toRoster, dedupByNpi, NPI_FIXES } from "../directories/orlando-health.js";
+import { cleanName, dedupByNpi, isFlZip, NPI_FIXES, specialtyOf, toRoster, zip5 } from "../directories/orlando-health.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { importCapture, mergeRecords, validateCapture } from "../directories/capture-adventhealth.mjs";
 
-// Their fullName appends the credential; the panel shows it separately.
+// ---- directory ----
 test("cleanName strips the credential the directory appends", () => {
   assert.equal(cleanName("Ali S. Abbood, MD", "MD"), "Ali S. Abbood");
   assert.equal(cleanName("Awad Haroon Abass, PA-C", "PA-C"), "Awad Haroon Abass");
@@ -252,4 +257,42 @@ test("isBookable excludes hospital-based and support staff, keeps clinic care", 
   for (const s of ["Family Medicine", "Cardiology", "Audiology", "Nurse Midwife",
                    "Licensed Mental Health Counselor", "Nurse Practitioner", "Neuropsychology"])
     assert.ok(isBookable(s), s + " should stay");
+});
+
+// ---- directory-parse ----
+test("Orlando Health records take their headshot from the index and repair street-in-name offices", () => {
+  const hit = { isEmployed: true, npi: "1234567890", fullName: "Rudhir Tandon, MD", title: "MD", slug: "rudhir-tandon-md", specialties: [{ name: "Interventional Cardiology" }],
+    media: "https://orlandohealth.getbynder.com/transform/Physician_Headshot/abc/Rudhir_Tandon",
+    locations: [{ name: "1222 S Orange Ave", address1: "", address2: "", city: "Orlando", state: "FL", zipCode: "32806", isPrimary: true }, { name: "Heart Institute", address1: "1222 S Orange Ave", address2: "Suite 2", city: "Orlando", state: "FL", zipCode: "32806", isPrimary: false }] };
+  const [person] = toRoster({ hits: [hit] }, []);
+  assert.equal(person.photo, hit.media);
+  assert.deepEqual(person.locations.map((l) => [l.name, l.addr]), [["", "1222 S Orange Ave"], ["Heart Institute", "1222 S Orange Ave, Suite 2"]]);
+  const [withScrape] = toRoster({ hits: [{ ...hit, media: undefined }] }, [{ slug: "rudhir-tandon-md", photo: "https://scrape/photo.jpg" }]);
+  assert.equal(withScrape.photo, "https://scrape/photo.jpg", "the browser capture still fills in when the index has no headshot");
+});
+
+// ---- capture-import ----
+const record = (npi, extra = {}) => ({ npi, name: `Doc ${npi}, MD`, spec: "Cardiology", photo: "", profile: `https://www.adventhealth.com/doctors/doc-${npi}`, locations: [{ locName: "Clinic", street: "1 Main St", city: "Orlando", state: "FL", zip: "32801", lat: 28.5, lon: -81.4, primary: true }], ...extra });
+
+test("validateCapture enforces the scope, the 98% record guard and the 90% location guard", () => {
+  const ok = { scope: "adventhealth-medical-group", listedTotal: 100, records: Array.from({ length: 99 }, (_, i) => record(String(1000000000 + i))) };
+  assert.deepEqual(validateCapture(ok), { records: 99, located: 99 });
+  assert.throws(() => validateCapture({ ...ok, scope: "network" }), /scope must be adventhealth-medical-group/);
+  assert.throws(() => validateCapture({ ...ok, records: ok.records.slice(0, 97) }), /97 unique records from 100/);
+  const unlocated = ok.records.map((r, i) => (i < 15 ? { ...r, locations: [] } : r));
+  assert.throws(() => validateCapture({ ...ok, records: unlocated }), /only 84 of 99 records have a location/);
+});
+
+test("importCapture merges page-boundary duplicates, drops rows without a 10-digit NPI and keeps the capture time", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ah-capture-"));
+  const file = join(dir, "capture.json");
+  const dup = record("1234567890", { locations: [{ locName: "Other", street: "2 Side St", city: "Tampa", state: "FL", zip: "33602", lat: 27.9, lon: -82.4, primary: true }] });
+  writeFileSync(file, JSON.stringify({ fetchedAt: "2026-09-20T15:00:00.000Z", scope: "adventhealth-medical-group", listedTotal: 2, pages: 1, records: [record("1234567890"), dup, { npi: "", name: "Facility" , locations: [] }, record("2345678901")] }));
+  const result = importCapture(file);
+  assert.equal(result.fetchedAt, "2026-09-20T15:00:00.000Z");
+  assert.equal(result.scope, "adventhealth-medical-group");
+  assert.equal(result.listedTotal, 2);
+  assert.deepEqual(result.records.map((r) => r.npi), ["1234567890", "2345678901"]);
+  assert.equal(result.records[0].locations.length, 2, "locations from both pages are kept");
+  assert.equal(mergeRecords([record("1"), record("1")]).length, 1);
 });

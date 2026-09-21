@@ -1,10 +1,18 @@
-// The built Slot Availability page: header, toolbar markup, filters, map controls and the summary card.
+// The three built pages: the shared header and data-check dialog, the Slot Availability markup and controls,
+// the Provider Index render, the market scoring and page, the data-check reports, dates and distances.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../pages/shared/suite-navigation.js";
 import { renderSlotTimes } from "../pages/slot-availability/render.js";
+import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline, withOtherOffices } from "../pages/provider-index/render.js";
+import { buildOpportunityRows, marketReasons, opportunityScore } from "../pages/market-opportunities/scoring.js";
+import { renderOpportunities } from "../pages/market-opportunities/render.js";
+import { directoryGaps, nameKeys, opportunityDataChecks, providerDataChecks, slotDataChecks } from "../pages/shared/dataset-facts.js";
+import "../pages/shared/date.js";
+import "../pages/slot-availability/radius.js";
 
+// ---- navigation ----
 const slotModel = JSON.parse(readFileSync(new URL("../public/data/cardiology/slot-times-summary.json", import.meta.url), "utf8"));
 
 test("shared navigation marks exactly one current view", () => {
@@ -352,4 +360,413 @@ test("slot and market maps share the smooth zoom used by Provider Index", () => 
   const styles = readFileSync(new URL("../pages/slot-availability/styles.css", import.meta.url), "utf8");
   assert.match(styles, /#map-raster\{position:absolute;z-index:1;/);
   assert.match(styles, /svg\.zooming \.area,svg\.dragging \.area,svg\.zooming \.op-area,svg\.dragging \.op-area\{pointer-events:none;transition:none;shape-rendering:optimizeSpeed\}/);
+});
+
+// ---- render ----
+test("escapeScriptJson round-trips spaces (SVG path 'd' stays intact)", () => {
+  const escaped = escapeScriptJson({ d: "M658.8 201.0L658.3 200.3Z" });
+  assert.match(escaped, /M658\.8 201\.0L658\.3 200\.3Z/);
+});
+test("escapeScriptJson neutralizes script-closing sequences", () => {
+  assert.doesNotMatch(escapeScriptJson({ x: "</script><script>alert(1)</script>" }), /<\/script>/);
+});
+test("escapeScriptJson escapes U+2028/U+2029", () => {
+  const s = escapeScriptJson({ s: `a${String.fromCharCode(0x2028)}b${String.fromCharCode(0x2029)}c` });
+  assert.match(s, /a\\u2028b\\u2029c/);
+});
+
+test("all-location headline uses geography-independent provider-location totals", () => {
+  const data = {
+    totals: { ah: 2, oh: 3 },
+    locationTotals: { ah: 5, oh: 6 },
+    specialties: [{ name: "Cardiology", ah: 2, oh: 1, ahLocations: 4, ohLocations: 2 }],
+    zips: {
+      "32801": { ah: 2, oh: 1, spec: { Cardiology: { a: 1, o: 1 } } },
+      "33607": { ah: 1, oh: 3, spec: { Cardiology: { a: 1, o: 0 } } },
+    },
+  };
+  assert.deepEqual(providerAvailabilityTotals(data), { ah: 5, oh: 6 });
+  assert.deepEqual(providerAvailabilityTotals(data, "Cardiology"), { ah: 4, oh: 2 });
+  assert.deepEqual(providerHeadline(data, { locationMode: "all", gran: "zip" }), {
+    ah: 5, oh: 6, title: "Total providers available", scope: "published locations",
+  });
+  assert.deepEqual(providerHeadline(data, { locationMode: "all", gran: "county" }), {
+    ah: 5, oh: 6, title: "Total providers available", scope: "published locations",
+  });
+});
+
+test("primary-only headline remains a distinct-provider count", () => {
+  const data = {
+    totals: { ah: 2, oh: 3 },
+    specialties: [{ name: "Cardiology", ah: 2, oh: 1 }],
+    zips: {},
+  };
+  assert.deepEqual(providerHeadline(data, { locationMode: "primary", gran: "county" }), {
+    ah: 2, oh: 3, title: "Distinct providers", scope: "statewide",
+  });
+  assert.deepEqual(providerHeadline(data, { locationMode: "primary", gran: "county", specialty: "Cardiology" }), {
+    ah: 2, oh: 1, title: "Distinct providers", scope: "in specialty",
+  });
+});
+
+test("map color key lives in the totals card without a separate lead legend", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /class="panel lpanel"|id="legend"|id="legtitle"/);
+  assert.match(src, /id="map-key"/);
+  assert.match(src, />Orlando Health<\/span>/);
+  assert.match(src, />AdventHealth<\/span>/);
+});
+
+test("map color key keeps all three comparison labels on one row", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /\.map-key\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(3,max-content\)[^}]*white-space:nowrap/);
+  assert.match(src, /id="key-tie"[^>]*>[\s\S]*?<span>Equal<\/span>/);
+});
+
+test("totals scope shares a compact single-line header", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /\.tpanel \.panel-band\{[^}]*gap:5px;[^}]*flex-wrap:nowrap/);
+  assert.match(src, /\.tpanel \.panel-band h2\{[^}]*white-space:nowrap/);
+  assert.match(src, /\.tpanel \.panel-band \.band-meta\{[^}]*font-size:9px/);
+});
+
+test("company view filters and refreshes the provider index", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /if\(view!=="diff"\) list=list\.filter\(x=>x\.y===view\)/);
+  assert.match(src, /VISIBLE_SYSTEMS\(\)\.map/);
+  assert.match(src, /paint\(\);if\(selected\)showProviders\(selected\);else resetPanel\(\)/);
+});
+
+test("nonzero ties use a red-and-blue striped map fill", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /id="tie-stripes"/);
+  assert.match(src, /const TIE_FILL="url\(#tie-stripes\)"/);
+  assert.match(src, /if\(d===0\) return TIE_FILL/);
+  assert.match(src, /red and blue striped areas are equal/);
+});
+
+test("selected ZIP and county borders override their base stroke widths", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /#lay-zip path\.z\.sel,#lay-county path\.z\.sel\{stroke:#000;stroke-width:2\.8\}/);
+  assert.match(src, /#lay-zip path\.z:hover,#lay-county path\.z:hover\{stroke:#000;stroke-width:1\.8\}/);
+});
+
+test("desktop filters compact into one row when the map panel is wide enough", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /container-type:inline-size/);
+  assert.match(src, /@container \(min-width:700px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.match(src, /\.comparison-controls\{flex:0 0 auto\}/);
+  assert.match(src, /\.location-controls\{flex:0 0 auto\}/);
+  assert.match(src, /\.geography-controls \.control-section-body\{flex-wrap:nowrap\}/);
+  assert.doesNotMatch(src, /@container \(min-width:680px\) and \(max-width:819px\)/);
+  assert.match(src, /\.pill-logo\{[^}]*width:52px;height:16px/);
+  assert.match(src, /select\.control\{[^}]*width:104px;max-width:104px/);
+});
+
+test("Primary Only includes an accessible multiple-location explanation", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /id="primary-location-info"[^>]*aria-describedby="primary-location-note"/);
+  assert.match(src, /Some providers work at multiple locations\. Switch to Primary Only to show each provider only at their main location\./);
+  assert.match(src, /\.location-help:hover \.location-tip,\.location-help:focus-within \.location-tip\{opacity:1;visibility:visible\}/);
+});
+
+test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /id="map-raster"/);
+  assert.match(src, /function beginRasterMotion\(\)/);
+  assert.match(src, /raster\.style\.transform=/);
+  assert.match(src, /requestAnimationFrame\(moveDrag\)/);
+  const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
+  assert.doesNotMatch(moveDrag, /getBoundingClientRect/);
+});
+
+test("zoom and drag reuse one cached raster without high-resolution redraws", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  assert.match(src, /const dpr=Math\.min\(2,Math\.max\(1,window\.devicePixelRatio\|\|1\)\)/);
+  assert.match(src, /const run=\(\)=>\{rasterQueued=false;drawRaster\(\);\}/);
+  assert.match(src, /function beginRasterMotion\(\)\{svg\.classList\.add\("zooming"\);if\(!rasterReady\)return/);
+  assert.match(src, /shape-rendering:optimizeSpeed/);
+  assert.doesNotMatch(src, /map-raster-detail|drawDetailRaster|BASE_ZOOM_LIMIT|boundsIntersect|motionRasterTransform/);
+});
+
+test("a county click does not enter drag mode until real pointer movement", () => {
+  assert.equal(dragExceededThreshold(0, 0), false);
+  assert.equal(dragExceededThreshold(3, 4), false);
+  assert.equal(dragExceededThreshold(4, 4), true);
+
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  const mouseDown = src.match(/svg\.addEventListener\("mousedown",[^\n]+/)?.[0] ?? "";
+  const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
+  assert.doesNotMatch(mouseDown, /beginRasterMotion|classList\.add\("drag"\)/);
+  assert.match(moveDrag, /if\(!dragExceededThreshold\(dx,dy\)\)return/);
+  assert.match(moveDrag, /beginRasterMotion\(\);svg\.classList\.add\("drag"\)/);
+});
+
+test("generated provider-map client script parses", () => {
+  const html = readFileSync(new URL("../public/provider-map.html", import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+  const client = scripts.at(-1)?.[1] ?? "";
+  assert.ok(client.length > 0);
+  assert.doesNotThrow(() => new Function(client));
+});
+
+// Regression guard. The single-system branch removes DOM nodes (#tot-ah,
+// #v-diff, #leadcap, the other system's toggle). Any code that looks one of
+// those up WITHOUT a null check throws, and because the throw happens inside
+// totals() it silently aborts before the surviving system's number is written —
+// which is exactly how the headline came to read 0. Every lookup of a removable
+// element must be guarded.
+test("client code never dereferences an element the single-system branch removes", () => {
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
+  const removable = ["tot-ah", "tot-oh", "v-diff", "v-ah", "v-oh", "leadcap"];
+  const unguarded = [];
+  for (const m of src.matchAll(/getElementById\((?:"([a-z-]+)"|([A-Za-z]+))\)(\.[A-Za-z]+)?/g)) {
+    const [whole, literal, , prop] = m;
+    // A bare id in a variable (getElementById(id)) is only safe if the very next
+    // statement null-checks it; the literal cases are what we can check here.
+    if (!literal || !removable.includes(literal)) continue;
+    if (prop) unguarded.push(`${whole} — dereferences .${prop.slice(1)} directly`);
+  }
+  assert.deepEqual(unguarded, [], `unguarded lookups:\n  ${unguarded.join("\n  ")}`);
+
+  // setNum is the specific path that broke: it takes an id and must bail out.
+  const setNum = src.match(/function setNum\([^)]*\)\{[^\n]*/)?.[0] ?? "";
+  assert.match(setNum, /if\(!el\)return/, "setNum must tolerate a removed element");
+});
+
+test("provider cards carry a person's offices outside the selected area", () => {
+  const downtown = { n: "Downtown", a: "1 Main St", c: "Orlando", z: "32804" };
+  const lakeMary = { n: "Lake Mary", a: "2 Lake Rd", c: "Lake Mary", z: "32746" };
+  const roster = {
+    "32804": [{ i: "1", n: "A", s: "Cardiology", y: "ah", l: [downtown] }],
+    "32746": [{ i: "1", n: "A", s: "Cardiology", y: "ah", l: [lakeMary] }, { i: "2", n: "B", s: "Cardiology", y: "oh", l: [{ n: "Solo", a: "3 Oak St", c: "Lake Mary", z: "32746" }] }],
+  };
+  const out = withOtherOffices(roster);
+  assert.deepEqual(out["32804"][0].o, [lakeMary]);
+  assert.deepEqual(out["32746"][0].o, [downtown]);
+  assert.equal("o" in out["32746"][1], false, "single-office providers gain nothing");
+  assert.deepEqual(out["32804"][0].l, [downtown], "in-area offices are untouched");
+  assert.deepEqual(withOtherOffices(out)["32804"][0].o, [lakeMary], "idempotent on already-enriched rosters");
+});
+
+// ---- opportunities ----
+const marketModel = {
+  minDate: "2026-09-03", commonMaxDate: "2026-10-01",
+  origins: [
+    { z: "32801", a: 28.54, o: -81.38 },
+    { z: "32804", a: 28.58, o: -81.41 },
+    { z: "33701", a: 27.77, o: -82.64 },
+  ],
+  facilities: [
+    { y: "ah", z: "32804", ct: "Orange", n: "AH Heart" },
+    { y: "oh", z: "32801", ct: "Orange", n: "OH Heart" },
+    { y: "ah", z: "32801", ct: "Orange", n: "AH Downtown" },
+  ],
+  providers: [{}, {}, {}],
+  slots: [
+    { y: "oh", f: 1, p: 1, d: "2026-09-03" },
+    { y: "oh", f: 1, p: 1, d: "2026-09-04" },
+    { y: "ah", f: 2, p: 0, d: "2026-09-10" },
+    { y: "ah", f: 0, p: 2, d: "2026-09-03" },
+  ],
+};
+
+const euclideanMiles = (a, o, b, p) => Math.hypot(a - b, o - p) * 69;
+
+test("opportunity score is transparent, bounded, and rewards a complete AH coverage gap", () => {
+  const score = opportunityScore({ ah: 0, oh: 4, earliestAh: "", earliestOh: "2026-09-03", dates: new Map([["2026-09-03", { ah: 0, oh: 4 }]]), nearestAhMiles: 75 });
+  assert.deepEqual(score, { total: 100, coverageGap: 35, timingAdvantage: 25, slotAdvantage: 20, persistentLead: 10, ahDistance: 10 });
+});
+
+test("ZIP aggregation preserves counts, earliest dates, rank and nearest active AH evidence", () => {
+  const rows = buildOpportunityRows(marketModel, { miles: euclideanMiles });
+  const downtown = rows.find((row) => row.zip === "32801");
+  assert.deepEqual({ ah: downtown.ah, oh: downtown.oh, earliestAh: downtown.earliestAh, earliestOh: downtown.earliestOh }, { ah: 1, oh: 2, earliestAh: "2026-09-10", earliestOh: "2026-09-03" });
+  assert.equal(downtown.providersAh, 1);
+  assert.equal(downtown.providersOh, 1);
+  assert.equal(downtown.nearestAhFacility, 2);
+  assert.equal(downtown.nearestAhMiles, 0);
+  assert.equal(downtown.booksSooner, true);
+  assert.equal(downtown.leadDates, 2);
+  assert.equal(rows[0].zip, "32801");
+  assert.deepEqual(rows.map((row) => row.rank), rows.map((_, index) => index + 1));
+});
+
+test("date and ZIP filters are applied before scoring", () => {
+  const rows = buildOpportunityRows(marketModel, { from: "2026-09-04", through: "2026-09-04", includeZips: ["32801"], miles: euclideanMiles });
+  assert.equal(rows.length, 1);
+  assert.deepEqual({ ah: rows[0].ah, oh: rows[0].oh }, { ah: 0, oh: 1 });
+  assert.deepEqual(rows[0].slotIndices, [1]);
+});
+
+test("local-market aggregation compares all active facilities within a catchment", () => {
+  const rows = buildOpportunityRows(marketModel, { marketRadiusMiles: 10, miles: euclideanMiles });
+  const market = rows.find((row) => row.zip === "32804");
+  assert.deepEqual({ ah: market.ah, oh: market.oh }, { ah: 2, oh: 2 });
+  assert.deepEqual(market.slotIndices, [0, 1, 2, 3]);
+  assert.equal(market.facilitiesAh, 2);
+  assert.equal(market.facilitiesOh, 1);
+  assert.equal(market.marketRadiusMiles, 10);
+  assert.deepEqual(rows.map((row) => row.zip).sort(), ["32801", "32804"]);
+});
+
+test("market reasons read as plain English, strongest signal first", () => {
+  const downtown = buildOpportunityRows(marketModel, { miles: euclideanMiles }).find((row) => row.zip === "32801");
+  assert.deepEqual(marketReasons(downtown).map((reason) => reason.text), ["Orlando Health books 7 days sooner", "Orlando Health has 1 more slot", "Orlando Health ahead on 2 of 3 dates"]);
+  assert.deepEqual(marketReasons({ ah: 0, oh: 5, slotGap: 5, earliestAh: "", earliestOh: "2027-01-19", nearestAhMiles: 28.2, leadDates: 1, representedDates: 1, marketRadiusMiles: 25 }, { exactGap: true }).map((reason) => reason.text),
+    ["No AdventHealth slots in this ZIP", "No AdventHealth slots within 25 miles", "Nearest AdventHealth 28 mi away"]);
+  const ahLed = marketReasons({ ah: 240937, oh: 19965, slotGap: -220972, earliestAh: "2026-09-17", earliestOh: "2026-09-16", nearestAhMiles: 0, leadDates: 0, representedDates: 280, marketRadiusMiles: 25 });
+  assert.deepEqual(ahLed.map((reason) => [reason.system, reason.text]), [["oh", "Orlando Health books 1 day sooner"], ["ah", "AdventHealth has 220,972 more slots"]]);
+});
+
+test("market opportunity page is built from the Slot Availability parts with no explanatory text", () => {
+  const html = renderOpportunities();
+  const styles = readFileSync(new URL("../pages/market-opportunities/styles.css", import.meta.url), "utf8");
+  for (const id of ["opportunity-filter", "summary-overview", "summary-market", "kpi-priority", "kpi-coverage", "kpi-earlier", "kpi-slot-gap", "area-lead", "market-name", "market-rank", "market-reasons", "market-lead", "open-market", "back-overview", "market-table", "market-count", "market-dialog", "dialog-facilities", "map", "map-raster", "tip"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /href="\.\/market-opportunities\.html" aria-current="page"/);
+  assert.doesNotMatch(html, /id="market-10"|id="market-25"|id="market-50"/);
+  assert.match(html, /<option value="all">All markets<\/option><option value="lead">Orlando Health leads the market<\/option><option value="gap">No AdventHealth slots in the ZIP<\/option><option value="sooner">Orlando Health books a week sooner<\/option>/);
+  assert.match(html, /<div class="legend"><div class="legend-row"><span class="swatch dot oh"><\/span>Orlando Health leads the market<\/div><div class="legend-row"><span class="swatch dot gap"><\/span>No AdventHealth slots in the ZIP<\/div><div class="legend-row"><span class="swatch dot ah"><\/span>AdventHealth leads<\/div><\/div>/);
+  assert.match(html, /<section class="workspace"><article class="panel map-panel">/);
+  assert.match(html, /<aside class="side"><article class="card summary"><div id="summary-overview">/);
+  assert.match(html, /<\/article><article class="panel rank-panel"><div class="band"><h2>Ranked markets<\/h2><span id="market-count" class="band-meta"><\/span><\/div><div id="market-table" class="rank-list"><\/div><\/article><\/aside>/);
+  assert.doesNotMatch(html, /market-panel|overview-list|market-facilities/);
+  assert.doesNotMatch(html, /class="kpis"|card kpi|High priority|table-search|class="note"|Drag to pan|score-badge|op-marker|system-tag|How priority is scored|opportunity signals|maroon/);
+  assert.match(styles, /\.market-marker\.oh \.dot\{fill:var\(--oh\)\}\.market-marker\.ah \.dot\{fill:var\(--ah\)\}/);
+  assert.match(styles, /\.market-row\.selected\{background:#e8f5fb;box-shadow:inset 3px 0 0 var\(--sky\);border-color:var\(--sky\)\}/);
+  assert.match(html, /window\.SLOT_DATA=/);
+  assert.match(html, /Markets are 25-mile circles around each ZIP/);
+});
+
+test("opportunity browser source parses and uses the shared score implementation", () => {
+  const client = readFileSync(new URL("../pages/market-opportunities/client.js", import.meta.url), "utf8");
+  const scoring = readFileSync(new URL("../pages/market-opportunities/scoring.js", import.meta.url), "utf8").replaceAll("export ", "");
+  assert.doesNotThrow(() => new Function(`${scoring}\n${client}`));
+  assert.match(client, /exactRows = buildOpportunityRows\(DATA, \{ from: state\.from, through: state\.through, includeZips, miles \}\)/);
+  assert.match(client, /allRows = buildOpportunityRows\(DATA, \{ from: state\.from, through: state\.through, includeZips, marketRadiusMiles: state\.marketMiles, miles \}\)/);
+  assert.match(client, /marketMiles: 25, selectedZip: ""/);
+  assert.match(client, /id="market-marker-layer"/);
+  assert.match(client, /class="market-marker \$\{row\.oh > row\.ah \|\| gap \? "oh" : "ah"\}\$\{gap \? " gap" : ""\}/);
+  assert.match(client, /class="facility market-row\$\{row\.zip === state\.selectedZip \? " selected" : ""\}"/);
+  assert.doesNotMatch(client, /setPressed\("market"/);
+  assert.match(client, /<g id="radius-controls" class="hidden"><circle id="radius-hit" class="radius-hit"><\/circle><circle id="radius-handle" class="radius-handle"><\/circle><g id="origin-grip" class="origin-grip"><circle r="10"><\/circle><path d="[^"]+"><\/path><\/g><\/g>/);
+  assert.match(client, /radiusDrag = \{ mode: target\.id === "origin-grip" \? "move" : "resize" \};/);
+  assert.match(client, /onSettle: \(Z\) => \{ if \(Z\.k !== currentZoom\) \{ scaleMarkers\(Z\.k\); motion\.queue\(\); \} \}/);
+  assert.match(client, /function showMarkerTip\(event, marker\)/);
+  assert.match(client, /class="zh"[\s\S]*class="cty"[\s\S]*class="r"/);
+  assert.match(client, /SUITE_MAP_MOTION\.create\(\{ svg, viewport: vp, raster: \$\("map-raster"\)/);
+  assert.match(client, /motion\.panBy\(/);
+  assert.match(client, /motion\.queue\(\);/);
+  assert.match(client, /ArrowLeft/);
+  assert.match(client, /state\.radius = searchedZipRadius/);
+  assert.match(client, /marketReasons\(row, \{ exactGap: gap \}\)/);
+  assert.match(client, /\$\("open-market"\)\.addEventListener\("click"/);
+  assert.match(client, /\$\("back-overview"\)\.addEventListener\("click", clearMarket\)/);
+  assert.doesNotMatch(client, /visibleRows\[0\]\?\.zip|op-marker|system-tag|scoreLabel|scoreBreakdown|renderEvidence|table-search/);
+  assert.match(client, /const defaultFrom = window\.SUITE_DATE\.today\(\)/);
+  assert.match(client, /state\.from = window\.SUITE_DATE\.today\(\)/);
+  assert.match(client, /await window\.SLOT_PARTITIONS\.load\(defaultFrom, defaultThrough\)/);
+  assert.match(client, /async function refreshPeriod\(/);
+  assert.match(renderOpportunities(), /window\.SLOT_PARTITIONS/);
+  assert.doesNotMatch(renderOpportunities(), /"slots":\[\{"y":/);
+});
+
+// ---- dataset-facts ----
+const model = {
+  generatedAt: "2026-09-14T03:14:23.283Z", status: "completed_with_warnings",
+  sources: { ah: { runId: "2026-09-13T000000-0400" }, oh: { runId: "2026-09-13T000000-0400" } },
+  totals: { ah: 2, oh: 1 }, slots: [{}, {}, {}], areas: { zip: { "32804": { ah: 2, oh: 0 }, "32746": { ah: 0, oh: 1 } } },
+  facilities: [{ z: "32804", ct: "Orange" }, { z: "32746", ct: "Seminole" }],
+  providers: new Array(3), minDate: "2026-09-14", maxDateBySystem: { ah: "2027-10-11", oh: "2028-02-22" }, commonMaxDate: "2027-10-11", telemedicineSlots: 1,
+};
+const zipCounty = { "32804": "Orange", "32746": "Seminole" };
+
+test("slot checks pass on a consistent model and name the pull for live freshness", () => {
+  const report = slotDataChecks(model, zipCounty);
+  assert.equal(report.pulled.at, model.generatedAt);
+  assert.match(report.pulled.label, /^Pulled Sep 13, 2026, 11:14 PM$/);
+  assert.equal(report.pulled.freshDays, 7);
+  assert.deepEqual(report.checks.map((check) => check.ok), [true, true, true, true, true, true]);
+  assert.match(report.checks[4].text, /^Video-only slots: 1 AdventHealth, 0 Orlando Health\. Orlando Health publishes no video visits online/);
+  assert.match(report.checks[5].text, /^Other clinicians: 0 AdventHealth and 0 Orlando Health slots/);
+  assert.match(report.checks[0].text, /Both systems read on Sep 13, 2026\./);
+  assert.match(report.checks[1].text, /Totals reconcile: 2 AdventHealth and 1 Orlando Health slots\./);
+  assert.match(report.checks[3].text, /Sep 14, 2026 to Oct 11, 2027/);
+  assert.equal(opportunityDataChecks(model, zipCounty).checks.length, 7);
+  const mixed = { ...model, providers: [{ c: "Physician" }, { c: "Nurse Practitioner" }], slots: [{ y: "ah", p: 0 }, { y: "ah", p: 1 }, { y: "oh", p: 0 }] };
+  const last = slotDataChecks(mixed, zipCounty).checks.at(-1);
+  assert.equal(last.ok, true, "the mix is information, not a failure");
+  assert.match(last.text, /^Other clinicians: 1 AdventHealth and 0 Orlando Health slots/);
+});
+
+test("slot checks fail when runs differ, totals drift, or a facility has no map location", () => {
+  const broken = { ...model, sources: { ah: { runId: "2026-09-13T000000-0400" }, oh: { runId: "2026-09-12T000000-0400" } }, totals: { ah: 5, oh: 1 }, facilities: [{ z: "99999", ct: "" }] };
+  const checks = slotDataChecks(broken, zipCounty).checks;
+  assert.deepEqual(checks.slice(0, 3).map((check) => check.ok), [false, false, false]);
+  assert.match(checks[0].text, /not from the same day/);
+  assert.match(checks[1].text, /do not reconcile/);
+  assert.match(checks[2].text, /1 facilities have no map location/);
+});
+
+test("provider checks reconcile the roster and report scheduling-catalog gaps", () => {
+  const data = { generatedAt: "2026-08-31T19:22:44.469Z", totals: { ah: 2, oh: 1 }, specialties: [{ name: "Cardiology", ah: 1, oh: 1 }] };
+  const roster = { "32804": [{ i: "1234567890", n: "A", y: "ah" }, { i: "2234567890", n: "B", y: "ah" }], "32746": [{ i: "3234567890", n: "C", y: "oh" }] };
+  const good = providerDataChecks({ data, roster, zipCounty, zipShapes: new Set(["32804", "32746"]), ahCapturedAt: "2026-08-31T16:32:17.304Z", ohCapturedAt: "2026-09-15T04:20:00.000Z", gaps: { ah: 0, oh: 0 } });
+  assert.equal(good.pulled.label, "Directories captured Aug 31, 2026 (AdventHealth) and Sep 15, 2026 (Orlando Health)");
+  assert.equal(good.pulled.at, "2026-08-31T16:32:17.304Z", "freshness is judged on the older capture");
+  assert.equal(good.pulled.freshDays, 30);
+  assert.deepEqual(good.checks.map((check) => check.ok), [true, true, true, true, true]);
+  const bad = providerDataChecks({ data, roster: { ...roster, "00000": [{ i: "x", n: "D", y: "oh" }] }, zipCounty, zipShapes: new Set(["32804", "32746"]), gaps: { ah: 33, oh: 5 } });
+  assert.deepEqual(bad.checks.map((check) => check.ok), [false, false, false, true, false]);
+  assert.match(bad.checks[4].text, /33 AdventHealth and 5 Orlando Health clinicians who book Cardiology visits in MyChart are missing from the index/);
+  const withAdded = providerDataChecks({ data: { ...data, totals: { ah: 3, oh: 1 } }, roster: { ...roster, "32827": [{ i: "WP-24abc", n: "Mayra McKoy", y: "ah", src: "mychart" }] }, zipCounty: { ...zipCounty, "32827": "Orange" }, zipShapes: new Set(["32804", "32746", "32827"]), gaps: { ah: 0, oh: 0 }, added: { ah: 1, oh: 0 } });
+  assert.deepEqual(withAdded.checks.map((check) => check.ok), [true, true, true, true, true]);
+  assert.match(withAdded.checks[2].text, /Every directory clinician has an NPI\. The 1 added from MyChart scheduling carry their scheduling ID instead\./);
+  assert.match(withAdded.checks[4].text, /1 AdventHealth and 0 Orlando Health clinicians came from the scheduling catalog/);
+});
+
+test("directory gaps match slot providers to the roster by first and last name", () => {
+  const roster = { "32804": [{ i: "1", n: "Manjunath Raju", y: "ah" }, { i: "2", n: "Ricardo J Villasmil", y: "ah" }], "32806": [{ i: "3", n: "Shivanand Karkal", y: "oh" }, { i: "4", n: "Lucianne Alers Sanchez", y: "oh" }] };
+  const slotModel = { providers: [
+    { n: "Manjunath Raju, MD, FACC", y: "ah", c: "Physician" }, { n: "Ricardo Villasmil, MD", y: "ah", c: "Physician" },
+    { n: "George Abreut, DO", y: "ah", c: "Physician" }, { n: "Mayra McKoy, APRN", y: "ah", c: "Nurse Practitioner" },
+    { n: "Shivanand Karkal, MD", y: "oh", c: "Physician" }, { n: "Joel Garcia, MD", y: "oh", c: "Physician" },
+    { n: "Lucianne Alers-Sanchez, MD", y: "oh", c: "Physician" }, { n: "Shivanand Karkal Jr, MD", y: "oh", c: "Physician" },
+    { n: "Some Resource", y: "ah", c: "Resource" },
+  ] };
+  assert.deepEqual(directoryGaps(roster, slotModel), { ah: 2, oh: 1 });
+  assert.deepEqual(directoryGaps({ "32806": [{ i: "9", n: "Joel A. Garcia-Fernandez", y: "oh" }] }, { providers: [{ n: "Joel Garcia, MD", y: "oh", c: "Physician" }] }), { ah: 0, oh: 0 }, "double surnames match on either part");
+  assert.deepEqual(directoryGaps({}, {}), { ah: 0, oh: 0 });
+});
+
+test("name keys strip credentials and suffixes and cover double surnames", () => {
+  assert.deepEqual(nameKeys("Joel A. Garcia-Fernandez, MD"), ["joel|fernandez", "joel|garcia"]);
+  assert.deepEqual(nameKeys("Shivanand Karkal Jr, MD"), ["shivanand|karkal"]);
+  assert.deepEqual(nameKeys("Tiji Joseph, APRN,RN"), ["tiji|joseph"]);
+  assert.deepEqual(nameKeys(""), []);
+});
+
+// ---- date ----
+test("shared dashboard date uses the viewer's local calendar date", () => {
+  const lateLocalTime = new Date(2026, 8, 5, 23, 59, 59);
+  assert.equal(globalThis.SUITE_DATE.today(lateLocalTime), "2026-09-05");
+});
+
+// ---- radius ----
+const centroidSource = readFileSync(new URL("../data/geography/florida-zip-centroids.js", import.meta.url), "utf8").trim();
+const centroids = JSON.parse(centroidSource.replace(/^window\.FLORIDA_ZIP_CENTROIDS=/, "").replace(/;$/, ""));
+
+test("radius distance uses v3's great-circle mile calculation", () => {
+  assert.equal(globalThis.SLOT_RADIUS.miles(28.54, -81.38, 28.54, -81.38), 0);
+  assert.ok(Math.abs(globalThis.SLOT_RADIUS.miles(28, -81, 29, -81) - 69.1) < 0.2);
+});
+
+test("local Florida origin data covers every current cardiology facility ZIP", () => {
+  const model = (existsSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url)) ? JSON.parse(readFileSync(new URL("../data/cardiology/current/slot-times-model.json", import.meta.url), "utf8")) : JSON.parse(readFileSync(new URL("../public/data/cardiology/slot-times-summary.json", import.meta.url), "utf8")));
+  const originZips = new Set(centroids.map((row) => row.zip));
+  assert.ok(centroids.length > 900);
+  assert.ok(originZips.has("32804"));
+  assert.deepEqual([...new Set(model.facilities.map((facility) => facility.z))].filter((zip) => !originZips.has(zip)), []);
 });
