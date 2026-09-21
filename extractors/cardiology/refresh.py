@@ -63,6 +63,9 @@ def main() -> None:
     execute(["node", NODE_HEAP, "scripts/build-specialty-current.mjs", "--specialty", spec], args.dry_run)
     if not args.skip_build:
         execute([shutil.which("npm") or "npm", "run", "build"], args.dry_run, node_heap=True)
+        # the gate: tests plus the dataset audit (every published figure recomputed from the raw rows); a refresh
+        # whose numbers do not reconcile stops here instead of being committed
+        execute([shutil.which("npm") or "npm", "run", "verify"], args.dry_run, node_heap=True)
     if not args.dry_run:
         summary = {"status": "complete", "specialty": spec, "runId": args.run_id, "extraction": str(extraction),
                    "current": str(REPO / "data" / spec / "current"), "siteBuilt": not args.skip_build}

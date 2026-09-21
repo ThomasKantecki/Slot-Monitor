@@ -71,9 +71,22 @@ npm run refresh:orthopedics       # the same for Orthopedics
 npm run probe:catalog -- --system ah   # list what a system's scheduling catalog offers (fills src/shared/specialties.json)
 ```
 
-After a refresh: run `npm test`, commit `data/<specialty>/current` and
-`public/`, and push. GitHub Pages redeploys the site from `public/` on every
-push to main. There is no scheduled refresh.
+A refresh ends by running `npm run verify` (the tests plus
+`scripts/audit-dataset.mjs`, which recomputes every published figure from the
+raw rows: counts at every layer, no duplicate slots, Eastern day and clock
+time, flags, geography, catalog entries, run outcomes, and the Provider Index
+rosters including the one-entry-per-person rule). A refresh whose numbers do
+not reconcile stops there and nothing should be committed. Then:
+
+```
+npm run audit:pages -- --specialty cardiology   # every control on the three built pages, recomputed in headless Chrome
+                                                 # (needs Chrome + playwright-core: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core)
+git add data/<specialty>/current public && git commit && git push
+npm run audit:live                               # after the Pages deploy: every published file byte-identical to public/
+```
+
+GitHub Pages redeploys the site from `public/` on every push to main. There
+is no scheduled refresh.
 
 ## Layout
 

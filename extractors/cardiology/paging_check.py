@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import epic_public as ep  # noqa: E402
 
 TODAY, LEAD, HORIZON, CHUNK, PROVIDERS = 1000, 2, 40, 11, 22
-MODES = ("normal", "server_stops", "reserve_once", "stall_new_tokens", "stall_same_token", "outage_once", "killed", "legacy_resume")
+MODES = ("normal", "server_stops", "reserve_once", "reserve_window", "stall_new_tokens", "stall_same_token", "outage_once", "failed_resume", "year_jump", "killed", "legacy_resume")
 ep.OUTAGE_PAUSE = 0  # the real loop waits 90 seconds between outage retries
 
 
@@ -35,17 +35,20 @@ def has_openings(day: int) -> bool:
 class ScriptedEpic:
     def __init__(self, mode: str):
         self.mode, self.requests, self.page_nonce, self.events = mode, 0, "nonce", []
+        self.chunk = 4 if mode == "reserve_window" else CHUNK  # smaller chunks: a window has six pages, three can be re-served
 
     def bootstrap(self) -> None:
         pass
 
     def page(self, day: int, chunk: int) -> dict:
+        CHUNK = self.chunk
         chunks = (PROVIDERS + CHUNK - 1) // CHUNK
         if chunk >= chunks:  # the empty closing page of a window
             stop = self.mode == "server_stops" and day >= TODAY + HORIZON
             return {"Solutions": [], "ContinueInfo": {"State": 1, "SearchRangeStartDte": day, "SearchRangeEndDte": day, "NextProviderIndex": "", "IsStopSearch": stop}, "ErrorCode": None}
         providers = range(1 + chunk * CHUNK, min(PROVIDERS, (chunk + 1) * CHUNK) + 1)
-        solutions = [{"ProviderId": f"p{i}", "DepartmentId": "d1", "Slots": [opening(day, f"p{i}")] if has_openings(day) else []} for i in providers]
+        quiet = self.mode == "reserve_window" and day == TODAY + 9  # providers 1-12 have nothing new that day
+        solutions = [{"ProviderId": f"p{i}", "DepartmentId": "d1", "Slots": [opening(day, f"p{i}")] if has_openings(day) and not (quiet and i <= 12) else []} for i in providers]
         return {"Solutions": solutions, "ContinueInfo": {"State": 2, "SearchRangeStartDte": day, "SearchRangeEndDte": day, "NextProviderIndex": f"{(chunk + 1) * CHUNK}^1", "IsStopSearch": False}, "ErrorCode": None}
 
     def post_json(self, endpoint: str, fields) -> dict:
@@ -60,15 +63,24 @@ class ScriptedEpic:
         self.requests += 1
         if self.mode == "outage_once" and self.requests == 40:  # one request fails outright (retries exhausted)
             raise RuntimeError("slots returned non-JSON data after 5 attempts")
+        if self.mode == "failed_resume" and 70 <= self.requests <= 80:  # a long outage: the flow ends request_failed after its checkpoint
+            raise RuntimeError("slots returned non-JSON data after 5 attempts")
         if self.mode in ("killed", "legacy_resume") and self.requests == 70:  # the process dies mid-flow (not an Exception, so nothing catches it)
             raise SystemExit("simulated kill")
         continuation, start = fields.get("continueInfo"), fields["startDte"]
         if not continuation:
             day, chunk = (start + LEAD if start == TODAY else start), 0
         elif continuation["State"] == 2:
-            day, chunk = continuation["SearchRangeStartDte"], int(continuation["NextProviderIndex"].split("^")[0]) // CHUNK
+            day, chunk = continuation["SearchRangeStartDte"], int(continuation["NextProviderIndex"].split("^")[0]) // self.chunk
         else:
             day, chunk = continuation["SearchRangeStartDte"] + 1, 0
+            if self.mode == "year_jump" and day > TODAY + HORIZON:  # nothing left: Epic jumps the next window a year ahead
+                day = continuation["SearchRangeStartDte"] + 366
+        if self.mode == "reserve_window" and day == TODAY + 9 and chunk < 3:
+            # Epic re-serves a chunk's previous results when it has nothing new in this window; the continuation
+            # still advances, so the rest of the window (chunks 3-5, with openings) must still be searched
+            served = self.page(TODAY + 8, chunk)
+            return {"Solutions": served["Solutions"], "ContinueInfo": self.page(day, chunk)["ContinueInfo"], "ErrorCode": None}
         closing = bool(continuation) and continuation["State"] == 1 and day - TODAY > 6
         if self.mode == "stall_new_tokens" and closing:  # re-serve the window's first pages, with fresh tokens, forever
             self.events.append("stall")
@@ -87,12 +99,15 @@ def run(mode: str, folder: Path) -> str:
     ep.PublicEpicClient = lambda site, retries, delay: epic
     args = types.SimpleNamespace(retries=1, request_delay=0, max_paths=10, max_depth=5, max_answers=5, max_slot_loads=20000, max_days_ahead=560)
     output = folder / mode
-    if mode in ("killed", "legacy_resume"):  # die mid-flow after a checkpoint, then resume the same run folder
+    if mode in ("killed", "legacy_resume", "failed_resume"):  # die or fail mid-flow after a checkpoint, then resume the same run folder
         ep.CHECKPOINT_PAGES = 20
         try:
             ep.extract(ep.SITES["oh"], output, args)
         except SystemExit:
             pass
+        if mode == "failed_resume":
+            first = json.loads((output / "oh-cardiology-flow-audit.json").read_text(encoding="utf-8"))
+            if first[-1]["status"] != "request_failed": raise SystemExit(f"failed_resume: first pass ended {first[-1]['status']}, expected request_failed")
         if mode == "legacy_resume":  # a run folder from before part files existed: only slots.json and the audit
             shutil.rmtree(output / ep.PARTS)
         epic = ScriptedEpic("normal"); ep.PublicEpicClient = lambda site, retries, delay: epic
@@ -100,11 +115,15 @@ def run(mode: str, folder: Path) -> str:
     ep.extract(ep.SITES["oh"], output, args)
     audit = json.loads((output / "oh-cardiology-flow-audit.json").read_text(encoding="utf-8"))
     rows = json.loads((output / "oh-cardiology-slots.json").read_text(encoding="utf-8"))
+    if mode == "failed_resume":  # the resumed pass continued from the checkpoint instead of starting over
+        trace = (output / "paging-trace.jsonl").read_text(encoding="utf-8")
+        if '"resumed_from"' not in trace: raise SystemExit("failed_resume: the resumed pass did not continue from the checkpoint")
     expected_days = [d - TODAY for d in range(TODAY + LEAD, TODAY + HORIZON + 1) if has_openings(d)]
     per_day = Counter(int(row["days_ahead"]) for row in rows)
-    complete = sorted(per_day) == expected_days and all(per_day[d] == PROVIDERS for d in expected_days)
+    expected_per_day = lambda d: PROVIDERS - 12 if mode == "reserve_window" and d == 9 else PROVIDERS  # noqa: E731
+    complete = sorted(per_day) == expected_days and all(per_day[d] == expected_per_day(d) for d in expected_days)
     last = audit[-1]
-    line = f"{mode:17s} {last['status']:13s} slots={len(rows):4d} expected={PROVIDERS * len(expected_days):4d} requests={epic.requests:4d} restarts={last['search_restarts']:3d} {'ok' if complete else 'INCOMPLETE'}"
+    line = f"{mode:17s} {last['status']:13s} slots={len(rows):4d} expected={sum(expected_per_day(d) for d in expected_days):4d} requests={epic.requests:4d} restarts={last['search_restarts']:3d} {'ok' if complete else 'INCOMPLETE'}"
     if not complete:
         raise SystemExit(line)
     return line

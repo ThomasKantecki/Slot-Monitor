@@ -64,3 +64,53 @@ test("the rebuilt index counts adult cardiology together and reconciles by const
   assert.equal(index.primary.byZip.totals.ah, 3);
   assert.equal(Object.values(index.all.byZip.zips).reduce((sum, z) => sum + z.ah + z.oh, 0), 8, "footprint counts each person once per ZIP");
 });
+
+test("a scheduling clinician whose first name the directory spells differently is the same person, a namesake at the same clinic is not", () => {
+  const dir = (npi, n, s, y, cr, offices) => ({ i: npi, n, s, y, cr, l: offices });
+  const roster = {
+    "32792": [dir("1000000010", "Ram Yakkanti", "Orthopedic Surgery", "ah", "MD", [office("Winter Park", "255 N Lakemont Ave, Suite 207", "Winter Park", "32792")])],
+    "32789": [dir("1000000011", "M. Pierce Ebaugh", "Orthopedic Surgery", "oh", "DO", [office("Jewett", "1285 N. Orange Ave.", "Winter Park", "32789")])],
+    "32117": [dir("1000000012", "Katie Pate", "Orthopedic Surgery", "ah", "MPAS, PA-C", [office("Daytona", "305 Memorial Medical Parkway, Suite 301", "Daytona Beach", "32117")])],
+    "34715": [dir("1000000013", "John Nwosu", "Cardiology", "ah", "MD", [office("Clermont", "1804 Oakley Seaver Dr", "Clermont", "34715"), office("Minneola", "2071 N Hancock Rd", "Minneola", "34711")])],
+    "32819": [dir("1000000014", "Rushik Bhuva", "Cardiology", "oh", "MD", [office("HVI", "7236 Stonerock Cir.", "Orlando", "32819")]),
+              dir("1000000015", "Sagar Patel", "Cardiology", "ah", "MD", [office("Medical Park", "3000 Medical Park Drive, Suite 300", "Tampa", "33613")]),
+              dir("1000000016", "Mehul Patel", "Cardiology", "ah", "MD", [office("Medical Park", "3000 Medical Park Drive, Suite 300", "Tampa", "33613")])],
+  };
+  const group = { group: "Cardiology", members: ["Cardiology", "Orthopedic Surgery"], weak: [], exclude: [], excludeCredentials: [] };
+  const people = regroupSpecialties(peopleFromRoster(roster), group);
+  const facilities = [
+    { n: "Rothman Winter Park", a: "255 North Lakemont, Suite 207, Winter Park FL 32792-3229", c: "Winter Park", z: "32792" },
+    { n: "Jewett Winter Park", a: "1285 Orange Ave, Winter Park FL 32789-4984", c: "Winter Park", z: "32789" },
+    { n: "Daytona", a: "305 Memorial Medical Parkway, Suite 301, Daytona Beach FL 32117-5169", c: "Daytona Beach", z: "32117" },
+    { n: "Clermont", a: "1804 Oakley Seaver Dr, Clermont FL 34715", c: "Clermont", z: "34715" },
+    { n: "HVI Dr Phillips", a: "7236 Stonerock Cir, Orlando FL 32819-8000", c: "Orlando", z: "32819" },
+    { n: "Medical Park", a: "3000 Medical Park Drive, Suite 300, Tampa FL 33613", c: "Tampa", z: "33613" },
+  ];
+  const providers = [
+    { i: "WP-1", n: "Ramakanth Yakkanti, MD", y: "ah", c: "Physician" },       // first-name prefix
+    { i: "WP-2", n: "Michael Ebaugh, DO", y: "oh", c: "Physician" },           // initial at a shared office
+    { i: "WP-3", n: "Katherine Pate, PA-C", y: "ah", c: "Physician Assistant" }, // prefix "kat" + shared office
+    { i: "WP-4", n: "Chukwunweike Nwosu, MD", y: "ah", c: "Physician" },       // unique surname at a shared office
+    { i: "WP-5", n: "Rushikkumar Bhuva, MD", y: "oh", c: "Physician" },        // prefix
+    { i: "WP-6", n: "Hemal Patel, MD", y: "ah", c: "Physician" },              // a namesake at the same clinic: a different person
+    { i: "WP-7", n: "Rushik Bhuva, APRN", y: "oh", c: "Nurse Practitioner" },   // same name, other credential class: a different person
+  ];
+  const slotModel = { providers, facilities, providerFacilities: [[0, 0, 5], [1, 1, 5], [2, 2, 5], [3, 3, 5], [4, 4, 5], [5, 5, 5], [6, 4, 5]] };
+  const zipCounty = { "32792": "Orange", "32789": "Orange", "32117": "Volusia", "34711": "Lake", "34715": "Lake", "32819": "Orange", "33613": "Hillsborough" };
+  const added = schedulingClinicians(people, slotModel, zipCounty, group);
+  assert.deepEqual(added.map((p) => p.name), ["Hemal Patel", "Rushik Bhuva"], "only the namesake and the other-credential clinician are new people");
+  assert.deepEqual(added.elsewhere, []);
+});
+
+test("scheduling clinicians listed in a directory under another specialty are reported, not added; excluded credentials are reported", () => {
+  const roster = { "32801": [{ i: "1000000020", n: "Murali K Iyyani", s: "Internal Medicine", y: "oh", cr: "MD", l: [office("Underwood", "52 Underwood St", "Orlando", "32801")] }] };
+  const group = { group: "Orthopedics", members: ["Orthopedics", "Orthopedic Surgery"], weak: [], exclude: [], excludeCredentials: ["DPM"] };
+  const people = regroupSpecialties(peopleFromRoster(roster), group);
+  const slotModel = { providers: [{ i: "WP-1", n: "Murali Iyyani, MD", y: "oh", c: "Physician" }, { i: "WP-2", n: "Foot Person, DPM", y: "ah", c: "Physician" }],
+    facilities: [{ n: "Underwood", a: "52 Underwood St, Orlando FL 32801", c: "Orlando", z: "32801" }], providerFacilities: [[0, 0, 3], [1, 0, 3]] };
+  const added = schedulingClinicians(people, slotModel, { "32801": "Orange" }, group);
+  assert.deepEqual(added, []);
+  assert.deepEqual(added.elsewhere.map((p) => [p.name, p.label]), [["Murali Iyyani", "Internal Medicine"]]);
+  assert.deepEqual(added.excluded.map((p) => [p.name, p.cred]), [["Foot Person", "DPM"]]);
+  assert.deepEqual(added.gaps, { ah: 0, oh: 0 });
+});

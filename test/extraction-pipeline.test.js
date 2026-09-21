@@ -49,6 +49,9 @@ test("slot paging survives Epic's empty closing pages, re-served pages and stall
   assert.match(result.stdout, /stall_new_tokens .* ok/);
   assert.match(result.stdout, /stall_same_token .* ok/);
   assert.match(result.stdout, /reserve_once .* restarts=  0 ok/);
+  assert.match(result.stdout, /reserve_window .* restarts=  0 ok/, "re-served chunks under advancing tokens are followed, not restarted past");
+  assert.match(result.stdout, /failed_resume .* restarts=  0 ok/, "a flow that failed after its checkpoint resumes from it");
+  assert.match(result.stdout, /year_jump +schedule_end/, "Epic's year jump past the last opening is the schedule's end, not the cap");
   assert.match(result.stdout, /search identity ok/);
 });
 

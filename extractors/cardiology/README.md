@@ -173,9 +173,11 @@ new-patient filter has nothing to separate there.
 
 ### Proof
 
-`paging_check.py` replays eight scripted Epic behaviours offline (normal, server
-stop, a re-served page, a stall with new tokens, a stall with the same token, an
-outage, a run killed mid-flow, a resume of an older run folder) and runs under
+`paging_check.py` replays eleven scripted Epic behaviours offline (normal, server
+stop, a re-served page, a window whose first chunks re-serve old content, a stall
+with new tokens, a stall with the same token, an outage, a flow that fails after
+its checkpoint and resumes, Epic's year jump at the schedule's end, a run killed
+mid-flow, a resume of an older run folder) and runs under
 `npm test` (`test/extraction-pipeline.test.js`). The built pages also carry a
 data check. The September 16 runners came with no tests; their run-health
 artifact is useful, but it describes a run after the fact.
@@ -325,8 +327,20 @@ about ten thousand requests per system, several hours at the default delay.
 
 `python3 extractors/cardiology/paging_check.py` replays the paging loop
 against a scripted Epic (normal paging, server stop, a transient re-served
-page, both stall styles, an outage, a killed run, a legacy resume) and fails
-if any of them loses a slot.
+page, a re-served window, both stall styles, an outage, a failed-then-resumed
+flow, the year jump, a killed run, a legacy resume) and fails if any of them
+loses a slot.
+
+Two Epic behaviours the loop distinguishes: a provider chunk whose previous
+results are served again under an advancing continuation (nothing new for
+those providers; the rows are duplicates and the search follows the
+continuation), and a stall where the continuation token itself repeats (the
+search restarts after the last window). Only the second counts toward a
+restart. When nothing remains, Epic jumps the next window a year ahead; a
+flow that ends that way is recorded as `schedule_end` with the last opening's
+window, and `horizon_reached` is kept for a schedule that truly runs past the
+560-day cap. A flow that failed after a checkpoint (`request_failed`) resumes
+from that checkpoint on `--resume`: its finished part file becomes the seed.
 
 ## Important controls
 

@@ -28,6 +28,10 @@
     "all": "node src/sources/directory.js && node scripts/build-data.mjs && node scripts/build-specialties.mjs && node src/shared/specialty-placeholders.js",
     "geometry": "bash scripts/build-geometry.sh",
     "fonts": "node scripts/embed-fonts.mjs",
-    "test": "node --test --test-isolation=none test/*.test.js"
+    "test": "node --test --test-isolation=none test/*.test.js",
+    "audit:dataset": "node --max-old-space-size=6144 scripts/audit-dataset.mjs",
+    "audit:pages": "node scripts/audit-pages.cjs",
+    "audit:live": "node scripts/audit-live.mjs",
+    "verify": "npm test && npm run audit:dataset"
   }
 }

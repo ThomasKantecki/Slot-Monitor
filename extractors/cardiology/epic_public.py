@@ -367,7 +367,7 @@ def evaluate_path(client: PublicEpicClient, workflow: dict[str, Any], visit: dic
                 "OriginalRfv": reason.get("CategoryValue"), "OriginalRfvLine": reason.get("LineInWDF15000") or reason.get("Id", reason.get("ID"))}
     evaluated = client.post_json("questionnaire_evaluation", {"workflow": workflow,
         "schedulingOverridesString": json.dumps(override, separators=(",", ":")), "termIds": [], "nonce": client.page_nonce})
-    message = " ".join(re.sub(r"<[^>]+>", " ", str(evaluated.get("Instructions") or "")).split())
+    message = " ".join(re.sub(r"<[^>]+>", " ", re.sub(r"<(style|script)\b[^>]*>.*?</\1>", " ", str(evaluated.get("Instructions") or ""), flags=re.I | re.S)).split())
     return {"override": override, "evaluated": evaluated, "stop": bool(evaluated.get("StopScheduling")), "message": message}
 
 
@@ -386,8 +386,17 @@ def resolve_path(client: PublicEpicClient, settings, workflow, specialty, detail
     pairs = [pair for pair in active.get("ProviderDepartmentPairs", []) if any(info.get("VisitTypeID") == item_id(active_visit) for info in pair.get("VisitTypeInformation", []))]
     if not pairs: pairs = active.get("ProviderDepartmentPairs", []) or detail.get("ProviderDepartmentPairs", [])
     selected = set(evaluated.get("ProvidersToSelect") or []) if evaluated.get("ReplacedAllOriginalProviders") else set()
-    if selected: pairs = [pair for pair in pairs if pair.get("ProviderId") in selected]
+    recovered = 0
+    if selected:
+        pairs = [pair for pair in pairs if pair.get("ProviderId") in selected]
+        # Epic's overridden specialty data sometimes omits a selected provider's pairs (seen on Orlando Health,
+        # 2026-09-20); those providers are searched with their pairs from the base catalog for the active visit type.
+        missing = selected - {pair.get("ProviderId") for pair in pairs}
+        for pair in detail.get("ProviderDepartmentPairs", []):
+            if pair.get("ProviderId") in missing and any(info.get("VisitTypeID") == item_id(active_visit) for info in pair.get("VisitTypeInformation", [])):
+                pairs.append(pair); recovered += 1
     model = build_slot_request(settings, workflow, specialty, reason, active_visit, pairs, result)
+    resolved["recovered_pairs"] = recovered
     resolved.update({"active_visit": active_visit, "pairs": pairs, "model": model, "search_key": search_signature(model),
                      "providers": {item_id(item): item for item in active.get("Providers", [])},
                      "departments": {item_id(item): item for item in active.get("Departments", [])}})
@@ -552,6 +561,9 @@ def load_checkpoint(output: Path, system: str, spec_id: str = "cardiology"):
     audit = json.loads(audit_path.read_text(encoding="utf-8")) if audit_path.exists() else []
     failed = {item.get("flow_id") for item in audit if item.get("status") in ("flow_error", "request_failed")}
     audit = [item for item in audit if item.get("flow_id") not in failed]
+    for flow_id in failed:  # its rows were finalised into parts/<flow>.jsonl when it failed: they seed the resumed search
+        final, seed, partial = part_path(output, flow_id), part_path(output, flow_id, ".seed"), part_path(output, flow_id, ".partial")
+        if final.exists() and not seed.exists() and not partial.exists(): final.rename(seed)
     done = {item.get("flow_id") for item in audit if item.get("flow_id")}
     parts.mkdir(exist_ok=True)
     if not any(parts.glob("*.jsonl")) and slots_path.exists():
@@ -622,6 +634,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                     resolve=lambda path: resolve_path(client, settings, workflow, specialty, detail, visit, first_reason, path),
                     note=lambda record: trace(output, {"visit": visit_name, **record}))
                 trace(output, {"visit": visit_name, "walk": "done", "paths": len(paths), "searches": len({p["resolved"]["search_key"] for p in paths if p.get("resolved") and not p["resolved"]["stop"]}), "stops": sum(1 for p in paths if (p.get("resolved") or {}).get("stop"))})
+                audit[:] = [item for item in audit if item.get("flow_id") or not (item.get("specialty") == specialty.get("Name", "") and item.get("appointment_type") == visit_name)]  # a resumed pass re-walks the questionnaire
                 audit.extend({"specialty": specialty.get("Name", ""), "appointment_type": visit_name, **item} for item in excluded)
                 only = set(getattr(args, "only_answer_paths", None) or [])
                 for reason in compatible or reasons or [{}]:
@@ -648,7 +661,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                             flow_rows, raw_slots, seen_pages, seen_tokens, status, message, loads = [], [], set(), set(), "natural_stop", "", 0
                             start_dte, last_end, restarts, restart_from, strikes = model.get("startDte"), None, 0, None, 0
                             max_days_ahead = getattr(args, "max_days_ahead", MAX_DAYS_AHEAD)
-                            window, window_slots, empty_windows = None, 0, 0
+                            window, window_slots, empty_windows, last_open_window = None, 0, 0, None
                             outages, cacheable = 0, True
                             current["flow_id"], current["rows"] = flow_id, flow_rows
                             seed = resumed_flows.pop(flow_id, None)
@@ -680,7 +693,8 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                                 # (NextProviderIndex). It sometimes re-serves an earlier page instead of moving on to
                                 # the next window; a repeated non-empty page or a repeated continuation is that stall,
                                 # not the end of the schedule. Empty pages are normal (a pair chunk with no openings).
-                                repeated = token in seen_tokens or (bool(solutions) and signature in seen_pages)
+                                token_repeat = token in seen_tokens
+                                repeated = token_repeat or (bool(solutions) and signature in seen_pages)
                                 trace(output, {"flow_id": flow_id, "load": load, "solutions": len(solutions),
                                     "slots": sum(len(solution.get("Slots", [])) for solution in solutions),
                                     "start": continuation.get("SearchRangeStartDte"), "end": continuation.get("SearchRangeEndDte"),
@@ -689,6 +703,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                                 if data.get("ErrorCode"): status, message = "slot_lookup_error", str(data.get("ErrorCode")); break
                                 if not repeated:
                                     seen_pages.add(signature); seen_tokens.add(token); strikes = 0
+                                    if solutions and any(solution.get("Slots") for solution in solutions) and isinstance(continuation.get("SearchRangeStartDte"), int): last_open_window = continuation.get("SearchRangeStartDte")
                                     for solution in solutions:
                                         for slot in solution.get("Slots", []):
                                             flow_rows.append(normalize_slot(slot, site, specialty, active_visit, reason, path["prompts"], providers, departments, load, flow_id))
@@ -703,7 +718,15 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
                                     window, window_slots = (window_start, window_end), 0
                                 window_slots += sum(len(solution.get("Slots", [])) for solution in solutions) if not repeated else 0
                                 if empty_windows >= EMPTY_WINDOWS: status, message = "schedule_end", f"{EMPTY_WINDOWS} searched windows in a row had no openings"; break
-                                if isinstance(window_start, int) and isinstance(start_dte, int) and window_start > start_dte + max_days_ahead: status, message = "horizon_reached", f"Search window {window_start} is beyond {max_days_ahead} days ahead"; break
+                                if isinstance(window_start, int) and isinstance(start_dte, int) and window_start > start_dte + max_days_ahead:
+                                    # Epic jumps the search a year ahead once nothing remains: that is the schedule's end, not the cap
+                                    if isinstance(last_open_window, int) and window_start - last_open_window >= 300: status, message = "schedule_end", f"Epic's search jumped from the last opening (window {last_open_window}) to {window_start}; the published schedule ended there"
+                                    else: status, message = "horizon_reached", f"Search window {window_start} is beyond {max_days_ahead} days ahead"
+                                    break
+                                if repeated and not token_repeat:
+                                    # Epic re-serves a provider chunk's previous results when it has nothing new in this
+                                    # window; the continuation still advances, so follow it (the rows are duplicates)
+                                    model["continueInfo"] = continuation; continue
                                 if repeated:
                                     # follow the continuation a couple of times first: a single re-served page still
                                     # points at the next chunk, and restarting early would skip the rest of its window
