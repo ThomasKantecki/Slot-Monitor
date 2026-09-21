@@ -14,7 +14,7 @@ try { chromium = require(process.env.PLAYWRIGHT_CORE || 'playwright-core').chrom
 catch { console.log('audit-pages: skipped (playwright-core not found; set PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core)'); process.exit(0); }
 const argIndex = process.argv.indexOf('--specialty');
 const sp = argIndex >= 0 ? process.argv[argIndex + 1] : (process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'cardiology');
-const registry = JSON.parse(readFileSync(join(ROOT, 'src/shared/specialties.json'), 'utf8')).find((s) => s.id === sp);
+const registry = JSON.parse(readFileSync(join(ROOT, 'specialties.json'), 'utf8')).find((s) => s.id === sp);
 if (!registry || !existsSync(join(ROOT, 'public', registry.folder || '', 'index.html'))) { console.error(`audit-pages: no built pages for "${sp}"`); process.exit(1); }
 const folder = registry.folder || '';
 const PORT = 8790 + Math.floor(Math.random() * 50);

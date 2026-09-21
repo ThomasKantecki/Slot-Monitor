@@ -45,16 +45,16 @@ SITES = {
     "ah": Site("AH", "AdventHealth", "https://mychart.adventhealth.com", "/mychartprd"),
     "oh": Site("OH", "Orlando Health", "https://mychart.orlandohealth.com", "/MyChart"),
 }
-# The anonymous catalog names each extraction pulls come from src/shared/specialties.json (one list shared
+# The anonymous catalog names each extraction pulls come from specialties.json (one list shared
 # with the Node scripts): a specialty maps to one or more catalog entry names per system.
-REGISTRY = Path(__file__).resolve().parents[2] / "src" / "shared" / "specialties.json"
+REGISTRY = Path(__file__).resolve().parents[2] / "specialties.json"
 
 
 def load_specialty(spec_id: str) -> dict[str, Any]:
     entries = json.loads(REGISTRY.read_text(encoding="utf-8"))
     for entry in entries:
         if entry.get("id") == spec_id: return entry
-    raise RuntimeError(f"Unknown specialty {spec_id!r}; src/shared/specialties.json lists: {', '.join(e.get('id', '?') for e in entries)}")
+    raise RuntimeError(f"Unknown specialty {spec_id!r}; specialties.json lists: {', '.join(e.get('id', '?') for e in entries)}")
 
 
 def select_catalog_entries(catalog: dict[str, Any], names: list[str]) -> list[dict[str, Any]]:
@@ -603,7 +603,7 @@ def extract(site: Site, output: Path, args: Any) -> dict[str, Any]:
     resume = bool(getattr(args, "resume", False))
     spec_id = str(getattr(args, "specialty", "") or "cardiology")
     names = list(load_specialty(spec_id).get("catalog", {}).get(site.code.lower(), []))
-    if not names: raise RuntimeError(f"src/shared/specialties.json lists no {site.name} catalog names for {spec_id}; run catalog_probe.py and fill them in")
+    if not names: raise RuntimeError(f"specialties.json lists no {site.name} catalog names for {spec_id}; run catalog_probe.py and fill them in")
     output.mkdir(parents=True, exist_ok=resume); (output / PARTS).mkdir(exist_ok=True); client = PublicEpicClient(site, args.retries, args.request_delay)
     audit, search_cache, total_rows, system = [], {}, 0, site.code.lower()
     resumed_flows, done_flows = {}, set()

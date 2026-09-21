@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline, withOtherOffices } from "../src/render.js";
+import { dragExceededThreshold, escapeScriptJson, providerAvailabilityTotals, providerHeadline, withOtherOffices } from "../pages/provider-index/render.js";
 
 // Guards the literal-space trap: the U+2028/U+2029 search args must not rewrite
 // spaces, or every SVG path coordinate separator would be corrupted.
@@ -53,7 +53,7 @@ test("primary-only headline remains a distinct-provider count", () => {
 });
 
 test("map color key lives in the totals card without a separate lead legend", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.doesNotMatch(src, /class="panel lpanel"|id="legend"|id="legtitle"/);
   assert.match(src, /id="map-key"/);
   assert.match(src, />Orlando Health<\/span>/);
@@ -61,27 +61,27 @@ test("map color key lives in the totals card without a separate lead legend", ()
 });
 
 test("map color key keeps all three comparison labels on one row", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /\.map-key\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(3,max-content\)[^}]*white-space:nowrap/);
   assert.match(src, /id="key-tie"[^>]*>[\s\S]*?<span>Equal<\/span>/);
 });
 
 test("totals scope shares a compact single-line header", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /\.tpanel \.panel-band\{[^}]*gap:5px;[^}]*flex-wrap:nowrap/);
   assert.match(src, /\.tpanel \.panel-band h2\{[^}]*white-space:nowrap/);
   assert.match(src, /\.tpanel \.panel-band \.band-meta\{[^}]*font-size:9px/);
 });
 
 test("company view filters and refreshes the provider index", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /if\(view!=="diff"\) list=list\.filter\(x=>x\.y===view\)/);
   assert.match(src, /VISIBLE_SYSTEMS\(\)\.map/);
   assert.match(src, /paint\(\);if\(selected\)showProviders\(selected\);else resetPanel\(\)/);
 });
 
 test("nonzero ties use a red-and-blue striped map fill", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /id="tie-stripes"/);
   assert.match(src, /const TIE_FILL="url\(#tie-stripes\)"/);
   assert.match(src, /if\(d===0\) return TIE_FILL/);
@@ -89,13 +89,13 @@ test("nonzero ties use a red-and-blue striped map fill", () => {
 });
 
 test("selected ZIP and county borders override their base stroke widths", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /#lay-zip path\.z\.sel,#lay-county path\.z\.sel\{stroke:#000;stroke-width:2\.8\}/);
   assert.match(src, /#lay-zip path\.z:hover,#lay-county path\.z:hover\{stroke:#000;stroke-width:1\.8\}/);
 });
 
 test("desktop filters compact into one row when the map panel is wide enough", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /container-type:inline-size/);
   assert.match(src, /@container \(min-width:700px\)\{\.controls\{flex-wrap:nowrap\}\}/);
   assert.match(src, /\.comparison-controls\{flex:0 0 auto\}/);
@@ -107,14 +107,14 @@ test("desktop filters compact into one row when the map panel is wide enough", (
 });
 
 test("Primary Only includes an accessible multiple-location explanation", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /id="primary-location-info"[^>]*aria-describedby="primary-location-note"/);
   assert.match(src, /Some providers work at multiple locations\. Switch to Primary Only to show each provider only at their main location\./);
   assert.match(src, /\.location-help:hover \.location-tip,\.location-help:focus-within \.location-tip\{opacity:1;visibility:visible\}/);
 });
 
 test("statewide zoom uses a raster motion layer and avoids per-move layout reads", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /id="map-raster"/);
   assert.match(src, /function beginRasterMotion\(\)/);
   assert.match(src, /raster\.style\.transform=/);
@@ -124,7 +124,7 @@ test("statewide zoom uses a raster motion layer and avoids per-move layout reads
 });
 
 test("zoom and drag reuse one cached raster without high-resolution redraws", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /const dpr=Math\.min\(2,Math\.max\(1,window\.devicePixelRatio\|\|1\)\)/);
   assert.match(src, /const run=\(\)=>\{rasterQueued=false;drawRaster\(\);\}/);
   assert.match(src, /function beginRasterMotion\(\)\{svg\.classList\.add\("zooming"\);if\(!rasterReady\)return/);
@@ -137,7 +137,7 @@ test("a county click does not enter drag mode until real pointer movement", () =
   assert.equal(dragExceededThreshold(3, 4), false);
   assert.equal(dragExceededThreshold(4, 4), true);
 
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   const mouseDown = src.match(/svg\.addEventListener\("mousedown",[^\n]+/)?.[0] ?? "";
   const moveDrag = src.match(/function moveDrag\(\)\{[^\n]+/)?.[0] ?? "";
   assert.doesNotMatch(mouseDown, /beginRasterMotion|classList\.add\("drag"\)/);
@@ -160,7 +160,7 @@ test("generated provider-map client script parses", () => {
 // which is exactly how the headline came to read 0. Every lookup of a removable
 // element must be guarded.
 test("client code never dereferences an element the single-system branch removes", () => {
-  const src = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   const removable = ["tot-ah", "tot-oh", "v-diff", "v-ah", "v-oh", "leadcap"];
   const unguarded = [];
   for (const m of src.matchAll(/getElementById\((?:"([a-z-]+)"|([A-Za-z]+))\)(\.[A-Za-z]+)?/g)) {

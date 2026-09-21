@@ -1,9 +1,9 @@
 // Sanity check for the Market Opportunities numbers: the per-ZIP rows must add up to the slot total, then prints the top markets. `npm run audit:opportunities`.
 import { readFileSync } from "node:fs";
-import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
-import { buildOpportunityRows } from "../src/opportunities/scoring.js";
-import "../src/slot-times/radius.js";
-import "../src/shared/date.js";
+import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
+import { buildOpportunityRows } from "../pages/market-opportunities/scoring.js";
+import "../pages/slot-availability/radius.js";
+import "../pages/shared/date.js";
 
 const model = JSON.parse(readFileSync(specialtyPaths(specialtyFromArgv()).model, "utf8"));
 const source = readFileSync("data/geography/florida-zip-centroids.js", "utf8").trim();

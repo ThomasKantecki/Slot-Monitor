@@ -6,7 +6,7 @@ import { copyFileSync, createReadStream, createWriteStream, existsSync, mkdirSyn
 import { createInterface } from "node:readline";
 import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
+import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 const TYPE_ORDER = [
   "New Patient",

@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildOpportunityRows, marketReasons, opportunityScore } from "../src/opportunities/scoring.js";
-import { renderOpportunities } from "../src/opportunities/render.js";
+import { buildOpportunityRows, marketReasons, opportunityScore } from "../pages/market-opportunities/scoring.js";
+import { renderOpportunities } from "../pages/market-opportunities/render.js";
 
 const model = {
   minDate: "2026-09-03", commonMaxDate: "2026-10-01",
@@ -76,7 +76,7 @@ test("market reasons read as plain English, strongest signal first", () => {
 
 test("market opportunity page is built from the Slot Availability parts with no explanatory text", () => {
   const html = renderOpportunities();
-  const styles = readFileSync(new URL("../src/opportunities/styles.css", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../pages/market-opportunities/styles.css", import.meta.url), "utf8");
   for (const id of ["opportunity-filter", "summary-overview", "summary-market", "kpi-priority", "kpi-coverage", "kpi-earlier", "kpi-slot-gap", "area-lead", "market-name", "market-rank", "market-reasons", "market-lead", "open-market", "back-overview", "market-table", "market-count", "market-dialog", "dialog-facilities", "map", "map-raster", "tip"]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
@@ -96,8 +96,8 @@ test("market opportunity page is built from the Slot Availability parts with no 
 });
 
 test("opportunity browser source parses and uses the shared score implementation", () => {
-  const client = readFileSync(new URL("../src/opportunities/client.js", import.meta.url), "utf8");
-  const scoring = readFileSync(new URL("../src/opportunities/scoring.js", import.meta.url), "utf8").replaceAll("export ", "");
+  const client = readFileSync(new URL("../pages/market-opportunities/client.js", import.meta.url), "utf8");
+  const scoring = readFileSync(new URL("../pages/market-opportunities/scoring.js", import.meta.url), "utf8").replaceAll("export ", "");
   assert.doesNotThrow(() => new Function(`${scoring}\n${client}`));
   assert.match(client, /exactRows = buildOpportunityRows\(DATA, \{ from: state\.from, through: state\.through, includeZips, miles \}\)/);
   assert.match(client, /allRows = buildOpportunityRows\(DATA, \{ from: state\.from, through: state\.through, includeZips, marketRadiusMiles: state\.marketMiles, miles \}\)/);

@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../src/shared/suite-navigation.js";
-import { renderSlotTimes } from "../src/slot-times/render.js";
+import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../pages/shared/suite-navigation.js";
+import { renderSlotTimes } from "../pages/slot-availability/render.js";
 
 const slotModel = JSON.parse(readFileSync(new URL("../public/data/cardiology/slot-times-summary.json", import.meta.url), "utf8"));
 
@@ -21,7 +21,7 @@ test("shared navigation marks exactly one current view", () => {
 });
 
 test("Provider Index and Slot Availability use the same top-level switcher", () => {
-  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const providerSource = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(providerSource, /suiteNavigation\("provider-map"\)/);
   assert.match(slots, /aria-label="Dashboard views"/);
@@ -32,7 +32,7 @@ test("Provider Index and Slot Availability use the same top-level switcher", () 
 });
 
 test("provider index controls are grouped into labeled mini-sections", () => {
-  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const providerSource = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(providerSource, /class="control-section geography-controls"><legend>Geography<\/legend>/);
   assert.match(providerSource, /id="comparison-controls" class="control-section comparison-controls"><legend>Comparison<\/legend>/);
   assert.match(providerSource, /class="pill-group" role="group" aria-label="Area type"/);
@@ -46,7 +46,7 @@ test("provider index controls are grouped into labeled mini-sections", () => {
 });
 
 test("both views share the Slot Monitor shell while the landing page remains responsive", () => {
-  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const providerSource = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(SUITE_NAV_STYLES, /\.brand-box\{min-width:220px;justify-content:flex-start\}/);
   assert.match(SUITE_NAV_STYLES, /\.hdr \.hdr-in\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/);
@@ -80,7 +80,7 @@ test("both views share the Slot Monitor shell while the landing page remains res
 });
 
 test("slot availability browser code parses and the landing alias is generated", () => {
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
   assert.doesNotThrow(() => new Function(client));
   const slots = renderSlotTimes();
   const inlineScript = slots.match(/<script>([\s\S]*)<\/script>/)?.[1];
@@ -93,7 +93,7 @@ test("slot availability browser code parses and the landing alias is generated",
 });
 
 test("slot appointment mix donut is wired to filtered KPI refreshes", () => {
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   for (const id of ["mix-donut", "mix-total", "mix-ah", "mix-oh"]) {
     assert.match(slots, new RegExp(`id="${id}"`));
@@ -127,7 +127,7 @@ test("slot appointment mix donut is wired to filtered KPI refreshes", () => {
 });
 
 test("slot area selection can be cleared and Reset restores today's period and v3 ZIP-radius defaults", () => {
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(slots, /id="clear-area"/);
   assert.match(slots, /id="origin-zip"/);
@@ -186,8 +186,8 @@ test("slot area selection can be cleared and Reset restores today's period and v
 });
 
 test("v3 facility investigation and appointment-detail controls are rebuilt", () => {
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
-  const styles = readFileSync(new URL("../src/slot-times/styles.css", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../pages/slot-availability/styles.css", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   for (const id of ["facility-dialog", "doctor-list", "facility-marker-layer", "kpi-facilities-ah", "kpi-facilities-oh", "availability-profile", "facility-title"]) {
     assert.match(slots, new RegExp(`id="${id}"`));
@@ -228,7 +228,7 @@ test("slot comparison controls reuse the embedded provider-map brand assets", ()
 });
 
 test("shared header includes the AdventHealth signature and an accessible-motion pixel heart", () => {
-  const provider = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const provider = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   for (const page of [provider + suiteTitle("provider-map"), slots]) {
     assert.match(page, /class="pixel-heart" aria-hidden="true"/);
@@ -238,15 +238,16 @@ test("shared header includes the AdventHealth signature and an accessible-motion
   assert.match(SUITE_NAV_STYLES, /@media \(prefers-reduced-motion:reduce\)\{\.pixel-heart\{animation:none\}\}/);
 });
 
-test("repository root index opens the Slot Availability landing page", () => {
-  const rootIndex = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(rootIndex, /url=\.\/public\/index\.html/);
-  assert.match(rootIndex, /location\.replace\("\.\/public\/index\.html"/);
+test("the legacy slot-times.html address forwards to the Slot Availability page and no root launcher is written", () => {
+  const forward = readFileSync(new URL("../public/slot-times.html", import.meta.url), "utf8");
+  assert.match(forward, /url=\.\/index\.html/);
+  assert.match(forward, /location\.replace\("\.\/index\.html"/);
+  assert.doesNotMatch(readFileSync(new URL("../pages/slot-availability/render.js", import.meta.url), "utf8"), /ROOT_LANDING/);
 });
 
 test("telemedicine slots can be hidden from every filtered view and Reset shows them again", () => {
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
-  const styles = readFileSync(new URL("../src/slot-times/styles.css", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../pages/slot-availability/styles.css", import.meta.url), "utf8");
   const slots = renderSlotTimes();
   assert.match(slots, /<div class="filter-pairs"><div class="control-group view-group" role="group" aria-label="Health system view"><button id="view-diff" class="toggle" aria-pressed="true">AdventHealth \+ Orlando Health<\/button>[\s\S]*?<\/div><div class="filter-row"><div class="control-group" role="group" aria-label="Visit type"><button id="vt-all" class="toggle" aria-pressed="true">All patients<\/button><span class="toggle-help"><button id="vt-new" class="toggle" aria-pressed="false">New patients<\/button><span class="location-help"><button id="vt-new-info" class="location-info" type="button" aria-label="About New patients" aria-describedby="vt-new-tip">i<\/button><span id="vt-new-tip" class="location-tip" role="tooltip">[\s\S]*?<\/div><div class="control-group" role="group" aria-label="Clinicians"><button id="clin-all" class="toggle" aria-pressed="true">All clinicians<\/button><span class="toggle-help"><button id="clin-phys" class="toggle" aria-pressed="false">Physicians<\/button><span class="location-help"><button id="clin-phys-info" class="location-info"[\s\S]*?<\/div><div class="control-group" role="group" aria-label="Telemedicine"><button id="tele-show" class="toggle" aria-pressed="true">All visits<\/button><span class="toggle-help"><button id="tele-hide" class="toggle" aria-pressed="false">In person<\/button><span class="location-help"><button id="tele-hide-info" class="location-info"[\s\S]*?<\/div><\/div><\/div><\/div><\/fieldset>/);
   assert.match(styles, /\.location-help:hover \.location-tip,\.location-help:focus-within \.location-tip\{opacity:1;visibility:visible\}/);
@@ -282,7 +283,7 @@ test("telemedicine slots can be hidden from every filtered view and Reset shows 
 
 test("the header box carries each view's title with the pixel heart and no page heading remains", () => {
   const slots = renderSlotTimes();
-  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const providerSource = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(slots, /<div class="brand-box"><span class="mark"><span class="specialty-pick"><span class="specialty-sizer" aria-hidden="true">Cardiology<\/span><select class="specialty-select" aria-label="Specialty"><option value="cardiology"[^>]*selected>Cardiology<\/option>[\s\S]*?<\/select><span class="specialty-caret" aria-hidden="true">[\s\S]*?<\/span><\/span><b>Slot Availability<\/b><\/span><span class="pixel-heart" aria-hidden="true">/);
   assert.doesNotMatch(slots, /<h1>|Cardiology <b>Access<\/b>/);
   assert.match(suiteTitle("opportunities"), /<b>AH Market Opportunities<\/b><\/span>/);
@@ -296,7 +297,7 @@ test("the header box carries each view's title with the pixel heart and no page 
 
 test("the header info button replaces the freshness line and opens a dataset dialog on every page", () => {
   const slots = renderSlotTimes();
-  const providerSource = readFileSync(new URL("../src/render.js", import.meta.url), "utf8");
+  const providerSource = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(suiteNavigation("provider-map"), /<div class="hdr-tools"><nav class="suite-switcher" aria-label="Dashboard views">[\s\S]*<\/nav><button id="dataset-info-button" class="info-button" type="button" aria-haspopup="dialog" aria-controls="dataset-info"/);
   assert.match(slots, /id="dataset-info-button"/);
   assert.match(slots, /<dialog id="dataset-info" class="dataset-dialog" aria-labelledby="dataset-info-title">/);
@@ -333,7 +334,7 @@ test("the header info button replaces the freshness line and opens a dataset dia
 });
 
 test("slot and market maps share the smooth zoom used by Provider Index", () => {
-  const motion = readFileSync(new URL("../src/shared/map-motion.js", import.meta.url), "utf8");
+  const motion = readFileSync(new URL("../pages/shared/map-motion.js", import.meta.url), "utf8");
   assert.match(motion, /raster\.style\.transformOrigin = `\$\{frame\.ox\}px \$\{frame\.oy\}px`/);
   assert.match(motion, /ctx\.setTransform\(dpr \* frame\.s, 0, 0, dpr \* frame\.s, dpr \* frame\.ox, dpr \* frame\.oy\)/);
   assert.doesNotThrow(() => new Function(motion));
@@ -343,12 +344,12 @@ test("slot and market maps share the smooth zoom used by Provider Index", () => 
   const slots = renderSlotTimes();
   assert.match(slots, /<canvas id="map-raster" width="1000" height="940" aria-hidden="true"><\/canvas>/);
   assert.match(slots, /SUITE_MAP_MOTION\.create\(\{ svg, viewport: vp, raster: \$\("map-raster"\), width: W, height: H, maxZoom: 60/);
-  assert.match(readFileSync(new URL("../src/opportunities/client.js", import.meta.url), "utf8"), /maxZoom: 60,[\s\S]*zoomBy\(1\.5\)/, "the market map zooms like the slot map");
-  const client = readFileSync(new URL("../src/slot-times/client.js", import.meta.url), "utf8");
+  assert.match(readFileSync(new URL("../pages/market-opportunities/client.js", import.meta.url), "utf8"), /maxZoom: 60,[\s\S]*zoomBy\(1\.5\)/, "the market map zooms like the slot map");
+  const client = readFileSync(new URL("../pages/slot-availability/client.js", import.meta.url), "utf8");
   assert.match(client, /renderMapMarkers\(\);\n    motion\.queue\(\);/);
   assert.match(client, /if \(motion\.moved\(\)\) return; selectArea\(/);
   assert.doesNotMatch(client, /svg\.setPointerCapture|zoomBy\(event\.deltaY/);
-  const styles = readFileSync(new URL("../src/slot-times/styles.css", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../pages/slot-availability/styles.css", import.meta.url), "utf8");
   assert.match(styles, /#map-raster\{position:absolute;z-index:1;/);
   assert.match(styles, /svg\.zooming \.area,svg\.dragging \.area,svg\.zooming \.op-area,svg\.dragging \.op-area\{pointer-events:none;transition:none;shape-rendering:optimizeSpeed\}/);
 });

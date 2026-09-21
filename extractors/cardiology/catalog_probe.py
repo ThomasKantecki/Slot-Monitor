@@ -1,4 +1,4 @@
-"""List what a system's anonymous MyChart scheduling catalog offers, so src/shared/specialties.json can name the
+"""List what a system's anonymous MyChart scheduling catalog offers, so specialties.json can name the
 entries an extraction should pull. One request for the specialty list; one more per --detail entry."""
 from __future__ import annotations
 

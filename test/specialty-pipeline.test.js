@@ -5,7 +5,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { SPECIALTIES } from "../src/shared/specialties.js";
+import { SPECIALTIES } from "../pages/shared/specialties.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const python = [process.env.CARDIOLOGY_PYTHON, join(ROOT, ".venv", "bin", "python"), "python3", "python"]

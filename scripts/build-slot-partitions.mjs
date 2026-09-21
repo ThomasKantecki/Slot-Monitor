@@ -2,7 +2,7 @@
 // build-slot-times-data, once per specialty (`--specialty <id>`, cardiology when absent).
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
+import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 // Publishes the slot model the way the pages load it: a compact summary (the model without its slots and area
 // aggregates) plus one static file per bookable date under public/data/<specialty>/slots. The pages fetch only the

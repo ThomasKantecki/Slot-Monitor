@@ -4,7 +4,7 @@
 import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "../src/slot-rules.js";
-import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
+import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 const ROOT = process.cwd();
 const SPECIALTY = specialtyFromArgv();

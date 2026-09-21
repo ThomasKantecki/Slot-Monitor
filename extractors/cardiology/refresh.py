@@ -33,7 +33,7 @@ def execute(command: list[str], dry_run: bool, node_heap: bool = False) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", default=run_id())
-    parser.add_argument("--specialty", default="cardiology", help="An id from src/shared/specialties.json")
+    parser.add_argument("--specialty", default="cardiology", help="An id from specialties.json")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-slot-loads", type=int, default=20000)
     parser.add_argument("--max-paths", type=int, default=10000)

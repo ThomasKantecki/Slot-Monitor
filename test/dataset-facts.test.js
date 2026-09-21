@@ -1,7 +1,7 @@
 // The "Data check" dialog text on each page must describe the data correctly.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { directoryGaps, nameKeys, opportunityDataChecks, providerDataChecks, slotDataChecks } from "../src/shared/dataset-facts.js";
+import { directoryGaps, nameKeys, opportunityDataChecks, providerDataChecks, slotDataChecks } from "../pages/shared/dataset-facts.js";
 
 const model = {
   generatedAt: "2026-09-14T03:14:23.283Z", status: "completed_with_warnings",

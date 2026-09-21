@@ -1,5 +1,5 @@
 // Builds public/index.html (Slot Availability): page markup + styles.css + client.js + the map shapes, all inlined into one file.
-// Also writes the root index.html launcher and public/slot-times.html, which just forward to it.
+// Also writes public/slot-times.html, the page's earlier address, which forwards to it.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -69,7 +69,7 @@ export function renderSlotTimes(specialtyId = "cardiology") {
   return PAGE
     .replace("__FONTS__", optional("assets/fonts.css"))
     .replace("__LOGO_VARS__", logoVars)
-    .replace("__STYLES__", read("src/slot-times/styles.css"))
+    .replace("__STYLES__", read("pages/slot-availability/styles.css"))
     .replace("__TITLE__", () => `${specialty.label} Slot Availability`)
     .replace("__NEW_PATIENT_TIP__", () => copy.newPatientTip)
     .replace("__BRAND__", suiteTitle("slot-times", specialty.id))
@@ -80,11 +80,11 @@ export function renderSlotTimes(specialtyId = "cardiology") {
     .replace("__SLOT_DATA__", escapeScriptJson(data))
     .replace("__SLOT_PATHS__", escapeScriptJson(paths))
     .replace("__SLOT_OUTLINE__", escapeScriptJson(outlinePath))
-    .replace("__DATE_CLIENT__", read("src/shared/date.js"))
-    .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
-    .replace("__PARTITION_LOADER__", () => read("src/slot-times/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
-    .replace("__MOTION_CLIENT__", read("src/shared/map-motion.js"))
-    .replace("__CLIENT__", read("src/slot-times/client.js"));
+    .replace("__DATE_CLIENT__", read("pages/shared/date.js"))
+    .replace("__RADIUS_CLIENT__", read("pages/slot-availability/radius.js"))
+    .replace("__PARTITION_LOADER__", () => read("pages/slot-availability/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
+    .replace("__MOTION_CLIENT__", read("pages/shared/map-motion.js"))
+    .replace("__CLIENT__", read("pages/slot-availability/client.js"));
 }
 
 export function writeSlotTimes(specialtyId = "cardiology") {
@@ -92,28 +92,11 @@ export function writeSlotTimes(specialtyId = "cardiology") {
   const html = renderSlotTimes(specialty.id); const output = join(ROOT, specialtyPaths(specialty).pages); mkdirSync(output, { recursive: true });
   writeFileSync(join(output, "index.html"), html);
   if (specialty.folder) return { bytes: html.length };
-  // the root pages: the old slot-times.html address and the repository-root launcher forward to Cardiology
   // slot-times.html was the page's earlier address; it now forwards to index.html instead of duplicating 1.7 MB
   writeFileSync(join(output, "slot-times.html"), '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./index.html"><title>Cardiology Slot Availability</title><script>location.replace("./index.html" + location.search + location.hash)</script></head><body><p><a href="./index.html">Open Cardiology Slot Availability</a></p></body></html>\n');
-  writeFileSync(join(ROOT, "index.html"), ROOT_LANDING);
   return { bytes: html.length };
 }
 
-const ROOT_LANDING = String.raw`<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23005C99'/%3E%3Crect y='12' width='16' height='4' fill='%231FA9E1'/%3E%3C/svg%3E">
-<meta http-equiv="refresh" content="0;url=./public/index.html">
-<title>Cardiology Slot Availability</title>
-<script>location.replace("./public/index.html" + location.search + location.hash)</script>
-</head>
-<body>
-<p><a href="./public/index.html">Open Cardiology Slot Availability</a></p>
-</body>
-</html>
-`;
 
 const PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>__TITLE__</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23005C99'/%3E%3Crect y='12' width='16' height='4' fill='%231FA9E1'/%3E%3C/svg%3E"><style>__FONTS__
 __LOGO_VARS__
@@ -141,6 +124,6 @@ __INFO_SCRIPT__</script></body></html>`;
 
 function main() {
   const specialty = specialtyFromArgv(); const result = writeSlotTimes(specialty.id);
-  console.log(specialty.folder ? `wrote ${specialtyPaths(specialty).pages}index.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard` : `wrote index.html + public/index.html (+ slot-times.html redirect) — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`);
+  console.log(specialty.folder ? `wrote ${specialtyPaths(specialty).pages}index.html — ${(result.bytes / 1e6).toFixed(2)} MB dashboard` : `wrote public/index.html (+ slot-times.html redirect) — ${(result.bytes / 1e6).toFixed(2)} MB dashboard`);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

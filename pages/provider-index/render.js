@@ -6,12 +6,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "./shared/suite-navigation.js";
-import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "./shared/specialties.js";
-import { providerDataChecks } from "./shared/dataset-facts.js";
-import { buildProviderIndex } from "../rosters/people.js";
+import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../shared/suite-navigation.js";
+import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "../shared/specialties.js";
+import { providerDataChecks } from "../shared/dataset-facts.js";
+import { buildProviderIndex } from "../../rosters/people.js";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const W = 1000, H = 940, PAD = 12;
 
 function albersFactory() {
@@ -178,7 +178,7 @@ export function render(specialtyId = "cardiology") {
   const readB64 = (rel) => { try { return readFileSync(join(ROOT, rel)).toString("base64"); } catch { return null; } };
   const ahLogo = readB64("assets/adventhealth-logo.png"), ohLogo = readB64("assets/orlandohealth-logo.png");
   // Webfonts embedded as base64 so the page renders identically offline and on
-  // any machine (see scripts/embed-fonts.mjs). Without this, JetBrains Mono is
+  // any machine (see tooling/embed-fonts.mjs). Without this, JetBrains Mono is
   // fetched from Google at load time and silently falls back elsewhere.
   let fontsCss = ""; try { fontsCss = readFileSync(join(ROOT, "assets", "fonts.css"), "utf8"); } catch { /* optional */ }
 

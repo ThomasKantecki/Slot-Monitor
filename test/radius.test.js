@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import "../src/slot-times/radius.js";
+import "../pages/slot-availability/radius.js";
 
 const centroidSource = readFileSync(new URL("../data/geography/florida-zip-centroids.js", import.meta.url), "utf8").trim();
 const centroids = JSON.parse(centroidSource.replace(/^window\.FLORIDA_ZIP_CENTROIDS=/, "").replace(/;$/, ""));

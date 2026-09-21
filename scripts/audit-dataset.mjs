@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, existsSync, openSync, readSync, closeSync } 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { isTelemedicineSlot, isNewPatientType } from "../src/slot-times/data.js";
-import { SPECIALTIES, specialtyFromArgv } from "../src/shared/specialties.js";
+import { SPECIALTIES, specialtyFromArgv } from "../pages/shared/specialties.js";
 import { credentialClass, findDirectoryPerson } from "../rosters/people.js";
 
 const R = join(dirname(fileURLToPath(import.meta.url)), "..") + "/";

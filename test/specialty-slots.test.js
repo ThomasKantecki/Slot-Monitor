@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { buildSlotAvailability } from "../src/slot-times/data.js";
-import { slotDataChecks } from "../src/shared/dataset-facts.js";
+import { slotDataChecks } from "../pages/shared/dataset-facts.js";
 
 
 const row = (system, specialty, id, time) => ({ system, provider_id: `p${id}`, provider_name: `Doc ${id}, MD`, provider_credentials: "Physician", facility_id: `f${id}`, facility_name: "Clinic", address: "1 Main St", city: "Orlando", state: "FL", zip: "32801", display_datetime_utc: `2026-10-0${time}T13:00:00Z`, appointment_time: "9:00 AM", duration_minutes: "30", booking_categories: "New Patient", specialty });

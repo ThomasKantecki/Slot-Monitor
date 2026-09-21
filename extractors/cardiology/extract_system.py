@@ -22,7 +22,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--system", choices=sorted(SITES), required=True)
     result.add_argument("--run-id", default="")
-    result.add_argument("--specialty", default="cardiology", help="An id from src/shared/specialties.json")
+    result.add_argument("--specialty", default="cardiology", help="An id from specialties.json")
     result.add_argument("--output-root", type=Path, default=None, help="Defaults to data/<specialty>/extractions")
     result.add_argument("--max-slot-loads", type=int, default=20000)
     result.add_argument("--max-days-ahead", type=int, default=560, help="Stop restarting a stalled search past this many days from the catalog date")

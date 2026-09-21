@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { SPECIALTIES } from "../src/shared/specialties.js";
+import { SPECIALTIES } from "../pages/shared/specialties.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const baseIndex = process.argv.indexOf("--base");

@@ -3,7 +3,7 @@
 // One specialty per run (`--specialty <id>`, cardiology when absent).
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { buildSlotAvailability } from "../src/slot-times/data.js";
-import { specialtyFromArgv, specialtyPaths } from "../src/shared/specialties.js";
+import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 const SPECIALTY = specialtyFromArgv();
 const PATHS = specialtyPaths(SPECIALTY);

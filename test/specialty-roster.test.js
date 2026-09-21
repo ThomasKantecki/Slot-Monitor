@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CARDIOLOGY_GROUP, regroupSpecialties, schedulingClinicians } from "../rosters/people.js";
-import { CARDIOLOGY_CHECK, providerDataChecks } from "../src/shared/dataset-facts.js";
-import { COPY, specialtyOf } from "../src/shared/specialties.js";
+import { CARDIOLOGY_CHECK, providerDataChecks } from "../pages/shared/dataset-facts.js";
+import { COPY, specialtyOf } from "../pages/shared/specialties.js";
 
 const ortho = specialtyOf("orthopedics").roster;
 const person = (name, specialty, sys = "oh") => ({ sys, npi: name.length + "000000000", name, cred: "MD", specialty, photo: "", profile: "", locations: [{ name: "Clinic", addr: "1 Main St", city: "Orlando", zip: "32801", primary: true }] });

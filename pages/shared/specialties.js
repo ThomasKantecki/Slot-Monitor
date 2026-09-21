@@ -2,10 +2,10 @@
 // Node scripts share one list. Cardiology is published at the site root; every other specialty lives in
 // its own folder (public/<id>/) with the same three page names and its data under public/data/<id>/.
 // A specialty whose data is not published yet still gets its pages, as placeholders
-// (src/shared/specialty-placeholders.js), so the header's specialty menu always works.
+// (pages/shared/specialty-placeholders.js), so the header's specialty menu always works.
 //
 // Per entry: `catalog` = the Epic anonymous-scheduling specialty names each system's extractor pulls
-// (extractors/cardiology/catalog_probe.py lists what a catalog offers); `roster` = the directory labels
+// (extractor/catalog_probe.py lists what a catalog offers); `roster` = the directory labels
 // the Provider Index counts together under `group` (rosters/people.js).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, "..", "..");
-export const SPECIALTIES = JSON.parse(readFileSync(join(HERE, "specialties.json"), "utf8"))
+export const SPECIALTIES = JSON.parse(readFileSync(join(ROOT, "specialties.json"), "utf8"))
   .map((entry) => ({ ...entry, dataDir: `data/${entry.id}` }));
 
 export function specialtyOf(id) {

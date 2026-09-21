@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "../shared/suite-navigation.js";
 import { specialtyFromArgv, specialtyOf, specialtyPaths } from "../shared/specialties.js";
 import { opportunityDataChecks } from "../shared/dataset-facts.js";
-import { escapeScriptJson } from "../slot-times/render.js";
+import { escapeScriptJson } from "../slot-availability/render.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const W = 1000, H = 940, PAD = 12;
@@ -63,12 +63,12 @@ export function renderOpportunities(specialtyId = "cardiology") {
   const outlinePath = (outline.geometries ?? (outline.features ?? []).map((feature) => feature.geometry)).map((geometry) => geometryPath(geometry, fit)).join("");
   const readB64 = (relative) => read(relative, null).toString("base64");
   const logoVars = `:root{--ah-logo-img:url(data:image/png;base64,${readB64("assets/adventhealth-logo.png")});--oh-logo-img:url(data:image/png;base64,${readB64("assets/orlandohealth-logo.png")})}`;
-  const scoringClient = read("src/opportunities/scoring.js").replaceAll("export ", "");
+  const scoringClient = read("pages/market-opportunities/scoring.js").replaceAll("export ", "");
   return PAGE
     .replace("__FONTS__", optional("assets/fonts.css"))
     .replace("__LOGO_VARS__", logoVars)
-    .replace("__BASE_STYLES__", read("src/slot-times/styles.css"))
-    .replace("__STYLES__", read("src/opportunities/styles.css"))
+    .replace("__BASE_STYLES__", read("pages/slot-availability/styles.css"))
+    .replace("__STYLES__", read("pages/market-opportunities/styles.css"))
     .replace("__NAV_STYLES__", SUITE_NAV_STYLES)
     .replace("__LABEL__", () => specialty.label)
     .replace("__LABEL_LOWER__", () => specialty.label.toLowerCase())
@@ -79,12 +79,12 @@ export function renderOpportunities(specialtyId = "cardiology") {
     .replace("__SLOT_DATA__", escapeScriptJson(data))
     .replace("__ZIP_PATHS__", escapeScriptJson(paths))
     .replace("__OUTLINE__", escapeScriptJson(outlinePath))
-    .replace("__DATE_CLIENT__", read("src/shared/date.js"))
-    .replace("__RADIUS_CLIENT__", read("src/slot-times/radius.js"))
-    .replace("__PARTITION_LOADER__", () => read("src/slot-times/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
-    .replace("__MOTION_CLIENT__", read("src/shared/map-motion.js"))
+    .replace("__DATE_CLIENT__", read("pages/shared/date.js"))
+    .replace("__RADIUS_CLIENT__", read("pages/slot-availability/radius.js"))
+    .replace("__PARTITION_LOADER__", () => read("pages/slot-availability/partition-loader.js").replaceAll("__SLOT_BASE__", sp.partitionBase))
+    .replace("__MOTION_CLIENT__", read("pages/shared/map-motion.js"))
     .replace("__SCORING_CLIENT__", scoringClient)
-    .replace("__CLIENT__", () => read("src/opportunities/client.js").replaceAll("__LABEL__", specialty.label));
+    .replace("__CLIENT__", () => read("pages/market-opportunities/client.js").replaceAll("__LABEL__", specialty.label));
 }
 
 export function writeOpportunities(specialtyId = "cardiology") {

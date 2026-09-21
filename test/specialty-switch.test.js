@@ -2,9 +2,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { SPECIALTIES, specialtyHref, specialtyOf } from "../src/shared/specialties.js";
-import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteTitle } from "../src/shared/suite-navigation.js";
-import { renderSpecialtyPlaceholder } from "../src/shared/specialty-placeholders.js";
+import { SPECIALTIES, specialtyHref, specialtyOf } from "../pages/shared/specialties.js";
+import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteTitle } from "../pages/shared/suite-navigation.js";
+import { renderSpecialtyPlaceholder } from "../pages/shared/specialty-placeholders.js";
 
 test("the title box offers every specialty and links each one to the same view", () => {
   assert.deepEqual(SPECIALTIES.map((specialty) => specialty.id), ["cardiology", "orthopedics"]);
@@ -44,8 +44,8 @@ test("a specialty without published data gets placeholder pages that carry the s
     assert.doesNotMatch(html, /__[A-Z_]+__/);
   }
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts.build, /node src\/shared\/specialty-placeholders\.js$/);
-  assert.match(pkg.scripts.all, /node src\/shared\/specialty-placeholders\.js$/);
+  assert.match(pkg.scripts.build, /node pages\/shared\/specialty-placeholders\.js$/);
+  assert.match(pkg.scripts.all, /node pages\/shared\/specialty-placeholders\.js$/);
 });
 
 test("a specialty whose data is published has real pages, not placeholders", () => {

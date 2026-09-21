@@ -25,7 +25,7 @@ export function renderSpecialtyPlaceholder(specialtyId, pageId) {
   html = fill(html, "__TITLE__", `${specialty.label} ${page.name}`);
   html = fill(html, "__FONTS__", optional("assets/fonts.css"));
   html = fill(html, "__LOGO_VARS__", `:root{--ah-logo-img:url(data:image/png;base64,${logo})}`);
-  html = fill(html, "__STYLES__", read("src/slot-times/styles.css"));
+  html = fill(html, "__STYLES__", read("pages/slot-availability/styles.css"));
   html = fill(html, "__NAV_STYLES__", SUITE_NAV_STYLES);
   html = fill(html, "__BRAND__", suiteTitle(pageId, specialtyId));
   html = fill(html, "__NAV__", suiteNavigation(pageId));
