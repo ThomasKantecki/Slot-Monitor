@@ -1,7 +1,7 @@
 {
-  "name": "provider-map",
+  "name": "slot-monitor",
   "version": "1.0.0",
-  "description": "Florida provider footprint map comparing AdventHealth and Orlando Health.",
+  "description": "Appointment availability and provider footprint, AdventHealth vs Orlando Health in Florida, one specialty at a time.",
   "type": "module",
   "private": true,
   "engines": {
@@ -18,8 +18,8 @@
     "build:slot-times": "node scripts/build-slot-times-data.mjs && node scripts/build-slot-partitions.mjs && node src/slot-times/render.js",
     "build:opportunities": "node scripts/build-slot-times-data.mjs && node scripts/build-slot-partitions.mjs && node src/opportunities/render.js",
     "build": "node scripts/build-specialties.mjs && node src/shared/specialty-placeholders.js",
-    "extract:ah": "node scripts/run-python.mjs extractors/cardiology/extract_ah.py",
-    "extract:oh": "node scripts/run-python.mjs extractors/cardiology/extract_oh.py",
+    "extract:ah": "node scripts/run-python.mjs extractors/cardiology/extract_system.py --system ah",
+    "extract:oh": "node scripts/run-python.mjs extractors/cardiology/extract_system.py --system oh",
     "refresh:cardiology": "node scripts/run-python.mjs extractors/cardiology/refresh.py",
     "refresh:cardiology:dry-run": "node scripts/run-python.mjs extractors/cardiology/refresh.py --dry-run",
     "refresh:orthopedics": "node scripts/run-python.mjs extractors/cardiology/refresh.py --specialty orthopedics",

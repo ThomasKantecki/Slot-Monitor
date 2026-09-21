@@ -28,7 +28,7 @@ const { command: PYTHON_COMMAND, prefix: PYTHON_PREFIX } = findPython();
 const python = (args, options) => spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX, ...args], options);
 
 test("Cardiology extraction scripts compile and expose an offline dry run", () => {
-  const scripts = ["epic_public.py", "extract_system.py", "extract_ah.py", "extract_oh.py", "deduplicate.py", "refresh.py", "walk_check.py", "catalog_probe.py"]
+  const scripts = ["epic_public.py", "extract_system.py", "deduplicate.py", "refresh.py", "walk_check.py", "catalog_probe.py"]
     .map((name) => join(ROOT, "extractors", "cardiology", name));
   const source = scripts.map((path) => readFileSync(path, "utf8"));
   source.forEach((code, index) => assert.doesNotThrow(() => {
