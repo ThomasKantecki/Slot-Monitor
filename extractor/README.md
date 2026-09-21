@@ -5,10 +5,20 @@ scheduling pages. It serves every specialty (the folder used to be named after c
 one); the specialty comes from `specialties.json` at the repository root and is chosen with
 `--specialty <id>`. `npm run refresh:<specialty>` runs it end to end.
 
-This folder contains everything needed to pull public Cardiology appointment
-availability for AdventHealth and Orlando Health. The direct API extractor uses
-Python's standard library; it does not require Selenium, pandas, credentials,
-or a browser.
+This folder contains everything needed to pull the public appointment
+availability of one specialty from AdventHealth and Orlando Health. The direct
+API extractor uses Python's standard library; it does not require Selenium,
+pandas, credentials, or a browser.
+
+| File | What it does |
+|---|---|
+| `epic_public.py` | The extractor itself: the Epic client, catalog selection, the questionnaire walker, slot paging with stall recovery, checkpoints and resume. |
+| `extract_system.py` | The command for one system and one specialty (`--system ah|oh --specialty <id> --run-id <id> [--resume]`); writes `data/<specialty>/extractions/<run-id>/<system>/`. |
+| `refresh.py` | The whole refresh: both extractions side by side, then the import, promote, build and verify steps in `slots/` and `checks/`. |
+| `deduplicate.py` | Collapses Orlando Health's flow rows (the same opening reached by several questionnaire paths) into physical slots. |
+| `catalog_probe.py` | Lists what a system's scheduling catalog offers, to fill `specialties.json` (`npm run probe:catalog`). |
+| `paging_check.py` | Offline replay of the paging loop against a scripted Epic (eleven behaviours); run by the tests. |
+| `walk_check.py` | Offline check of the questionnaire walker against an exhaustive walk on a simulated tree; run by the tests. |
 
 If Python is not already available on `PATH`, create a repository-local
 `.venv` or set `SLOT_MONITOR_PYTHON` to a Python 3.9+ executable. The npm commands
