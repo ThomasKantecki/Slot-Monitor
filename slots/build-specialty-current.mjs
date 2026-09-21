@@ -1,9 +1,9 @@
 // Refresh step 3: picks the newest complete AdventHealth and Orlando Health runs under data/<specialty>/runs, joins them into
-// data/<specialty>/current (the slot export + manifest.json) that the page builds read. Called by extractors/cardiology/refresh.py
+// data/<specialty>/current (the slot export + manifest.json) that the page builds read. Called by extractor/refresh.py
 // with `--specialty <id>` (cardiology when absent).
 import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "../src/slot-rules.js";
+import { isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot } from "./slot-rules.js";
 import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 const ROOT = process.cwd();
@@ -84,7 +84,7 @@ function readJsonRows(path) {
 const ahFlorida = readJsonRows(ahSource.path).filter((row) => String(row.state).toUpperCase() === "FL");
 const ohFlorida = parseCsv(readFileSync(ohSource.path, "utf8")).filter((row) => String(row.state).toUpperCase() === "FL");
 // Every published Florida slot is kept. The pages show everything by default and offer the comparability
-// rules in src/slot-rules.js as filters; the manifest records the mix for the data check.
+// rules in slots/slot-rules.js as filters; the manifest records the mix for the data check.
 const mix = (rows) => ({ nonPhysicianSlots: rows.filter((row) => !isPhysicianSlot(row)).length, telemedicineOnlySlots: rows.filter(isTelemedicineOnlySlot).length, newPatientSlots: rows.filter(isNewPatientSlot).length });
 const ah = ahFlorida
   .map((row) => ({
@@ -115,7 +115,7 @@ await writeLines(join(ROOT, PATHS.export), "[\n", slots.map((slot, index) => `${
 await writeCsv(join(ROOT, PATHS.exportCsv), slots);
 writeFileSync(join(OUT, "manifest.json"), `${JSON.stringify({
   status: "completed_with_warnings", scope: `Florida ${SPECIALTY.label} public appointment availability`,
-  rule: "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (src/slot-rules.js)",
+  rule: "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (slots/slot-rules.js)",
   ah: { runId: ahSource.runId, source: relative(ROOT, ahSource.path).replaceAll("\\", "/"), physicalSlots: ah.length, ...mix(ahFlorida), bookingCategoriesRetained: true },
   oh: { runId: ohSource.runId, source: relative(ROOT, ohSource.path).replaceAll("\\", "/"), physicalSlots: oh.length, ...mix(ohFlorida), bookingCategoriesRetained: false },
   totalPhysicalSlots: slots.length, generatedAt: new Date().toISOString(),

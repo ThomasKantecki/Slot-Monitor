@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildSlotAvailability } from "../src/slot-times/data.js";
+import { buildSlotAvailability } from "../slots/slot-model.js";
 import { slotDataChecks } from "../pages/shared/dataset-facts.js";
 
 

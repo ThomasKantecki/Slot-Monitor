@@ -131,7 +131,7 @@ function writeStreamed(path, write) {
 async function main() {
   const source = argument("--source");
   const runId = argument("--run-id");
-  if (!source || !runId) throw new Error("Usage: node scripts/build-ah-physical-slots.mjs --source <slots.json | slots.jsonl | parts dir> --run-id <run-id> [--specialty <id>]");
+  if (!source || !runId) throw new Error("Usage: node slots/build-ah-physical-slots.mjs --source <slots.json | slots.jsonl | parts dir> --run-id <run-id> [--specialty <id>]");
 
   const specialty = specialtyFromArgv();
   const sourcePath = resolve(source);

@@ -15,7 +15,7 @@ function main() {
   const source = valueOf("--source");
   const audit = valueOf("--audit");
   const runId = valueOf("--run-id");
-  if (!source || !audit || !runId) throw new Error("Usage: node scripts/import-oh-physical-slots.mjs --source <unique-slots.csv> --audit <flow-audit.json> --run-id <run-id>");
+  if (!source || !audit || !runId) throw new Error("Usage: node slots/import-oh-physical-slots.mjs --source <unique-slots.csv> --audit <flow-audit.json> --run-id <run-id>");
   const sourcePath = resolve(source);
   const auditPath = resolve(audit);
   const runsRoot = join(process.cwd(), specialtyPaths(specialtyFromArgv()).runs);

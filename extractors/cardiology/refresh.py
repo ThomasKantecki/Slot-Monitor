@@ -58,9 +58,9 @@ def main() -> None:
     execute([sys.executable, str(HERE / "deduplicate.py"), "--input", str(oh_csv), "--output", str(oh_unique)], args.dry_run)
     # the per-flow part files are streamed; a full AH run's single slots.json is too large to read as one string
     ah_parts = extraction / "ah" / "parts"
-    execute(["node", "--max-old-space-size=6144", "scripts/build-ah-physical-slots.mjs", "--source", str(ah_parts if ah_parts.exists() or args.dry_run else ah_json), "--run-id", args.run_id, "--specialty", spec], args.dry_run)
-    execute(["node", "scripts/import-oh-physical-slots.mjs", "--source", str(oh_unique), "--audit", str(oh_audit), "--run-id", args.run_id, "--specialty", spec], args.dry_run)
-    execute(["node", NODE_HEAP, "scripts/build-specialty-current.mjs", "--specialty", spec], args.dry_run)
+    execute(["node", "--max-old-space-size=6144", "slots/build-ah-physical-slots.mjs", "--source", str(ah_parts if ah_parts.exists() or args.dry_run else ah_json), "--run-id", args.run_id, "--specialty", spec], args.dry_run)
+    execute(["node", "slots/import-oh-physical-slots.mjs", "--source", str(oh_unique), "--audit", str(oh_audit), "--run-id", args.run_id, "--specialty", spec], args.dry_run)
+    execute(["node", NODE_HEAP, "slots/build-specialty-current.mjs", "--specialty", spec], args.dry_run)
     if not args.skip_build:
         execute([shutil.which("npm") or "npm", "run", "build"], args.dry_run, node_heap=True)
         # the gate: tests plus the dataset audit (every published figure recomputed from the raw rows); a refresh

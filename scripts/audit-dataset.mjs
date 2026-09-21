@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync, existsSync, openSync, readSync, closeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { isTelemedicineSlot, isNewPatientType } from "../src/slot-times/data.js";
+import { isTelemedicineSlot, isNewPatientType } from "../slots/slot-model.js";
 import { SPECIALTIES, specialtyFromArgv } from "../pages/shared/specialties.js";
 import { credentialClass, findDirectoryPerson } from "../rosters/people.js";
 

@@ -9,8 +9,8 @@ import { pathToFileURL } from "node:url";
 import { ROOT, SPECIALTIES, specialtyPaths } from "../pages/shared/specialties.js";
 
 const STEPS = [
-  "scripts/build-slot-times-data.mjs",
-  "scripts/build-slot-partitions.mjs",
+  "slots/build-slot-times-data.mjs",
+  "slots/build-slot-partitions.mjs",
   "pages/provider-index/render.js",
   "pages/slot-availability/render.js",
   "pages/market-opportunities/render.js",

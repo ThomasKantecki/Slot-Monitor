@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { FILTER_DEFAULTS, isComparableSlot, isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot, visitTypesOf } from "../src/slot-rules.js";
+import { FILTER_DEFAULTS, isComparableSlot, isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot, visitTypesOf } from "../slots/slot-rules.js";
 
 test("video-only slots are recognised from whichever field carries the visit types", () => {
   assert.deepEqual(visitTypesOf({ appointment_types: "New Patient | Specialists Office Visit" }), ["New Patient", "Specialists Office Visit"]);
@@ -33,8 +33,8 @@ test("new-patient slots are recognised from the visit types", () => {
 });
 
 test("the current-snapshot builder keeps every published slot and records the mix the filters act on", () => {
-  const src = readFileSync(new URL("../scripts/build-specialty-current.mjs", import.meta.url), "utf8");
-  assert.match(src, /import \{ isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot \} from "\.\.\/src\/slot-rules\.js"/);
+  const src = readFileSync(new URL("../slots/build-specialty-current.mjs", import.meta.url), "utf8");
+  assert.match(src, /import \{ isNewPatientSlot, isPhysicianSlot, isTelemedicineOnlySlot \} from "\.\/slot-rules\.js"/);
   assert.doesNotMatch(src, /\.filter\(isPhysicianSlot\)\s*\n?\s*\.map/, "rows are not dropped by credential");
   assert.match(src, /const ah = ahFlorida\s*\n\s*\.map/);
   assert.match(src, /const oh = ohFlorida\s*\n\s*\.map/);

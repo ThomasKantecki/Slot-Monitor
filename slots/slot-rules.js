@@ -12,7 +12,7 @@
 //
 // Decided with Thomas on 2026-09-15 (defaults: everything shown). The data check on every page
 // reports the mix these act on.
-import { isNewPatientType, isTelemedicineSlot } from "./slot-times/data.js";
+import { isNewPatientType, isTelemedicineSlot } from "./slot-model.js";
 
 export const COUNTED_CREDENTIALS = new Set(["Physician"]);
 export const FILTER_DEFAULTS = { physiciansOnly: false, inPersonOnly: false, newPatientOnly: false };

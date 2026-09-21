@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { COPY, SPECIALTIES, copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "../pages/shared/specialties.js";
-import { isPublished } from "../scripts/build-specialties.mjs";
+import { isPublished } from "../slots/build-specialties.mjs";
 
 const registry = JSON.parse(readFileSync(new URL("../specialties.json", import.meta.url), "utf8"));
 
@@ -41,7 +41,7 @@ test("--specialty on a script's command line selects the specialty, cardiology w
 
 test("npm run build goes through the per-specialty orchestrator and ends with the placeholder step", () => {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts.build, /^node scripts\/build-specialties\.mjs && node pages\/shared\/specialty-placeholders\.js$/);
+  assert.match(pkg.scripts.build, /^node slots\/build-specialties\.mjs && node pages\/shared\/specialty-placeholders\.js$/);
   assert.match(pkg.scripts.all, /build-specialties\.mjs && node pages\/shared\/specialty-placeholders\.js$/);
   assert.match(pkg.scripts["refresh:orthopedics"], /refresh\.py --specialty orthopedics$/);
   assert.match(pkg.scripts["probe:catalog"], /catalog_probe\.py$/);

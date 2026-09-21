@@ -2,7 +2,7 @@
 // that the page builds and the partition writer use. If the export is missing it keeps the model already on disk.
 // One specialty per run (`--specialty <id>`, cardiology when absent).
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
-import { buildSlotAvailability } from "../src/slot-times/data.js";
+import { buildSlotAvailability } from "./slot-model.js";
 import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 
 const SPECIALTY = specialtyFromArgv();
