@@ -12,7 +12,7 @@
 // returning a partial set: a silently stale map is worse than a broken build.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { canonicalSpecialty } from "../specialty.js";
+import { canonicalSpecialty } from "../rosters/labels.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -26,7 +26,7 @@ const FILTERS = "regionalCareSites.id:2 AND NOT metadata.hideFromSearch:true";
 const ENDPOINT = `https://${APP}-dsn.algolia.net/1/indexes/*/queries?x-algolia-api-key=${KEY}&x-algolia-application-id=${APP}`;
 const PER_PAGE = 1000;
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PATH = join(ROOT, "data", "raw", "oh-directory.json");
 export const PHOTO_PATH = join(ROOT, "data", "raw", "oh-photo-scrape.json");
 

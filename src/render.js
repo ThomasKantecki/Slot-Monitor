@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "./shared/suite-navigation.js";
 import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "./shared/specialties.js";
 import { providerDataChecks } from "./shared/dataset-facts.js";
-import { buildProviderIndex } from "./provider-index-people.js";
+import { buildProviderIndex } from "../rosters/people.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const W = 1000, H = 940, PAD = 12;
@@ -164,7 +164,7 @@ export function render(specialtyId = "cardiology") {
   const slotModel = existsSync(join(ROOT, sp.model)) ? readJson(sp.model, {}) : readJson(sp.summary, {});
   // Rebuilt from the pipeline's rosters at render time: adult cardiology labels
   // count together, and clinicians who book in MyChart but have no directory
-  // profile join at their clinics (see src/provider-index-people.js).
+  // profile join at their clinics (see rosters/people.js).
   const index = buildProviderIndex({ group, rosterAll: readJson("data/rosters/roster.json", {}), rosterPrimary: readJson("data/rosters/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
   const zData = index.all.byZip, cData = index.all.byCounty, zDataPrimary = index.primary.byZip, cDataPrimary = index.primary.byCounty;
   const zRoster = withOtherOffices(index.all.rosterZip), cRoster = withOtherOffices(index.all.rosterCounty);

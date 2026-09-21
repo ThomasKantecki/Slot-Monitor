@@ -1,7 +1,7 @@
 // The Provider Index roster group and data check are data-driven: orthopedics behaves like cardiology.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CARDIOLOGY_GROUP, regroupSpecialties, schedulingClinicians } from "../src/provider-index-people.js";
+import { CARDIOLOGY_GROUP, regroupSpecialties, schedulingClinicians } from "../rosters/people.js";
 import { CARDIOLOGY_CHECK, providerDataChecks } from "../src/shared/dataset-facts.js";
 import { COPY, specialtyOf } from "../src/shared/specialties.js";
 

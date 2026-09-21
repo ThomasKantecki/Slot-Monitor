@@ -3,11 +3,11 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { loadDirectory, toRoster, PATH as DIR_PATH, PHOTO_PATH } from "../src/sources/directory.js";
-import { loadAhDirectory, toAhRoster, AH_PATH } from "../src/sources/ah-directory.js";
-import { aggregate } from "../src/aggregate.js";
-import { loadGeoIndexes, buildLocationResolver } from "../src/geo.js";
-import { isBookable } from "../src/specialty.js";
+import { loadDirectory, toRoster, PATH as DIR_PATH, PHOTO_PATH } from "../directories/orlando-health.js";
+import { loadAhDirectory, toAhRoster, AH_PATH } from "../directories/adventhealth.js";
+import { aggregate } from "./aggregate.js";
+import { loadGeoIndexes, buildLocationResolver } from "./geo.js";
+import { isBookable } from "./labels.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => JSON.parse(readFileSync(join(ROOT, p), "utf8"));
@@ -23,7 +23,7 @@ console.log(`employed with a Florida location: ${roster.length}`);
 // Their published ZIP, city and geocode disagree on 202 of 5,214 locations.
 // Most is boundary noise, but a handful are real: ZIPs with no census polygon
 // would silently vanish from the map, and one clinic is published 103 miles
-// from where it is. See src/geo.js for how each is resolved.
+// from where it is. See geo.js for how each is resolved.
 const geo = loadGeoIndexes(ROOT);
 const resolve = buildLocationResolver({
   zipIndex: geo.zip,

@@ -2,7 +2,7 @@
 //
 // AdventHealth's server-rendered Medical Group directory publishes the fields
 // needed by the map in each result card: NPI/profile URL, photo, specialty and
-// every listed practice location. scripts/capture-ah-directory.mjs refreshes
+// every listed practice location. directories/capture-adventhealth.mjs refreshes
 // the committed capture without visiting each provider profile.
 //
 // Shape differences from the OH source, and how they are handled:
@@ -18,10 +18,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { isFlZip, zip5 } from "./directory.js";
-import { canonicalSpecialty } from "../specialty.js";
+import { isFlZip, zip5 } from "./orlando-health.js";
+import { canonicalSpecialty } from "../rosters/labels.js";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const AH_PATH = join(ROOT, "data", "raw", "ah-directory-scrape.json");
 
 export const isEmployedGroup = (locName) => /^advent\s?health/i.test(String(locName ?? "").trim());

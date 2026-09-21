@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { importCapture, mergeRecords, validateCapture } from "../scripts/capture-ah-directory.mjs";
+import { importCapture, mergeRecords, validateCapture } from "../directories/capture-adventhealth.mjs";
 
 const record = (npi, extra = {}) => ({ npi, name: `Doc ${npi}, MD`, spec: "Cardiology", photo: "", profile: `https://www.adventhealth.com/doctors/doc-${npi}`, locations: [{ locName: "Clinic", street: "1 Main St", city: "Orlando", state: "FL", zip: "32801", lat: 28.5, lon: -81.4, primary: true }], ...extra });
 

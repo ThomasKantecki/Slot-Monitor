@@ -6,7 +6,7 @@
 //
 // Per entry: `catalog` = the Epic anonymous-scheduling specialty names each system's extractor pulls
 // (extractors/cardiology/catalog_probe.py lists what a catalog offers); `roster` = the directory labels
-// the Provider Index counts together under `group` (src/provider-index-people.js).
+// the Provider Index counts together under `group` (rosters/people.js).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

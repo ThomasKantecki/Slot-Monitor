@@ -1,7 +1,7 @@
 // The Provider Index provider list, including clinicians known only from the scheduling data.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ADULT_CARDIOLOGY, buildProviderIndex, peopleFromRoster, regroupSpecialties, schedulingClinicians } from "../src/provider-index-people.js";
+import { ADULT_CARDIOLOGY, buildProviderIndex, peopleFromRoster, regroupSpecialties, schedulingClinicians } from "../rosters/people.js";
 
 const office = (n, a, c, z) => ({ n, a, c, z });
 const rosterAll = {

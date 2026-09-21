@@ -1,7 +1,7 @@
 // The Orlando Health directory records parse into providers.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toRoster } from "../src/sources/directory.js";
+import { toRoster } from "../directories/orlando-health.js";
 
 test("Orlando Health records take their headshot from the index and repair street-in-name offices", () => {
   const hit = { isEmployed: true, npi: "1234567890", fullName: "Rudhir Tandon, MD", title: "MD", slug: "rudhir-tandon-md", specialties: [{ name: "Interventional Cardiology" }],

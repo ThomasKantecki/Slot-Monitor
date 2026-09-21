@@ -1,7 +1,7 @@
 // Provider directory sources: Orlando Health records and the AdventHealth capture become one provider format.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanName, specialtyOf, isFlZip, zip5, toRoster, dedupByNpi, NPI_FIXES } from "../src/sources/directory.js";
+import { cleanName, specialtyOf, isFlZip, zip5, toRoster, dedupByNpi, NPI_FIXES } from "../directories/orlando-health.js";
 
 // Their fullName appends the credential; the panel shows it separately.
 test("cleanName strips the credential the directory appends", () => {
@@ -45,7 +45,7 @@ test("toRoster keeps only employed clinicians with a Florida location", () => {
 // genuine errors run in both directions — so no single field can be trusted
 // outright. These guard the three rules that resolve it.
 test("buildLocationResolver arbitrates between the published ZIP and the geocode", async () => {
-  const { buildIndex, buildLocationResolver } = await import("../src/geo.js");
+  const { buildIndex, buildLocationResolver } = await import("../rosters/geo.js");
   const square = (zip, x, y) => ({ type: "Feature", properties: { zip },
     geometry: { type: "Polygon", coordinates: [[[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1], [x, y]]] } });
   const zcta = { features: [square("33618", -82.5, 28.0), square("32750", -81.4, 28.7)] };
@@ -120,7 +120,7 @@ test("toRoster strips administrative HQ addresses but keeps the clinician", () =
 // ---- AdventHealth source (browser-harvested listing) ------------------------
 test("toAhRoster keeps employed AdventHealth clinicians and repairs their data errors", async () => {
   const { toAhRoster, isEmployedGroup, isFacilityCard, primarySpecialty, splitNameCred, clinicConsensus, verifiedLocationZip }
-    = await import("../src/sources/ah-directory.js");
+    = await import("../directories/adventhealth.js");
   // employment is the group-name prefix, catching their spelling variants
   assert.ok(isEmployedGroup("AdventHealth Medical Group Cardiology at Celebration"));
   assert.ok(isEmployedGroup("Adventhealth Primary Care Oviedo") && isEmployedGroup("Advent Health Clinic"));
@@ -169,7 +169,7 @@ test("toAhRoster keeps employed AdventHealth clinicians and repairs their data e
 });
 
 test("aggregate counts the two systems independently", async () => {
-  const { aggregate } = await import("../src/aggregate.js");
+  const { aggregate } = await import("../rosters/aggregate.js");
   const p = (sys, npi, zip) => ({ npi, name: "P" + npi, cred: "MD", specialty: "Cardiology",
     locations: [{ zip, city: "X", addr: "1 Main" }] });
   const out = aggregate({ rosters: { oh: [p("oh", "1", "32806")], ah: [p("ah", "2", "32806"), p("ah", "3", "33607")] },
@@ -181,7 +181,7 @@ test("aggregate counts the two systems independently", async () => {
 });
 
 test("aggregate places one distinct provider in every work area and groups their offices", async () => {
-  const { aggregate } = await import("../src/aggregate.js");
+  const { aggregate } = await import("../rosters/aggregate.js");
   const clinician = { npi: "1234567890", name: "Ada Example", cred: "MD", specialty: "Cardiology",
     photo: "https://images.example/ada.jpg", profile: "https://example.test/ada", locations: [
       { name: "Downtown", zip: "32801", city: "Orlando", addr: "1 Main" },
@@ -203,7 +203,7 @@ test("aggregate places one distinct provider in every work area and groups their
 });
 
 test("AdventHealth listing parser captures photo and every location", async () => {
-  const { parseListingPage } = await import("../scripts/capture-ah-directory.mjs");
+  const { parseListingPage } = await import("../directories/capture-adventhealth.mjs");
   const html = `<div>1 provider matches your search</div>
     <li class="physicians-search-block__item">
       <a href="/doctors/ada-example-1234567890"><div class="physician-block__image"><img src="/ada.jpg"></div></a>
@@ -230,7 +230,7 @@ test("AdventHealth listing parser captures photo and every location", async () =
 // "Obstetrics and Gynecology") — without one vocabulary the filter shows each
 // side as having nobody in the other's column.
 test("canonicalSpecialty folds both systems' names into one vocabulary", async () => {
-  const { canonicalSpecialty } = await import("../src/specialty.js");
+  const { canonicalSpecialty } = await import("../rosters/labels.js");
   assert.equal(canonicalSpecialty("OBGYN"), "Obstetrics and Gynecology");
   assert.equal(canonicalSpecialty("Cardiovascular Disease"), "Cardiology");
   assert.equal(canonicalSpecialty("Gastroenterology"), "Gastroenterology (GI)");
@@ -244,7 +244,7 @@ test("canonicalSpecialty folds both systems' names into one vocabulary", async (
 // PT/nutrition, surgical assists) which AH's consumer directory omits —
 // counting those on one side only would distort every per-area comparison.
 test("isBookable excludes hospital-based and support staff, keeps clinic care", async () => {
-  const { isBookable } = await import("../src/specialty.js");
+  const { isBookable } = await import("../rosters/labels.js");
   for (const s of ["Anesthesiology (Hospital-Based)", "Internal Medicine (Hospital-Based)",
                    "Radiology", "Radiology - Breast Imaging", "Pediatric Radiology", "Neuroradiology",
                    "Physical Therapy", "Dietitian", "Nurse Anesthetist", "Not Specified"])

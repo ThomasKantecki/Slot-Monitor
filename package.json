@@ -8,9 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "directory": "node src/sources/directory.js",
-    "adventhealth": "node scripts/capture-ah-directory.mjs",
-    "data": "node scripts/build-data.mjs",
+    "directory": "node directories/orlando-health.js",
+    "adventhealth": "node directories/capture-adventhealth.mjs",
+    "data": "node rosters/build-rosters.mjs",
     "build:provider-map": "node src/render.js",
     "build:slot-data": "node scripts/build-slot-times-data.mjs",
     "audit:geography": "node scripts/audit-geography-coverage.mjs",
@@ -25,7 +25,7 @@
     "refresh:orthopedics": "node scripts/run-python.mjs extractors/cardiology/refresh.py --specialty orthopedics",
     "refresh:orthopedics:dry-run": "node scripts/run-python.mjs extractors/cardiology/refresh.py --specialty orthopedics --dry-run",
     "probe:catalog": "node scripts/run-python.mjs extractors/cardiology/catalog_probe.py",
-    "all": "node src/sources/directory.js && node scripts/build-data.mjs && node scripts/build-specialties.mjs && node src/shared/specialty-placeholders.js",
+    "all": "node directories/orlando-health.js && node rosters/build-rosters.mjs && node scripts/build-specialties.mjs && node src/shared/specialty-placeholders.js",
     "geometry": "bash scripts/build-geometry.sh",
     "fonts": "node scripts/embed-fonts.mjs",
     "test": "node --test --test-isolation=none test/*.test.js",

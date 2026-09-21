@@ -8,7 +8,7 @@ import { aggregate } from "./aggregate.js";
 // Adult cardiology labels the page counts together. Pediatric cardiology and
 // cardiac surgery keep their own labels and stay off the page.
 export const ADULT_CARDIOLOGY = new Set(["Cardiology", "Cardiology - Interventional", "Cardiology - Electrophysiology", "Cardiology - Advanced Heart Failure", "Cardiovascular Imaging"]);
-// A roster group as src/shared/specialties.json declares it: the directory labels counted together under
+// A roster group as specialties.json declares it: the directory labels counted together under
 // `group`; `weak` members only count when the person also carries a stronger one or no excluded label
 // (Orlando Health tags neurosurgeons and pain physicians "Spine"); `exclude` labels and `excludeCredentials`
 // keep the people the page's scope leaves out (podiatrists, pediatric orthopedics) even when a label matches.

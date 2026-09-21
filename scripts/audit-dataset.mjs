@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { isTelemedicineSlot, isNewPatientType } from "../src/slot-times/data.js";
 import { SPECIALTIES, specialtyFromArgv } from "../src/shared/specialties.js";
-import { credentialClass, findDirectoryPerson } from "../src/provider-index-people.js";
+import { credentialClass, findDirectoryPerson } from "../rosters/people.js";
 
 const R = join(dirname(fileURLToPath(import.meta.url)), "..") + "/";
 const wanted = process.argv.includes("--specialty") ? [specialtyFromArgv().id] : SPECIALTIES.map((s) => s.id).filter((id) => existsSync(R + `public/data/${id}/slot-times-summary.json`));

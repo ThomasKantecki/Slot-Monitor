@@ -7,7 +7,7 @@
 // script's direct fetches with 403. The working route is to run the same parser
 // inside a signed-in browser tab (paste `parseListingPage` and `mergeRecords`,
 // fetch the listing pages in-page, save the result as JSON) and then import that
-// file here with `node scripts/capture-ah-directory.mjs --import <file>`, which
+// file here with `node directories/capture-adventhealth.mjs --import <file>`, which
 // applies the same completeness guards and writes the capture in the same shape.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
