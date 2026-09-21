@@ -2,6 +2,8 @@
 an exhaustive walk finds while asking far fewer questions, keep the linear-continuation rule (one traversal is never
 branched twice), withdraw a learned rule when a re-check contradicts it, and it is allowed to miss a difference that
 only shows between two re-checks (that limit is what VERIFY_AT trades for speed)."""
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path
