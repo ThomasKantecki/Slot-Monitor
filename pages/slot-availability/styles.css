@@ -49,7 +49,7 @@
 .filter-pairs{display:grid;grid-template-columns:1fr;gap:6px;min-width:0}.filter-pairs .control-group{min-width:0}.filter-pairs .control-group .toggle{flex:1 1 auto;min-width:max-content;padding:0 5px;font-size:10px;letter-spacing:.04em;white-space:nowrap;overflow:visible}
 /* row one: the system view across the full box; row two: the three filter pairs side by side, in a slightly smaller
    type so all six buttons fit, wrapping pair by pair when the box is narrow. The last pair's tip opens to the left. */
-.filter-pairs .view-group>.toggle{flex:1 0 auto;font-size:9px;letter-spacing:0}.filter-pairs .view-group{flex-wrap:wrap}.filter-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}.filter-row>.control-group{flex:1 1 150px;min-width:0}.filter-pairs .filter-row>.control-group .toggle{padding:0 5px;font-size:9px;letter-spacing:0}
+.filter-pairs .view-group>.toggle{flex:1 0 auto;font-size:9px;letter-spacing:0}.filter-pairs .view-group{flex-wrap:wrap}.filter-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}.filter-row>.control-group{flex:1 1 150px;min-width:max-content}.filter-pairs .filter-row>.control-group .toggle{padding:0 5px;font-size:9px;letter-spacing:0}
 @media(max-width:1060px){.filter-pairs .view-group{flex-wrap:wrap}.filter-pairs .view-group>.toggle{flex:1 1 auto}}
 .filter-pairs .logo-toggle{display:inline-flex;align-items:center;justify-content:center}.filter-pairs .comparison-logo{margin:0 auto}
 /* The "i" help circle and its note, the same component as the Provider Index's Primary Only help. */
@@ -63,7 +63,7 @@
 .toggle-help>.toggle{height:23px;border:0;border-radius:999px 0 0 999px;background:transparent;padding-right:3px}
 .toggle-help>.location-help{margin-left:0}
 .toggle-help:hover{background:#e8f5fb}.toggle-help>.toggle:hover{background:transparent}
-.toggle-help:has(>.toggle[aria-pressed=true]){border-color:var(--sky);background:var(--sky)}
+.toggle-help>.toggle[aria-pressed=true]{background:var(--sky)}.toggle-help:has(>.toggle[aria-pressed=true]){border-color:var(--sky);background:var(--sky)} /* the inner pill also paints itself, for browsers without :has() */
 .filter-row>.control-group:not(:last-child) .location-tip{left:0;right:auto}
 /* under 1200px the toolbar is tight: only the first group opens its tip to the right, the rest open leftward so nothing leaves the viewport */
 @media (max-width:1200px){.filter-row>.control-group:not(:first-child) .location-tip{left:auto;right:0}}
@@ -126,10 +126,10 @@
 .summary-row .tlogo{display:inline-block;flex:none;width:156px;height:42px;background:left center/contain no-repeat}
 .summary-row .tlogo.ah{background-image:var(--ah-logo-img)}.summary-row .tlogo.oh{background-image:var(--oh-logo-img)}
 .row-label{flex:1 1 auto;min-width:0;font:700 12px/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
-.summary-figure{flex:none;text-align:right;min-width:0}
+.summary-figure{flex:0 1 auto;text-align:right;min-width:0}
 .summary-figure .n{font:700 30px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
 .summary-row.ah .n{color:var(--ah)}.summary-row.oh .n{color:var(--oh)}
-.summary-figure .s{margin-top:4px;font-size:12px;line-height:1.3;color:var(--muted)}
+.summary-figure .s{margin-top:4px;font-size:12px;line-height:1.3;color:var(--muted);overflow-wrap:anywhere}
 .summary-rule{height:2px;background:#000}.summary-rule.thin{height:1px;background:var(--line)}
 .summary-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin:4px 14px 0;padding:12px 0 8px;border-top:1px solid var(--line)}
 .fact{padding:2px 0;min-width:0}.fact+.fact{padding-left:18px;border-left:1px solid var(--line)}

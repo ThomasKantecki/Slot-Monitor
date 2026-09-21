@@ -32,6 +32,7 @@
     "audit:dataset": "node --max-old-space-size=6144 checks/audit-dataset.mjs",
     "audit:pages": "node checks/audit-pages.cjs",
     "audit:live": "node checks/audit-live.mjs",
-    "verify": "npm test && npm run audit:dataset"
+    "verify": "npm test && npm run audit:dataset",
+    "audit:layout": "node checks/audit-layout.cjs"
   }
 }

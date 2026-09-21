@@ -128,11 +128,11 @@ button,input,select{font:inherit;color:inherit}
 .panel-band h2{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cream);min-width:0}
 .band-meta{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--accent-band);white-space:nowrap;font-variant-numeric:tabular-nums}
 .controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 8px;border-bottom:2px solid #000}
-.control-section{min-width:0;margin:0;padding:5px 7px 7px;border:2px solid #9aa8b7;background:#f8fafb}
+.control-section{flex:0 1 auto;min-width:max-content;margin:0;padding:5px 7px 7px;border:2px solid #9aa8b7;background:#f8fafb}
 .control-section legend{padding:0 5px;color:var(--chrome);font-family:var(--mono);font-size:9px;font-weight:700;line-height:1;letter-spacing:.09em;text-transform:uppercase}
 .control-section-body{display:flex;align-items:flex-end;gap:7px;flex-wrap:wrap}
 .control-stack{display:grid;gap:3px}.control-stack .cap{line-height:1}
-.geography-controls{flex:1 1 300px;min-width:0}.geography-controls .control-section-body{flex-wrap:nowrap}.geography-controls .search-stack{flex:1 1 150px;min-width:0}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none;min-width:96px}
+.geography-controls{flex:1 1 300px}.geography-controls .control-section-body{flex-wrap:nowrap}.geography-controls .search-stack{flex:1 1 120px;min-width:96px}.geography-controls .fgroup,.geography-controls input.control{width:100%;max-width:none;min-width:96px}
 .comparison-controls{flex:0 0 auto}.comparison-controls .control-section-body{flex-wrap:nowrap}
 .location-controls{flex:0 0 auto}.location-controls .control-section-body{flex-wrap:nowrap}
 @container (max-width:699px){.comparison-controls,.location-controls,.subspecialty-controls{flex:1 0 auto}}
@@ -148,10 +148,10 @@ button,input,select{font:inherit;color:inherit}
 .location-help:hover .location-tip,.location-help:focus-within .location-tip{opacity:1;visibility:visible}
 .pill-help{display:inline-flex;align-items:center;border:2px solid #000;background:#fff;padding-right:4px}
 .pill-help>.filter-pill{border:0;background:transparent;padding-right:3px}
-.subspecialty-controls{flex:0 0 auto}.subspecialty-controls[hidden]{display:none}.subspecialty-controls select.control{width:196px;max-width:196px;text-overflow:ellipsis}
+.subspecialty-controls{flex:0 1 214px;min-width:180px}.subspecialty-controls[hidden]{display:none}.subspecialty-controls select.control{width:100%;min-width:0;max-width:none;text-overflow:ellipsis}
 .pill-help>.location-help{margin-left:0}
 .pill-help:hover{background:var(--accent-tint)}.pill-help>.filter-pill:hover{background:transparent}
-.pill-help:has(>.filter-pill[aria-pressed="true"]){background:var(--accent);border-color:var(--accent)}
+.pill-help>.filter-pill[aria-pressed="true"]{background:var(--accent)}.pill-help:has(>.filter-pill[aria-pressed="true"]){background:var(--accent);border-color:var(--accent)}
 .logo-pill{padding:2px 6px}
 .logo-pill[aria-pressed="true"]{background:var(--accent-tint);border-color:#000}
 .pill-logo{display:block;width:52px;height:16px;background-repeat:no-repeat;background-position:center;background-size:contain}
@@ -160,7 +160,7 @@ button,input,select{font:inherit;color:inherit}
 select.control,input.control{border:2px solid #000;background:#fff;padding:4px 6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.01em;color:var(--ink);width:104px;max-width:104px;text-overflow:ellipsis;overflow:hidden}select.control{cursor:pointer}
 .fgroup{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;flex:none}
 .mapbox{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;container-type:inline-size}
-@container (min-width:700px){.controls{flex-wrap:nowrap}}
+/* the boxes wrap onto a second row whenever they do not fit; none of them shrinks below its own controls */
 .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#c6d3dc;contain:layout paint}
 svg{display:block;position:relative;z-index:0;width:100%;height:100%;cursor:grab}svg.drag{cursor:grabbing}
 #map-raster{position:absolute;z-index:1;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;transform-origin:0 0}
@@ -242,9 +242,9 @@ a{color:var(--accent-deep)}
  .mark{font-size:16px}
  .wrap{padding:10px}
  .controls{gap:6px;padding:8px 10px}
- .control-section{width:100%}.control-section-body{align-items:stretch}.comparison-controls .control-section-body{flex-wrap:wrap}.pill-group{flex:0 1 auto;flex-wrap:wrap}
+ .control-section{width:100%;min-width:0}.control-section-body{align-items:stretch}.comparison-controls .control-section-body,.geography-controls .control-section-body{flex-wrap:wrap}.pill-group{flex:0 1 auto;flex-wrap:wrap}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
- .fgroup{width:100%;justify-content:space-between}.fgroup select.control,.subspecialty-controls select.control{flex:1;width:auto;max-width:none}
+ .fgroup{width:100%;justify-content:space-between}.fgroup select.control,.subspecialty-controls select.control{flex:1;width:auto;max-width:100%;min-width:0}
 }
 @media (max-width:340px){
  .tpanel .panel-band{padding-inline:7px;gap:3px}

@@ -50,7 +50,7 @@ test("provider index controls are grouped into labeled mini-sections", () => {
   assert.match(providerSource, /class="control-section location-controls"><legend>Locations<\/legend>/);
   assert.match(providerSource, /id="m-all" class="filter-pill pill" aria-pressed="true">All locations</);
   assert.doesNotMatch(providerSource, /aria-label="provider locations" hidden/);
-  assert.match(providerSource, /\.control-section\{min-width:0;margin:0;padding:/);
+  assert.match(providerSource, /\.control-section\{flex:0 1 auto;min-width:max-content;margin:0;padding:/, "a control box never shrinks below its own controls; the row wraps instead");
 });
 
 test("both views share the Slot Monitor shell while the landing page remains responsive", () => {
@@ -270,7 +270,7 @@ test("telemedicine slots can be hidden from every filtered view and Reset shows 
   assert.doesNotMatch(slots, /radius-group|<legend>Radius<\/legend>/);
   assert.equal((slots.match(/<fieldset class="filter-group /g) || []).length, 3);
   assert.match(styles, /\.control-row\{display:flex;flex-wrap:wrap;gap:6px 8px;min-width:0\}/);
-  assert.match(styles, /\.filter-row\{display:flex;flex-wrap:wrap;gap:6px;min-width:0\}\.filter-row>\.control-group\{flex:1 1 150px;min-width:0\}/);
+  assert.match(styles, /\.filter-row\{display:flex;flex-wrap:wrap;gap:6px;min-width:0\}\.filter-row>\.control-group\{flex:1 1 150px;min-width:max-content\}/, "a filter pair never shrinks below its two pills; the row wraps instead");
   assert.match(styles, /\.filter-pairs \.filter-row>\.control-group \.toggle\{padding:0 5px;font-size:9px;letter-spacing:0\}/);
   assert.match(styles, /\.filter-row>\.control-group:not\(:last-child\) \.location-tip\{left:0;right:auto\}/);
   assert.match(slots, new RegExp(`"telemedicineSlots":${slotModel.telemedicineSlots}`));
@@ -451,10 +451,11 @@ test("selected ZIP and county borders override their base stroke widths", () => 
   assert.match(src, /#lay-zip path\.z:hover,#lay-county path\.z:hover\{stroke:#000;stroke-width:1\.8\}/);
 });
 
-test("desktop filters compact into one row when the map panel is wide enough", () => {
+test("desktop filter boxes fill one row when they fit and wrap instead of overlapping when they do not", () => {
   const src = readFileSync(new URL("../pages/provider-index/render.js", import.meta.url), "utf8");
   assert.match(src, /container-type:inline-size/);
-  assert.match(src, /@container \(min-width:700px\)\{\.controls\{flex-wrap:nowrap\}\}/);
+  assert.doesNotMatch(src, /\.controls\{flex-wrap:nowrap\}/, "the row is never forced onto one line");
+  assert.match(src, /\.controls\{display:flex;[^}]*flex-wrap:wrap/);
   assert.match(src, /\.comparison-controls\{flex:0 0 auto\}/);
   assert.match(src, /\.location-controls\{flex:0 0 auto\}/);
   assert.match(src, /\.geography-controls \.control-section-body\{flex-wrap:nowrap\}/);
