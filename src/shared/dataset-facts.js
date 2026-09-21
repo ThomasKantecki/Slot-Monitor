@@ -22,7 +22,7 @@ export function slotDataChecks(model, zipCounty = {}) {
   const otherClinicians = model.nonPhysicianSlots ?? { ah: slots.filter((slot) => slot.y === "ah" && credential(slot) && credential(slot) !== "Physician").length, oh: slots.filter((slot) => slot.y === "oh" && credential(slot) && credential(slot) !== "Physician").length };
   const videoOnly = { ah: model.telemedicineSlots ?? slots.filter((slot) => slot.y === "ah" && slot.v).length, oh: slots.filter((slot) => slot.y === "oh" && slot.v).length };
   const catalog = model.catalog ?? { ah: [], oh: [] };
-  const entryList = (system) => (catalog[system] ?? []).map((name) => `${name} (${n(model.catalogSlots?.[system]?.[name] ?? 0)})`).join(", ");
+  const entryList = (system) => (catalog[system] ?? []).map((name) => { const count = model.catalogSlots?.[system]?.[name] ?? 0; return `${name} (${count ? n(count) : "nothing bookable online"})`; }).join(", ");
   const catalogLine = (catalog.ah?.length > 1 || catalog.oh?.length > 1)
     ? [{ ok: true, text: `Scheduling catalog entries pulled: AdventHealth ${entryList("ah") || "none"}; Orlando Health ${entryList("oh") || "none"}. Their slots count together.` }]
     : [];

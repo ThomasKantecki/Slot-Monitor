@@ -43,7 +43,12 @@ export function deduplicatePhysicalSlots(rows) {
   return [...groups.values()].map((row) => ({ ...row, categories: [...row.categories].sort(), reasons: [...row.reasons].sort() }));
 }
 
-export function buildSlotAvailability(rows, zipCounty = {}) {
+// The day a slot belongs to on the pages is its local (Eastern) calendar day, not the date part of the UTC
+// instant: a 7:00 PM slot on November 10 is 2026-11-11T00:00:00Z. Both systems schedule in Florida's Eastern zone.
+const EASTERN_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
+export const easternDate = (utc) => { const time = Date.parse(text(utc)); return Number.isNaN(time) ? text(utc).slice(0, 10) : EASTERN_DAY.format(new Date(time)); };
+
+export function buildSlotAvailability(rows, zipCounty = {}, { catalogNames = null } = {}) {
   const physical = deduplicatePhysicalSlots(rows);
   const providerIndex = new Map(), facilityIndex = new Map(), types = new Set(), reasons = new Set();
   for (const row of physical) for (const category of row.categories) types.add(category);
@@ -57,6 +62,13 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
   const systemOf = (row) => SYSTEM.get(row.system) ?? text(row.system).toLowerCase();
   const catalogSets = { ah: new Set(), oh: new Set() }, catalogSlots = { ah: {}, oh: {} };
   for (const row of physical) { const entry = text(row.specialty); if (entry && catalogSets[systemOf(row)]) { catalogSets[systemOf(row)].add(entry); catalogSlots[systemOf(row)][entry] = (catalogSlots[systemOf(row)][entry] ?? 0) + 1; } }
+  // Every entry the registry asked for is listed, so an entry that published nothing shows as 0 rather than vanishing;
+  // an older export without the column attributes its slots to the registry's single entry for that system.
+  for (const system of ["ah", "oh"]) {
+    const wanted = (catalogNames && catalogNames[system]) || [];
+    if (!catalogSets[system].size && wanted.length === 1) catalogSlots[system][wanted[0]] = physical.filter((row) => systemOf(row) === system).length;
+    for (const name of wanted) { catalogSets[system].add(name); catalogSlots[system][name] = catalogSlots[system][name] ?? 0; }
+  }
   const catalog = { ah: [...catalogSets.ah].sort(), oh: [...catalogSets.oh].sort() };
   const providers = [], facilities = [];
   const indexProvider = (row, system) => {
@@ -81,7 +93,7 @@ export function buildSlotAvailability(rows, zipCounty = {}) {
     const utc = text(row.display_datetime_utc);
     return {
       y: system, p: indexProvider(row, system), f: indexFacility(row, system),
-      d: utc.slice(0, 10), t: text(row.appointment_time), u: utc,
+      d: easternDate(utc), t: text(row.appointment_time), u: utc,
       l: text(row.duration_minutes ?? row.length_minutes),
       ty: row.categories.map((category) => typeIndex.get(category)),
       rv: row.reasons.map((reason) => reasonIndex.get(reason)),

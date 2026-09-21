@@ -1,7 +1,7 @@
 // The slot model built from the export: providers, facilities, telemedicine flags and totals.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSlotAvailability, deduplicatePhysicalSlots, isNewPatientType, isTelemedicineSlot, isTelemedicineType } from "../src/slot-times/data.js";
+import { buildSlotAvailability, deduplicatePhysicalSlots, easternDate, isNewPatientType, isTelemedicineSlot, isTelemedicineType } from "../src/slot-times/data.js";
 
 const base = {
   system: "AH", provider_id: "p1", provider_name: "Dr One", provider_credentials: "MD",
@@ -75,4 +75,21 @@ test("new-patient visit types are recognised on both sides", () => {
   for (const name of ["Specialists Office Visit", "Patient Telemedicine Visit", "Telemedicine Established", "Established Cardiology Patient", "Renewed Prescription Visit", ""]) {
     assert.equal(isNewPatientType(name), false, name);
   }
+});
+
+test("a slot's day is its Eastern calendar day, not the date of its UTC instant", () => {
+  assert.equal(easternDate("2026-11-11T00:00:00Z"), "2026-11-10"); // 7:00 PM EST on November 10
+  assert.equal(easternDate("2026-07-02T02:30:00Z"), "2026-07-01"); // 10:30 PM EDT on July 1
+  assert.equal(easternDate("2026-09-03T12:00:00Z"), "2026-09-03");
+  const model = buildSlotAvailability([{ ...base, booking_categories: "New Patient", display_datetime_utc: "2026-11-11T00:00:00Z", appointment_time: "7:00 PM" }], { "32804": "Orange" });
+  assert.equal(model.slots[0].d, "2026-11-10");
+  assert.equal(model.slots[0].t, "7:00 PM");
+  assert.equal(model.minDate, "2026-11-10");
+});
+
+test("the catalog list names every registry entry, with zero for an entry that published nothing, and attributes an older export to its single entry", () => {
+  const rows = [{ ...base, specialty: "Orthopaedic Surgery", booking_categories: "New Patient" }, { ...base, system: "OH", provider_id: "p2", facility_id: "f2", booking_categories: "" }];
+  const model = buildSlotAvailability(rows, { "32804": "Orange" }, { catalogNames: { ah: ["Orthopaedic Surgery", "Sports Medicine"], oh: ["Orthopedics and Sports Medicine"] } });
+  assert.deepEqual(model.catalog, { ah: ["Orthopaedic Surgery", "Sports Medicine"], oh: ["Orthopedics and Sports Medicine"] });
+  assert.deepEqual(model.catalogSlots, { ah: { "Orthopaedic Surgery": 1, "Sports Medicine": 0 }, oh: { "Orthopedics and Sports Medicine": 1 } });
 });

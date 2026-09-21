@@ -32,7 +32,7 @@ if (!existsSync(PATHS.export)) {
 const rows = readJsonRows(PATHS.export);
 const zipCounty = JSON.parse(readFileSync("data/zip-county.json", "utf8"));
 const manifest = JSON.parse(readFileSync(PATHS.manifest, "utf8"));
-const model = buildSlotAvailability(rows, zipCounty);
+const model = buildSlotAvailability(rows, zipCounty, { catalogNames: SPECIALTY.catalog });
 model.generatedAt = manifest.generatedAt;
 model.status = manifest.status;
 model.scope = manifest.scope;
