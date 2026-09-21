@@ -47,8 +47,8 @@ export function opportunityDataChecks(model, zipCounty = {}) {
 }
 
 // Provider Index: directory snapshot plus how far it is from the scheduling catalog.
-export const CARDIOLOGY_CHECK = { group: "Cardiology", label: "Cardiology", note: "counting general, interventional, electrophysiology and heart failure cardiology together. Pediatric cardiology and cardiac surgery are not shown." };
-export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 }, specialty = CARDIOLOGY_CHECK, viaSecondary = { ah: 0, oh: 0 } }) {
+export const CARDIOLOGY_CHECK = { group: "Cardiology", label: "Cardiology", note: "counting general, interventional, electrophysiology, heart failure and imaging cardiology together. Pediatric cardiology and cardiac surgery are not shown." };
+export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShapes = new Set(), ahCapturedAt, ohCapturedAt, gaps, added = { ah: 0, oh: 0 }, specialty = CARDIOLOGY_CHECK, viaSecondary = { ah: 0, oh: 0 }, elsewhere = [], excluded = [] }) {
   const people = { ah: new Set(), oh: new Set() };
   let missingNpi = 0;
   for (const entries of Object.values(roster)) for (const person of entries) {
@@ -65,6 +65,13 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
   const present = (data.specialties ?? []).filter((s) => members.includes(s.name) && (s.ah > 0 || s.oh > 0));
   const shared = present.filter((s) => s.ah > 0 && s.oh > 0).length, ohOnly = present.filter((s) => s.ah === 0).length, ahOnly = present.filter((s) => s.oh === 0).length;
   const viaCount = (viaSecondary?.ah ?? 0) + (viaSecondary?.oh ?? 0);
+  // clinicians who book the specialty's visits in MyChart but are listed in a directory under another
+  // specialty (counted there, not here) or fall outside the roster's scope (podiatrists in orthopedics)
+  const byLabel = new Map();
+  for (const item of elsewhere) byLabel.set(item.label, (byLabel.get(item.label) ?? 0) + 1);
+  const labelSummary = [...byLabel.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([label, count]) => `${label} ${n(count)}`).join(", ");
+  const notCounted = (elsewhere.length ? ` ${n(elsewhere.length)} more who book ${specialty.label} visits are listed in the directories under other specialties (${labelSummary}) and are counted there, not here.` : "")
+    + (excluded.length ? ` ${n(excluded.length)} who book ${specialty.label} visits are outside this roster's scope (${[...new Set(excluded.map((item) => item.cred))].join(", ")}) and are not counted.` : "");
   const subSpecialtyLine = members.length ? [{ ok: true, text: `Sub-specialty labels: ${n(shared)} published by both systems, ${n(ohOnly)} by Orlando Health only and ${n(ahOnly)} by AdventHealth only; the filter marks the one-sided ones. ${n(viaCount)} clinicians joined the roster through a secondary label.` }] : [];
   return {
     pulled: {
@@ -78,7 +85,7 @@ export function providerDataChecks({ data, roster = {}, zipCounty = {}, zipShape
       { ok: missingNpi === 0, text: missingNpi === 0 ? `Every directory clinician has an NPI.${addedCount ? ` The ${n(addedCount)} added from MyChart scheduling carry their scheduling ID instead.` : ""}` : `${n(missingNpi)} directory entries have no NPI.` },
       { ok: true, text: `${specialty.label} roster: ${n(grouped.ah)} AdventHealth and ${n(grouped.oh)} Orlando Health clinicians, ${specialty.note}` },
       ...subSpecialtyLine,
-      { ok: gapCount === 0, text: gapCount === 0 ? (addedCount ? `Everyone who books ${specialty.label} visits in MyChart is in the index. ${n(added.ah)} AdventHealth and ${n(added.oh)} Orlando Health clinicians came from the scheduling catalog because the directories do not list them.` : `The directories cover everyone who books ${specialty.label} visits in MyChart.`) : `${n(gaps.ah)} AdventHealth and ${n(gaps.oh)} Orlando Health clinicians who book ${specialty.label} visits in MyChart are missing from the index.` },
+      { ok: gapCount === 0, text: gapCount === 0 ? (addedCount ? `Every clinician who books ${specialty.label} visits in MyChart is either a directory person or was added from the scheduling catalog: ${n(added.ah)} AdventHealth and ${n(added.oh)} Orlando Health clinicians came from the scheduling catalog because the directories do not list them.` : `The directories cover everyone who books ${specialty.label} visits in MyChart.`) + notCounted : `${n(gaps.ah)} AdventHealth and ${n(gaps.oh)} Orlando Health clinicians who book ${specialty.label} visits in MyChart are missing from the index.` },
     ],
   };
 }

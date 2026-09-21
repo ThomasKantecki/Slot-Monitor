@@ -61,11 +61,11 @@ export function specialtyPaths(specialty) {
 export const COPY = {
   cardiology: {
     newPatientTip: "Keeps only the visit types a new patient can book: New Patient and New Cardiology Patient visits, and ED follow-up visits for new patients. Both systems also publish visits for existing patients, so use this to compare new-patient access.",
-    rosterNote: "counting general, interventional, electrophysiology and heart failure cardiology together. Pediatric cardiology and cardiac surgery are not shown.",
+    rosterNote: "counting general, interventional, electrophysiology, heart failure and imaging cardiology together. Pediatric cardiology and cardiac surgery are not shown.",
   },
   orthopedics: {
     newPatientTip: "Keeps only the visit types a new patient can book. Both systems also publish visits for existing patients, so use this to compare new-patient access.",
-    rosterNote: "counting orthopedic surgery and its spine, hand, foot and joint sub-specialties, non-surgical orthopedics and sports medicine together. Pediatric orthopedics, podiatry, physical medicine and pain management are not shown.",
+    rosterNote: "counting orthopedic surgery and its spine, hand, foot and joint sub-specialties, non-surgical orthopedics and sports medicine together. Pediatric orthopedics, podiatry, neurosurgery, pain management and physical medicine are not shown unless the directory also lists the clinician under an orthopedic label.",
   },
 };
 export const copyOf = (specialty) => COPY[specialty.id] ?? COPY.cardiology;

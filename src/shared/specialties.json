@@ -5,12 +5,28 @@
     "folder": "",
     "emblem": "heart",
     "catalog": {
-      "ah": ["Cardiology"],
-      "oh": ["Cardiology"]
+      "ah": [
+        "Cardiology"
+      ],
+      "oh": [
+        "Cardiology"
+      ]
     },
     "roster": {
       "group": "Cardiology",
-      "members": ["Cardiology", "Cardiology - Interventional", "Cardiology - Electrophysiology", "Cardiology - Advanced Heart Failure"]
+      "members": [
+        "Cardiology",
+        "Cardiology - General",
+        "Cardiology - Interventional",
+        "Cardiology - Electrophysiology",
+        "Cardiology - Advanced Heart Failure",
+        "Cardiovascular Imaging"
+      ],
+      "weak": [],
+      "exclude": [
+        "Pediatric Cardiology"
+      ],
+      "excludeCredentials": []
     }
   },
   {
@@ -19,12 +35,55 @@
     "folder": "orthopedics/",
     "emblem": "bone",
     "catalog": {
-      "ah": ["Orthopaedic Surgery", "Hand Surgery", "Sports Medicine", "Spine Surgery"],
-      "oh": ["Orthopedics and Sports Medicine"]
+      "ah": [
+        "Orthopaedic Surgery",
+        "Hand Surgery",
+        "Sports Medicine",
+        "Spine Surgery"
+      ],
+      "oh": [
+        "Orthopedics and Sports Medicine"
+      ]
     },
     "roster": {
       "group": "Orthopedics",
-      "members": ["Orthopedics", "Orthopedics - Sports Medicine", "Orthopedics - Concussion", "Orthopedics - Electrodiagnostic Medicine", "Orthopedic Surgery", "Orthopedic Surgery - Spine", "Orthopedic Surgery - Hand and Wrist", "Orthopedic Surgery - Foot and Ankle", "Orthopedic Surgery - Knee", "Orthopedic Surgery - Hip", "Orthopedic Surgery - Shoulder", "Orthopedic Surgery - Elbow", "Orthopedic Surgery - Trauma and Fractures"]
+      "members": [
+        "Orthopedics",
+        "Orthopedics - General",
+        "Orthopedics - Sports Medicine",
+        "Orthopedics - Concussion",
+        "Orthopedics - Electrodiagnostic Medicine",
+        "Orthopedic Surgery",
+        "Orthopedic Surgery - Spine",
+        "Orthopedic Surgery - Hand and Wrist",
+        "Orthopedic Surgery - Foot and Ankle",
+        "Orthopedic Surgery - Knee",
+        "Orthopedic Surgery - Hip",
+        "Orthopedic Surgery - Shoulder",
+        "Orthopedic Surgery - Elbow",
+        "Orthopedic Surgery - Trauma and Fractures"
+      ],
+      "weak": [
+        "Orthopedic Surgery - Spine",
+        "Orthopedic Surgery - Foot and Ankle"
+      ],
+      "exclude": [
+        "Neurosurgery",
+        "Neurosurgery - Spine",
+        "Surgery - Neuro",
+        "Interventional Spine and Pain Management",
+        "Interventional Pain",
+        "Pain Management",
+        "Pain Medicine",
+        "Physical Medicine and Rehabilitation",
+        "Podiatry",
+        "Pediatric Orthopedics",
+        "Pediatric Orthopaedic Surgery",
+        "Rheumatology"
+      ],
+      "excludeCredentials": [
+        "DPM"
+      ]
     }
   }
 ]

@@ -440,13 +440,14 @@
   }
   function refresh() { if (state.selected && !slotsByArea[state.granularity].has(state.selected)) state.selected = ""; selectArea(state.selected); }
   function setPressed(prefix, value, choices) { choices.forEach((choice) => $(`${prefix}-${choice}`)?.setAttribute("aria-pressed", String(choice === value))); }
-  ["zip", "county"].forEach((value) => $(`gran-${value}`).addEventListener("click", () => { state.granularity = value; state.selected = ""; setPressed("gran", value, ["zip", "county"]); fillSearch(); refresh(); }));
+  ["zip", "county"].forEach((value) => $(`gran-${value}`).addEventListener("click", () => { state.granularity = value; state.selected = ""; state.areaQuery = ""; setPressed("gran", value, ["zip", "county"]); fillSearch(); refresh(); }));
   ["diff", "ah", "oh"].forEach((value) => $(`view-${value}`).addEventListener("click", () => { state.view = value; setPressed("view", value, ["diff", "ah", "oh"]); refresh(); }));
   ["show", "hide"].forEach((value) => $(`tele-${value}`).addEventListener("click", () => { state.hideTelemedicine = value === "hide"; setPressed("tele", value, ["show", "hide"]); refresh(); }));
   ["phys", "all"].forEach((value) => $(`clin-${value}`).addEventListener("click", () => { state.physiciansOnly = value === "phys"; setPressed("clin", value, ["phys", "all"]); refresh(); }));
   ["all", "new"].forEach((value) => $(`vt-${value}`).addEventListener("click", () => { state.newPatientOnly = value === "new"; setPressed("vt", value, ["all", "new"]); refresh(); }));
-  $("from-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.from = event.target.value; if (state.through < state.from) { state.through = state.from; $("through-date").value = state.from; } refreshPeriod(); });
-  $("through-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.through = event.target.value; if (state.from > state.through) { state.from = state.through; $("from-date").value = state.through; } refreshPeriod(); });
+  // An emptied date field (Backspace clears the segment) falls back to today / the comparison endpoint instead of loading nothing.
+  $("from-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.from = event.target.value || window.SUITE_DATE.today(); if (state.through < state.from) { state.through = state.from; } $("from-date").value = state.from; $("through-date").value = state.through; refreshPeriod(); });
+  $("through-date").addEventListener("change", (event) => { $("period-preset").value = "custom"; state.through = event.target.value || (comparisonThrough < state.from ? state.from : comparisonThrough); if (state.from > state.through) { state.from = state.through; } $("from-date").value = state.from; $("through-date").value = state.through; refreshPeriod(); });
   // Quick periods: today through the next N days (capped at the last published day), or the full comparison window.
   const addDays = (iso, days) => { const date = new Date(`${iso}T12:00:00`); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); };
   $("period-preset").addEventListener("change", (event) => {

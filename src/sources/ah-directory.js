@@ -93,10 +93,13 @@ export function clinicConsensus(rows) {
   };
 }
 
+// Narrow and no-break spaces (also when a capture mis-decoded them as Latin-1, "Groupâ\u0080¯Family") become
+// plain spaces, so a clinic name joins its colleagues' cohort in clinicConsensus instead of standing alone.
+const tidySpaces = (value) => String(value ?? "").replace(/\u00e2\u0080\u00af|\u00c2\u00a0|[\u202f\u00a0]/g, " ").replace(/\s+/g, " ").trim();
 const locationsOf = (rec) => Array.isArray(rec.locations) && rec.locations.length
   ? rec.locations.map((l, i) => ({
       ...l,
-      locName: l.locName ?? l.name ?? "",
+      locName: tidySpaces(l.locName ?? l.name ?? ""),
       street: l.street ?? l.addr ?? "",
       primary: l.primary ?? (i === 0),
     }))

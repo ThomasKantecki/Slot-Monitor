@@ -36,14 +36,16 @@ const VARIANTS = new Map(Object.entries({
   "Cancer - Gynecologic": ["Gynecologic Oncology"],
   "Cardiology - Electrophysiology": ["Clinical Cardiac Electrophysiology"],
   "Cardiology - Advanced Heart Failure": ["Advanced Heart Failure and Transplant Cardiology"],
+  "Cardiovascular Imaging": ["Echocardiography", "Nuclear Cardiology"],
   "Cancer - Surgery": ["Surgery - Cancer", "Surgical Oncology"],
   "Pediatric and Adolescent Psychiatry": ["Pediatric Psychiatry"],
   "Obesity Medicine": ["Weight Management"],
   // Orthopedics (added 2026-09-20 for the Orthopedics pages): AH's spellings and OH's internal duplicate.
   "Orthopedic Surgery": ["Orthopaedic Surgery", "Surgery - Orthopedics"],
-  "Orthopedic Surgery - Spine": ["Spine Surgery", "Surgery - Spine", "Spine"],
+  // OH's bare "Spine" / "Surgery - Spine" tags sit on neurosurgeons and pain physicians and AH's "Foot And Ankle
+  // Surgery" on podiatrists, so they are NOT folded into the orthopedic sub-specialties; AH's "Spine Surgery" is.
+  "Orthopedic Surgery - Spine": ["Spine Surgery"],
   "Orthopedic Surgery - Hand and Wrist": ["Hand Surgery", "Surgery - Hand"],
-  "Orthopedic Surgery - Foot and Ankle": ["Foot And Ankle Surgery"],
   "Orthopedics - Sports Medicine": ["Sports Medicine"],
   "Pediatric Orthopedics": ["Pediatric Orthopaedics"],
   "Physical Medicine and Rehabilitation": ["Physical Medicine And Rehabilitation"],
@@ -66,7 +68,7 @@ export const canonicalSpecialty = (name) => {
 const NONBOOKABLE = new Set([
   "Physical Therapy", "Speech Language Pathology", "Dietitian", "Nutrition",
   "Pediatric Nutrition", "Nurse Anesthetist", "Anesthesiologist Assistant",
-  "Nuclear Medicine", "Neuroradiology", "Cardiovascular Imaging",
+  "Nuclear Medicine", "Neuroradiology",
   "Not Specified",
 ]);
 export const isBookable = (name) => {

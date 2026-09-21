@@ -96,7 +96,7 @@ export function writeOpportunities(specialtyId = "cardiology") {
   return { bytes: html.length };
 }
 
-const PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>AH Market Opportunities</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>__FONTS__
+const PAGE = String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>AH Market Opportunities</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23005C99'/%3E%3Crect y='12' width='16' height='4' fill='%231FA9E1'/%3E%3C/svg%3E"><style>__FONTS__
 __LOGO_VARS__
 __BASE_STYLES__
 __STYLES__

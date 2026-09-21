@@ -20,6 +20,7 @@ export const OUTPUT = join(ROOT, "data", "raw", "ah-directory-scrape.json");
 const CONCURRENCY = 8;
 
 const decode = (value) => String(value ?? "")
+  .replace(/\u00e2\u0080\u00af|\u00c2\u00a0|[\u202f\u00a0]/g, " ") // narrow/no-break spaces, also when mis-decoded as Latin-1
   .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
   .replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
   .replace(/&nbsp;/gi, " ")

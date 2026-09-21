@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { SUITE_INFO_SCRIPT, SUITE_NAV_STYLES, suiteInfoDialog, suiteNavigation, suiteTitle } from "./shared/suite-navigation.js";
 import { copyOf, specialtyFromArgv, specialtyOf, specialtyPaths } from "./shared/specialties.js";
-import { directoryGaps, providerDataChecks } from "./shared/dataset-facts.js";
+import { providerDataChecks } from "./shared/dataset-facts.js";
 import { buildProviderIndex } from "./provider-index-people.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -207,7 +207,7 @@ export function render(specialtyId = "cardiology") {
     .replace("__HEADLINE_FUNCTIONS__", `${providerAvailabilityTotals.toString()}\n${providerHeadline.toString()}`)
     .replace("__DRAG_THRESHOLD_FUNCTION__", dragExceededThreshold.toString())
     .replace("__LOGOVARS__", logoVars)
-    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ specialty: { group: group.group, label: specialty.label, note: copyOf(specialty).rosterNote, members: group.members }, viaSecondary: index.viaSecondary, data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: directoryGaps(zRoster, slotModel), added: index.added })))
+    .replace("__INFO_DIALOG__", suiteInfoDialog("Data check", providerDataChecks({ specialty: { group: group.group, label: specialty.label, note: copyOf(specialty).rosterNote, members: group.members }, viaSecondary: index.viaSecondary, elsewhere: index.elsewhere, excluded: index.excluded, data: zData, roster: zRoster, zipCounty: cty, zipShapes: new Set(zPaths.map((path) => path.k)), ahCapturedAt: readJson("data/raw/ah-directory-scrape.json", {}).fetchedAt, ohCapturedAt: readJson("data/raw/oh-directory.json", {}).fetchedAt, gaps: index.gaps, added: index.added })))
     .replace("__INFO_SCRIPT__", SUITE_INFO_SCRIPT)
     .replace("__TITLE__", () => `${specialty.label} Provider Index`)
     .replace("__BRAND__", () => suiteTitle("provider-map", specialty.id))
@@ -535,7 +535,7 @@ function showProviders(k){selected=k;
  document.querySelectorAll("path.z.sel").forEach(p=>p.classList.remove("sel"));
  const pel=document.querySelector('#lay-'+gran+' path.z[data-k="'+cssq(k)+'"]'); if(pel)pel.classList.add("sel");
  queueRaster();
- let list=(L().roster[k]||[]).slice(); if(specialty) list=list.filter(x=>x.s===specialty||x.sl===specialty||(x.ls||[]).includes(specialty));
+ let list=(L().roster[k]||[]).slice(); if(specialty) list=list.filter(x=>x.s===specialty||(x.s==="__GROUP__"&&(x.sl===specialty||(x.ls||[]).includes(specialty))));
  if(view!=="diff") list=list.filter(x=>x.y===view);
  const counts=val(k)||{ah:0,oh:0};
  const label=gran==="county"?(esc(k)+" County"):(esc(k)+' <span class="pcty">'+(CTY[k]?esc(CTY[k])+" County":"")+'</span>');

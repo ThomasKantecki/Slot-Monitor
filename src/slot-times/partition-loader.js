@@ -23,7 +23,7 @@
         if (!response.ok) throw new Error(`Could not load appointment data for ${date} (${response.status}).`);
         const payload = await response.json();
         return payload.slots || [];
-      }));
+      }).catch((error) => { cached.delete(date); throw error; })); // a failed fetch is retried next time, not remembered
     }
     return cached.get(date);
   }
