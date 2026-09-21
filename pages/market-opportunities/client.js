@@ -116,7 +116,7 @@
     const origin = originByZip.get(state.originZip); if (origin && state.radiusActive) placeRadiusControls(origin);
   }
 
-  // Radius ring drag — keep identical to src/slot-times/client.js.
+  // Radius ring drag — keep identical to pages/slot-availability/client.js.
   function placeRadiusControls(origin) {
     const ring = state.radius * origin.m;
     $("radius-hit").setAttribute("cx", origin.x); $("radius-hit").setAttribute("cy", origin.y); $("radius-hit").setAttribute("r", ring.toFixed(1));
@@ -349,7 +349,7 @@
   $("market-dialog").addEventListener("click", (event) => { if (event.target === $("market-dialog")) $("market-dialog").close(); });
 
   const svg = $("map"), vp = $("map-vp");
-  // Canvas snapshot of the current map for the shared smooth zoom (src/shared/map-motion.js).
+  // Canvas snapshot of the current map for the shared smooth zoom (pages/shared/map-motion.js).
   const rasterPaths = { zip: null, land: null };
   function drawSnapshot(ctx) {
     if (!rasterPaths.land) rasterPaths.land = new Path2D(OUTLINE);

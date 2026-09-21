@@ -520,7 +520,7 @@ setPressed("gran", "zip", ["zip", "county"]); setPressed("view", "diff", ["diff"
 
   const svg = $("map"), vp = $("map-vp");
   // Canvas snapshot of the current map, used by the shared smooth zoom while the
-  // map moves (see src/shared/map-motion.js). Fills are read from the SVG nodes.
+  // map moves (see pages/shared/map-motion.js). Fills are read from the SVG nodes.
   const rasterPaths = { county: null, zip: null, land: null };
   const pathsFor = (granularity) => { if (!rasterPaths[granularity]) rasterPaths[granularity] = PATHS[granularity].map((path) => new Path2D(path.d)); return rasterPaths[granularity]; };
   function tiePattern(ctx) {
