@@ -1,7 +1,7 @@
 // Data integrity audit for one specialty: the run folders (when present), the current dataset, the published
 // summary and day partitions, and the Provider Index's embedded data must all agree with each other and with the
 // source rules. Every check recomputes its figure independently; a refresh that fails one must not be published.
-// Usage: node --max-old-space-size=6144 scripts/audit-dataset.mjs [--specialty <id>] (default: every published specialty)
+// Usage: node --max-old-space-size=6144 checks/audit-dataset.mjs [--specialty <id>] (default: every published specialty)
 import { readFileSync, readdirSync, existsSync, openSync, readSync, closeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

@@ -1,6 +1,6 @@
 // The live GitHub Pages site must serve exactly what public/ holds: every page, both slot summaries and every day
 // file byte-identical, nothing missing. Run after a push once the Pages deploy has finished (no browser needed).
-// Usage: node scripts/audit-live.mjs [--base https://.../Slot-Monitor/]
+// Usage: node checks/audit-live.mjs [--base https://.../Slot-Monitor/]
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";

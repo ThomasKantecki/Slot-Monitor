@@ -8,9 +8,9 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-// Same lookup as scripts/run-python.mjs: CARDIOLOGY_PYTHON, then a repository .venv, then Python on PATH.
+// Same lookup as tooling/run-python.mjs: SLOT_MONITOR_PYTHON, then a repository .venv, then Python on PATH.
 function findPython() {
-  const configured = process.env.CARDIOLOGY_PYTHON;
+  const configured = process.env.SLOT_MONITOR_PYTHON;
   const candidates = [
     ...(configured ? [[configured]] : []),
     [join(ROOT, ".venv", "Scripts", "python.exe")],
@@ -22,7 +22,7 @@ function findPython() {
     const probe = spawnSync(command, [...prefix, "--version"], { stdio: "ignore" });
     if (!probe.error && probe.status === 0) return { command, prefix };
   }
-  throw new Error("Python 3.9+ was not found. Create .venv or set CARDIOLOGY_PYTHON to a Python executable.");
+  throw new Error("Python 3.9+ was not found. Create .venv or set SLOT_MONITOR_PYTHON to a Python executable.");
 }
 const { command: PYTHON_COMMAND, prefix: PYTHON_PREFIX } = findPython();
 const python = (args, options) => spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX, ...args], options);
@@ -92,7 +92,7 @@ test("current snapshot builder selects latest system files instead of pinned run
 });
 
 test("every current facility ZIP maps to both ZIP and county geometry", () => {
-  const result = spawnSync(process.execPath, [join(ROOT, "scripts", "audit-geography-coverage.mjs")], { cwd: ROOT, encoding: "utf8" });
+  const result = spawnSync(process.execPath, [join(ROOT, "checks", "audit-geography-coverage.mjs")], { cwd: ROOT, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   const audit = JSON.parse(result.stdout);
   assert.equal(audit.mappedSlotRate, 100);

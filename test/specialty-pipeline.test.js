@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { SPECIALTIES } from "../pages/shared/specialties.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const python = [process.env.CARDIOLOGY_PYTHON, join(ROOT, ".venv", "bin", "python"), "python3", "python"]
+const python = [process.env.SLOT_MONITOR_PYTHON, join(ROOT, ".venv", "bin", "python"), "python3", "python"]
   .filter(Boolean).find((candidate) => (candidate.includes("/") ? existsSync(candidate) : true) && spawnSync(candidate, ["--version"]).status === 0);
 const run = (args) => execFileSync(python, args, { cwd: ROOT, encoding: "utf8" });
 

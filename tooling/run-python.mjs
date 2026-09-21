@@ -1,12 +1,12 @@
-// Runs a Python script with the first interpreter it finds: CARDIOLOGY_PYTHON, then a repo .venv, then python3 on PATH. Used by the npm extract/refresh commands.
+// Runs a Python script with the first interpreter it finds: SLOT_MONITOR_PYTHON, then a repo .venv, then python3 on PATH. Used by the npm extract/refresh commands.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
-if (!args.length) throw new Error("Usage: node scripts/run-python.mjs <script.py> [...args]");
+if (!args.length) throw new Error("Usage: node tooling/run-python.mjs <script.py> [...args]");
 const root = process.cwd();
-const configured = process.env.CARDIOLOGY_PYTHON;
+const configured = process.env.SLOT_MONITOR_PYTHON;
 const candidates = [
   ...(configured ? [[configured]] : []),
   [join(root, ".venv", "Scripts", "python.exe")],
@@ -22,6 +22,6 @@ for (const [command, ...prefix] of candidates) {
   if (!result.error) process.exit(result.status ?? 1);
   last = result.error; break;
 }
-console.error("Python 3.9+ was not found. Create .venv or set CARDIOLOGY_PYTHON to a Python executable.");
+console.error("Python 3.9+ was not found. Create .venv or set SLOT_MONITOR_PYTHON to a Python executable.");
 if (last) console.error(last.message);
 process.exit(1);

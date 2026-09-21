@@ -22,7 +22,7 @@ echo "wrote data/geography/fl-zcta.geojson"
 # County crosswalk (Census 2020 ZCTA->county relationship)
 curl -sL -o data/raw/zcta-county.txt \
   "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt"
-node scripts/build-county.mjs
+node tooling/build-county.mjs
 
 # FL boundary = dissolved counties (solid silhouette; counties fill the interior
 # lakes, so the coast has no excursion around the no-ZIP Lake Okeechobee /
@@ -33,5 +33,5 @@ npx --yes mapshaper data/geography/fl-county.geojson -dissolve2 -o "$BOUNDARY"
 # past the border). Re-run safe: the simplify step above rewrites fl-zcta first.
 npx --yes mapshaper data/geography/fl-zcta.geojson -clip "$BOUNDARY" -clean -o force data/geography/fl-zcta.geojson
 # One coast outline (outer rings of the boundary) used for both layers.
-node scripts/build-outlines.mjs "$BOUNDARY" data/geography/florida-outline.geojson
+node tooling/build-outlines.mjs "$BOUNDARY" data/geography/florida-outline.geojson
 rm -rf "$(dirname "$BOUNDARY")"

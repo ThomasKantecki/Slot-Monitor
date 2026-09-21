@@ -4,7 +4,7 @@
 // sub-specialty menu and primary-only mode. Needs Chrome and the playwright-core package (not a dependency of this
 // repo): set PLAYWRIGHT_CORE to that package's folder, or run from a folder where `require("playwright-core")`
 // resolves. Without it the audit is skipped with a note.
-// Usage: node scripts/audit-pages.cjs [--specialty <id>] (default: cardiology)
+// Usage: node checks/audit-pages.cjs [--specialty <id>] (default: cardiology)
 const { spawn } = require('node:child_process');
 const { readFileSync, existsSync } = require('node:fs');
 const { join } = require('node:path');

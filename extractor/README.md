@@ -11,7 +11,7 @@ Python's standard library; it does not require Selenium, pandas, credentials,
 or a browser.
 
 If Python is not already available on `PATH`, create a repository-local
-`.venv` or set `CARDIOLOGY_PYTHON` to a Python 3.9+ executable. The npm commands
+`.venv` or set `SLOT_MONITOR_PYTHON` to a Python 3.9+ executable. The npm commands
 automatically prefer `.venv` on Windows and macOS/Linux.
 
 The extractor reads only each system's anonymous Epic Open Scheduling workflow.
