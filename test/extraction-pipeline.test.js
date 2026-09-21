@@ -29,7 +29,7 @@ const python = (args, options) => spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX, .
 
 test("Cardiology extraction scripts compile and expose an offline dry run", () => {
   const scripts = ["epic_public.py", "extract_system.py", "deduplicate.py", "refresh.py", "walk_check.py", "catalog_probe.py"]
-    .map((name) => join(ROOT, "extractors", "cardiology", name));
+    .map((name) => join(ROOT, "extractor", name));
   const source = scripts.map((path) => readFileSync(path, "utf8"));
   source.forEach((code, index) => assert.doesNotThrow(() => {
     const result = python(["-c", "compile(open(r'''" + scripts[index] + "''', encoding='utf-8').read(), r'''" + scripts[index] + "''', 'exec')"]);
@@ -44,7 +44,7 @@ test("Cardiology extraction scripts compile and expose an offline dry run", () =
 });
 
 test("slot paging survives Epic's empty closing pages, re-served pages and stalls without losing a slot", () => {
-  const result = python([join(ROOT, "extractors", "cardiology", "paging_check.py")], { encoding: "utf8" });
+  const result = python([join(ROOT, "extractor", "paging_check.py")], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /stall_new_tokens .* ok/);
   assert.match(result.stdout, /stall_same_token .* ok/);
@@ -56,7 +56,7 @@ test("slot paging survives Epic's empty closing pages, re-served pages and stall
 });
 
 test("the questionnaire walker finds every search of an exhaustive walk with far fewer requests and withdraws a rule that fails its re-check", () => {
-  const result = python([join(ROOT, "extractors", "cardiology", "walk_check.py")], { encoding: "utf8" });
+  const result = python([join(ROOT, "extractor", "walk_check.py")], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /walk check ok/);
 });
@@ -71,7 +71,7 @@ test("OH physical deduplication collapses flow overlap without losing counts", (
       "b,p1,d1,2026-09-02T13:00:00Z,Doctor One,Check up,Chest pressure,path-b",
       "c,p1,d1,2026-09-02T14:00:00Z,Doctor One,New Patient,Check up,path-a",
     ].join("\n") + "\n");
-    const result = python([join(ROOT, "extractors", "cardiology", "deduplicate.py"), "--input", input, "--output", output], { encoding: "utf8" });
+    const result = python([join(ROOT, "extractor", "deduplicate.py"), "--input", input, "--output", output], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
     const rows = readFileSync(output, "utf8").replace(/^\uFEFF/, "").trim().split(/\r?\n/);
     assert.equal(rows.length, 3, "header plus two physical slots");

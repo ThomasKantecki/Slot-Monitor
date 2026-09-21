@@ -10,7 +10,7 @@ from pathlib import Path
 
 from epic_public import SITES, extract, load_specialty
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[1]
 
 
 def run_id() -> str:

@@ -1,5 +1,5 @@
 // Refresh step 2 (Orlando Health): copies the deduplicated slot CSV and its audit into data/<specialty>/runs/<run-id>/oh
-// (`--specialty <id>`, cardiology when absent). Called by extractors/cardiology/refresh.py.
+// (`--specialty <id>`, cardiology when absent). Called by extractor/refresh.py.
 import { createHash } from "node:crypto";
 import { specialtyFromArgv, specialtyPaths } from "../pages/shared/specialties.js";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

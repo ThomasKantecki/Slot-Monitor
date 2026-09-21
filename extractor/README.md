@@ -1,4 +1,9 @@
-# Cardiology extraction pipeline
+# The Epic slot extractor
+
+This folder pulls the open appointment slots from both health systems' public Epic MyChart
+scheduling pages. It serves every specialty (the folder used to be named after cardiology, the first
+one); the specialty comes from `specialties.json` at the repository root and is chosen with
+`--specialty <id>`. `npm run refresh:<specialty>` runs it end to end.
 
 This folder contains everything needed to pull public Cardiology appointment
 availability for AdventHealth and Orlando Health. The direct API extractor uses
@@ -186,8 +191,8 @@ artifact is useful, but it describes a run after the fact.
 
 This extractor is one command, `npm run refresh:cardiology`: extract both
 systems, deduplicate, promote into `data/cardiology/runs/<run-id>` and
-`data/cardiology/current`, then `scripts/build-slot-times-data.mjs` and
-`scripts/build-slot-partitions.mjs` build the per-day files the pages fetch. An
+`data/cardiology/current`, then `slots/build-slot-times-data.mjs` and
+`slots/build-slot-partitions.mjs` build the per-day files the pages fetch. An
 interrupted run continues with `--resume` on the same run id.
 
 The September 16 runners wrote CSV and XLSX beside the script, relaunching into a
@@ -212,9 +217,9 @@ git show f02e864:extractors/cardiology/epic_scheduling_extractor_OH.py | sed -n 
 git show f02e864:extractors/cardiology/epic_scheduling_extractor_OH.py | grep -c "RESUME_FROM_CHECKPOINT\|MAX_REQUEST_RETRIES"
 git show f02e864:extractors/cardiology/OH_cardiology_all_public_flows.py | sed -n 300,430p
 git show 0b20e60:data/cardiology/current/manifest.json
-sed -n 141,153p extractors/cardiology/epic_public.py
-sed -n 299,303p extractors/cardiology/epic_public.py
-sed -n 518,580p extractors/cardiology/epic_public.py
+sed -n 141,153p extractor/epic_public.py
+sed -n 299,303p extractor/epic_public.py
+sed -n 518,580p extractor/epic_public.py
 npm test
 ```
 
@@ -282,7 +287,7 @@ that a difference which only appears between two re-checks is not seen;
 
 ## Specialties
 
-The same extractor serves every specialty. `src/shared/specialties.json` names,
+The same extractor serves every specialty. `specialties.json` names,
 per specialty and per system, the entries of the anonymous scheduling catalog
 to pull (`catalog.ah`, `catalog.oh`); every listed entry is walked and its
 visit types, reasons and questionnaire paths become flows, with the catalog
@@ -325,7 +330,7 @@ telehealth mode ask Epic the same question, so the extractor runs that search
 once and reuses it (`search_reused_from` in the audit). A full run is still
 about ten thousand requests per system, several hours at the default delay.
 
-`python3 extractors/cardiology/paging_check.py` replays the paging loop
+`python3 extractor/paging_check.py` replays the paging loop
 against a scripted Epic (normal paging, server stop, a transient re-served
 page, a re-served window, both stall styles, an outage, a failed-then-resumed
 flow, the year jump, a killed run, a legacy resume) and fails if any of them

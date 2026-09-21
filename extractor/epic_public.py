@@ -47,7 +47,7 @@ SITES = {
 }
 # The anonymous catalog names each extraction pulls come from specialties.json (one list shared
 # with the Node scripts): a specialty maps to one or more catalog entry names per system.
-REGISTRY = Path(__file__).resolve().parents[2] / "specialties.json"
+REGISTRY = Path(__file__).resolve().parents[1] / "specialties.json"
 
 
 def load_specialty(spec_id: str) -> dict[str, Any]:
