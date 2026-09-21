@@ -1,4 +1,4 @@
-// Fetch the webfonts and write data/fonts.css with them base64-embedded, so the
+// Fetch the webfonts and write assets/fonts.css with them base64-embedded, so the
 // built HTML renders identically on any machine with no network. Without this the
 // page pulls JetBrains Mono from Google Fonts at load time; on a machine that is
 // offline (or where fonts.googleapis.com is blocked) every label, band, legend and
@@ -34,5 +34,5 @@ for (const f of FACES) {
        + `src:url(data:font/woff2;base64,${buf.toString("base64")}) format("woff2")}\n`;
   console.log(`${f.family}: ${(buf.length / 1024).toFixed(0)} KB`);
 }
-writeFileSync(join(ROOT, "data", "fonts.css"), out);
-console.log(`wrote data/fonts.css (${(out.length / 1024).toFixed(0)} KB)`);
+writeFileSync(join(ROOT, "assets", "fonts.css"), out);
+console.log(`wrote assets/fonts.css (${(out.length / 1024).toFixed(0)} KB)`);

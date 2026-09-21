@@ -102,26 +102,25 @@ export function dragExceededThreshold(dx, dy, threshold = 5) {
   return Math.hypot(dx, dy) > threshold;
 }
 // ── Data contract ───────────────────────────────────────────────────────────
-// Everything under data/ that isn't geometry comes from the data pipeline.
+// The roster files under data/rosters/ come from the roster build (rosters/build-rosters.mjs).
 // Whatever gets built to replace it has to emit exactly these shapes:
 //
-//   providers-by-zip.json / providers-by-county.json
-//     default all-published-location footprint, keyed by ZIP5 / county
-//   providers-by-zip-primary.json / providers-by-county-primary.json
-//     same shape, reduced to one primary or first-published location per person
-//     { generatedAt, source, locationMode: "all"|"primary",
+//   providers-by-zip.json
+//     all-published-location footprint keyed by ZIP5. This page reads only its
+//     generatedAt (the directory capture date) and recounts everything itself.
+//     { generatedAt, source, locationMode: "all",
 //       systems:     { ah: "AdventHealth", oh: "Orlando Health" },
 //       totals:      { ah: <int>, oh: <int>, note? },   // statewide, distinct
 //       specialties: [ { name, label, ah, oh } ],
 //       zips:        { <key>: { ah, oh, spec: { <SPECIALTY>: { a, o } } } } }
-//     `zips` is the property name in BOTH files, the county one included.
 //
-//   roster.json / roster-county.json and their *-primary counterparts
+//   roster.json (every published location) and roster-primary.json (one primary
+//   or first-published location per person), both keyed by ZIP5
 //     { <key>: [ { i: id, n: name, s: SPECIALTY, y: "ah"|"oh",
 //                  cr: credential, ph: photo URL, u: profile URL,
 //                  l: [ { n: location, a: address, c: city, z: ZIP5 } ] } ] }
 //
-//   zip-county.json     { <zip5>: "<County Name>" }   — census geography, already built
+//   data/geography/zip-county.json  { <zip5>: "<County Name>" }  — census geography, already built
 //
 // Join keys that must line up exactly: specialties[].name === the keys of
 // zips[].spec === roster[].s. The specialty filter matches on that raw string;
@@ -157,23 +156,23 @@ export function withOtherOffices(roster) {
 
 export function render(specialtyId = "cardiology") {
   const specialty = specialtyOf(specialtyId), sp = specialtyPaths(specialty), group = specialty.roster;
-  const countyGeo = readJson("data/fl-county.geojson");
-  const zipGeo = readJson("data/fl-zcta.geojson");
-  const cty = readJson("data/zip-county.json");
-  const directoryData = readJson("data/providers-by-zip.json", EMPTY_DATA);
+  const countyGeo = readJson("data/geography/fl-county.geojson");
+  const zipGeo = readJson("data/geography/fl-zcta.geojson");
+  const cty = readJson("data/geography/zip-county.json");
+  const directoryData = readJson("data/rosters/providers-by-zip.json", EMPTY_DATA);
   // The deep slot model is build-only; a checkout without it uses the published summary, which carries the same providers, facilities and provider-facility counts.
   const slotModel = existsSync(join(ROOT, sp.model)) ? readJson(sp.model, {}) : readJson(sp.summary, {});
   // Rebuilt from the pipeline's rosters at render time: adult cardiology labels
   // count together, and clinicians who book in MyChart but have no directory
   // profile join at their clinics (see src/provider-index-people.js).
-  const index = buildProviderIndex({ group, rosterAll: readJson("data/roster.json", {}), rosterPrimary: readJson("data/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
+  const index = buildProviderIndex({ group, rosterAll: readJson("data/rosters/roster.json", {}), rosterPrimary: readJson("data/rosters/roster-primary.json", {}), slotModel, zipCounty: cty, generatedAt: directoryData.generatedAt });
   const zData = index.all.byZip, cData = index.all.byCounty, zDataPrimary = index.primary.byZip, cDataPrimary = index.primary.byCounty;
   const zRoster = withOtherOffices(index.all.rosterZip), cRoster = withOtherOffices(index.all.rosterCounty);
   const zRosterPrimary = withOtherOffices(index.primary.rosterZip), cRosterPrimary = withOtherOffices(index.primary.rosterCounty);
   // One clean FL coast outline (dissolved counties -> outer rings). ZIPs are
   // clipped to this same boundary at build time, so it traces both layers exactly
   // and has no interior excursion around the no-ZIP lake/Everglades regions.
-  const countyOutline = readJson("data/fl-county-outline.geojson");
+  const countyOutline = readJson("data/geography/florida-outline.geojson");
 
   // Brand logos embedded as base64 data-URI CSS vars (self-contained, offline).
   const readB64 = (rel) => { try { return readFileSync(join(ROOT, rel)).toString("base64"); } catch { return null; } };
@@ -181,7 +180,7 @@ export function render(specialtyId = "cardiology") {
   // Webfonts embedded as base64 so the page renders identically offline and on
   // any machine (see scripts/embed-fonts.mjs). Without this, JetBrains Mono is
   // fetched from Google at load time and silently falls back elsewhere.
-  let fontsCss = ""; try { fontsCss = readFileSync(join(ROOT, "data", "fonts.css"), "utf8"); } catch { /* optional */ }
+  let fontsCss = ""; try { fontsCss = readFileSync(join(ROOT, "assets", "fonts.css"), "utf8"); } catch { /* optional */ }
 
   const logoVars = `:root{${ahLogo ? `--ah-logo-img:url(data:image/png;base64,${ahLogo});` : ""}${ohLogo ? `--oh-logo-img:url(data:image/png;base64,${ohLogo});` : ""}}`;
 

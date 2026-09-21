@@ -1,4 +1,4 @@
-// Build data/zip-county.json = { "<zip5>": "<County Name>" } for Florida, from the
+// Build data/geography/zip-county.json = { "<zip5>": "<County Name>" } for Florida, from the
 // Census 2020 ZCTA-to-county relationship file. For ZCTAs spanning counties, pick
 // the county holding the largest land area of the ZCTA.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -26,7 +26,7 @@ for (let i = 1; i < lines.length; i += 1) {
 }
 const out = {};
 for (const [zip, v] of [...best.entries()].sort()) out[zip] = v.county;
-writeFileSync(join(ROOT, "data", "zip-county.json"), JSON.stringify(out));
+writeFileSync(join(ROOT, "data", "geography", "zip-county.json"), JSON.stringify(out));
 const counties = [...new Set(Object.values(out))].sort();
-console.log(`wrote data/zip-county.json — ${Object.keys(out).length} FL ZIPs, ${counties.length} counties`);
+console.log(`wrote data/geography/zip-county.json — ${Object.keys(out).length} FL ZIPs, ${counties.length} counties`);
 console.log("counties:", counties.join(", "));

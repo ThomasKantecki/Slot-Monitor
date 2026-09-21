@@ -53,8 +53,8 @@ export function locate(index, lng, lat) {
 
 export function loadGeoIndexes(root) {
   return {
-    zip: buildIndex(JSON.parse(readFileSync(`${root}/data/fl-zcta.geojson`, "utf8")), "zip"),
-    county: buildIndex(JSON.parse(readFileSync(`${root}/data/fl-county.geojson`, "utf8")), "name"),
+    zip: buildIndex(JSON.parse(readFileSync(`${root}/data/geography/fl-zcta.geojson`, "utf8")), "zip"),
+    county: buildIndex(JSON.parse(readFileSync(`${root}/data/geography/fl-county.geojson`, "utf8")), "name"),
   };
 }
 

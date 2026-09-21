@@ -30,7 +30,7 @@ if (!existsSync(PATHS.export)) {
   throw new Error(`no ${SPECIALTY.id}-physical-slots.json, no slot-times-model.json and no published partitions: run the ${SPECIALTY.id} refresh first`);
 }
 const rows = readJsonRows(PATHS.export);
-const zipCounty = JSON.parse(readFileSync("data/zip-county.json", "utf8"));
+const zipCounty = JSON.parse(readFileSync("data/geography/zip-county.json", "utf8"));
 const manifest = JSON.parse(readFileSync(PATHS.manifest, "utf8"));
 const model = buildSlotAvailability(rows, zipCounty, { catalogNames: SPECIALTY.catalog });
 model.generatedAt = manifest.generatedAt;

@@ -15,9 +15,9 @@ npx --yes mapshaper data/raw/fl-zips-raw.json \
   -simplify weighted 10% keep-shapes \
   -each 'zip=ZCTA5CE10' \
   -filter-fields zip \
-  -o precision=0.0001 format=geojson data/fl-zcta.geojson
+  -o precision=0.0001 format=geojson data/geography/fl-zcta.geojson
 
-echo "wrote data/fl-zcta.geojson"
+echo "wrote data/geography/fl-zcta.geojson"
 
 # County crosswalk (Census 2020 ZCTA->county relationship)
 curl -sL -o data/raw/zcta-county.txt \
@@ -27,9 +27,11 @@ node scripts/build-county.mjs
 # FL boundary = dissolved counties (solid silhouette; counties fill the interior
 # lakes, so the coast has no excursion around the no-ZIP Lake Okeechobee /
 # Everglades regions the way a dissolved-ZCTA outline would).
-npx --yes mapshaper data/fl-county.geojson -dissolve2 -o data/fl-boundary.geojson
+BOUNDARY="$(mktemp -d)/fl-boundary.geojson"
+npx --yes mapshaper data/geography/fl-county.geojson -dissolve2 -o "$BOUNDARY"
 # Clip ZIPs to that boundary so coastal ZIPs align to the true coast (no overhang
 # past the border). Re-run safe: the simplify step above rewrites fl-zcta first.
-npx --yes mapshaper data/fl-zcta.geojson -clip data/fl-boundary.geojson -clean -o force data/fl-zcta.geojson
+npx --yes mapshaper data/geography/fl-zcta.geojson -clip "$BOUNDARY" -clean -o force data/geography/fl-zcta.geojson
 # One coast outline (outer rings of the boundary) used for both layers.
-node scripts/build-outlines.mjs data/fl-boundary.geojson data/fl-county-outline.geojson
+node scripts/build-outlines.mjs "$BOUNDARY" data/geography/florida-outline.geojson
+rm -rf "$(dirname "$BOUNDARY")"

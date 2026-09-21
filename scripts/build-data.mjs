@@ -27,7 +27,7 @@ console.log(`employed with a Florida location: ${roster.length}`);
 const geo = loadGeoIndexes(ROOT);
 const resolve = buildLocationResolver({
   zipIndex: geo.zip,
-  zctaGeojson: read("data/fl-zcta.geojson"),
+  zctaGeojson: read("data/geography/fl-zcta.geojson"),
   allLocations: roster.flatMap((p) => p.locations),
 });
 let fixed = 0;
@@ -46,7 +46,7 @@ if (existsSync(AH_PATH)) {
   console.log(`AH listing captured ${String(ahRaw.fetchedAt).slice(0, 10)} — employed FL clinicians: ${ahRoster.length}`);
 } else console.log("no AdventHealth capture — building Orlando Health only");
 
-const zipCounty = read("data/zip-county.json");
+const zipCounty = read("data/geography/zip-county.json");
 const noPoly = ahRoster.flatMap((p) => p.locations.map((l) => l.zip)).filter((z) => !zipCounty[z]);
 if (noPoly.length) console.log(`  AH locations in ZIPs with no county mapping: ${[...new Set(noPoly)].join(", ")}`);
 
@@ -78,14 +78,11 @@ const primary = aggregate({
   locationMode: "primary",
   source: "Each system's own published provider directory. Employed clinicians in bookable clinic specialties; statewide totals are distinct people, while ZIP and county footprints use one primary or first-published Florida practice location. Hospital-based and support staff are excluded.",
 });
-write("data/providers-by-zip.json", all.byZip);
-write("data/providers-by-county.json", all.byCounty);
-write("data/roster.json", all.rosterZip);
-write("data/roster-county.json", all.rosterCounty);
-write("data/providers-by-zip-primary.json", primary.byZip);
-write("data/providers-by-county-primary.json", primary.byCounty);
-write("data/roster-primary.json", primary.rosterZip);
-write("data/roster-county-primary.json", primary.rosterCounty);
+// Only the three files the Provider Index build reads are written (the county and primary-count variants
+// were never consumed); the county footprints stay in memory for the summary lines below.
+write("data/rosters/providers-by-zip.json", all.byZip);
+write("data/rosters/roster.json", all.rosterZip);
+write("data/rosters/roster-primary.json", primary.rosterZip);
 
 console.log(`\ntotals: OH ${all.byZip.totals.oh} | AH ${all.byZip.totals.ah}`);
 console.log(`all locations: ZIPs ${Object.keys(all.byZip.zips).length} | counties ${Object.keys(all.byCounty.zips).length}`);

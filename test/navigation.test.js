@@ -314,7 +314,7 @@ test("the header info button replaces the freshness line and opens a dataset dia
   assert.match(providerSource, /__INFO_DIALOG__[\s\S]*<script id="cpaths"/);
   assert.match(providerSource, /__INFO_SCRIPT__\n<\/script>`;/);
   assert.match(providerSource, /providerDataChecks\(\{ specialty: \{ group: group\.group, label: specialty\.label, note: copyOf\(specialty\)\.rosterNote, members: group\.members \}, viaSecondary: index\.viaSecondary, elsewhere: index\.elsewhere, excluded: index\.excluded, data: zData/);
-  assert.match(providerSource, /buildProviderIndex\(\{ group, rosterAll: readJson\("data\/roster\.json"/);
+  assert.match(providerSource, /buildProviderIndex\(\{ group, rosterAll: readJson\("data\/rosters\/roster\.json"/);
   assert.match(providerSource, /class="psrc">MyChart scheduling/);
   const rendered = suiteInfoDialog("Data & check", { pulled: { at: "2026-09-14T00:00:00.000Z", label: "Pulled <now>", freshDays: 7 }, checks: [{ ok: true, text: "fine" }, { ok: false, text: "a <b>problem</b>" }] });
   assert.match(rendered, /<h2 id="dataset-info-title">Data &amp; check<\/h2>/);

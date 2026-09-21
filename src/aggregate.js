@@ -1,5 +1,5 @@
-// Rosters -> the four artifacts src/render.js embeds. See the data contract
-// comment above the reads in render.js for the exact shapes.
+// Rosters -> the roster files the Provider Index page embeds. See the data contract
+// comment above the reads in the Provider Index render for the exact shapes.
 //
 // Counting model, both systems: a per-area count is a FOOTPRINT (a clinician
 // appears once in every area they work in) while statewide totals are distinct

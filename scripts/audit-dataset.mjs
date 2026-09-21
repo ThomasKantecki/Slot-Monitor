@@ -27,8 +27,8 @@ const manifest = json(`data/${sp}/current/manifest.json`);
 const summary = json(`public/data/${sp}/slot-times-summary.json`);
 const partitionDir = `public/data/${sp}/slots/`;
 const files = readdirSync(R + partitionDir).filter((f) => f.endsWith(".json")).sort();
-const zipCounty = json("data/zip-county.json");
-const zctaZips = new Set(json("data/fl-zcta.geojson").features.map((f) => f.properties.zip));
+const zipCounty = json("data/geography/zip-county.json");
+const zctaZips = new Set(json("data/geography/fl-zcta.geojson").features.map((f) => f.properties.zip));
 
 // ---------- partitions ----------
 const perSystem = { ah: 0, oh: 0 }, nonPhys = { ah: 0, oh: 0 }, video = { ah: 0, oh: 0 }, newPat = { ah: 0, oh: 0 };

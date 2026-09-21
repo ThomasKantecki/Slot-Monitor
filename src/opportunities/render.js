@@ -45,12 +45,12 @@ export function renderOpportunities(specialtyId = "cardiology") {
   const specialty = specialtyOf(specialtyId), sp = specialtyPaths(specialty);
   // The page embeds the published summary; the slots themselves load by date from public/data/<specialty>/slots.
   const data = readJson(sp.summary);
-  data.zipCounty = readJson("data/zip-county.json");
+  data.zipCounty = readJson("data/geography/zip-county.json");
   const centroidSource = read("data/geography/florida-zip-centroids.js").trim();
   const centroidPrefix = "window.FLORIDA_ZIP_CENTROIDS=";
   if (!centroidSource.startsWith(centroidPrefix)) throw new Error("Florida ZIP centroid data has an unexpected format");
   const centroids = JSON.parse(centroidSource.slice(centroidPrefix.length).replace(/;$/, ""));
-  const counties = readJson("data/fl-county.geojson"), zips = readJson("data/fl-zcta.geojson"), outline = readJson("data/fl-county-outline.geojson");
+  const counties = readJson("data/geography/fl-county.geojson"), zips = readJson("data/geography/fl-zcta.geojson"), outline = readJson("data/geography/florida-outline.geojson");
   const fit = computeFit(counties.features);
   data.origins = centroids.map((row) => {
     const projected = fit.project(row.longitude, row.latitude);
@@ -65,7 +65,7 @@ export function renderOpportunities(specialtyId = "cardiology") {
   const logoVars = `:root{--ah-logo-img:url(data:image/png;base64,${readB64("assets/adventhealth-logo.png")});--oh-logo-img:url(data:image/png;base64,${readB64("assets/orlandohealth-logo.png")})}`;
   const scoringClient = read("src/opportunities/scoring.js").replaceAll("export ", "");
   return PAGE
-    .replace("__FONTS__", optional("data/fonts.css"))
+    .replace("__FONTS__", optional("assets/fonts.css"))
     .replace("__LOGO_VARS__", logoVars)
     .replace("__BASE_STYLES__", read("src/slot-times/styles.css"))
     .replace("__STYLES__", read("src/opportunities/styles.css"))
