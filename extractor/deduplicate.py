@@ -4,11 +4,12 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 PHYSICAL_KEY = ("provider_id", "department_id", "display_datetime_utc")
 FLOW_FIELDS = ("flow_id", "questionnaire_path", "reason_for_visit", "visit_type", "appointment_type", "load_number")
+COUNTED = ("flow_id", "questionnaire_path", "reason_for_visit", "visit_type")  # distinct values kept per physical slot
 
 
 def slot_id(row: dict[str, str]) -> str:
@@ -17,22 +18,32 @@ def slot_id(row: dict[str, str]) -> str:
 
 
 def deduplicate(source: Path, output: Path) -> tuple[int, int]:
+    """One pass over the rows: each physical slot keeps its first row and the distinct values of the counted fields,
+    so memory grows with the slots, not the rows. A questionnaire whose paths all share one search lists every slot
+    once per path (Orlando Health gastroenterology, 2026-09-22: 131 paths, 669,000 rows for 5,105 openings, which
+    held in memory at once needed about 4.4 GB)."""
+    total = 0
+    groups: dict[tuple[str, ...], dict[str, Any]] = {}
     with source.open("r", newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle); source_fields = reader.fieldnames or []; rows = list(reader)
-    missing = [field for field in PHYSICAL_KEY if field not in source_fields]
-    if missing: raise ValueError("Missing physical-slot fields: " + ", ".join(missing))
-    groups: dict[tuple[str, ...], list[dict[str, str]]] = defaultdict(list)
-    for row in rows: groups[tuple(row.get(field, "").strip() for field in PHYSICAL_KEY)].append(row)
+        reader = csv.DictReader(handle); source_fields = reader.fieldnames or []
+        missing = [field for field in PHYSICAL_KEY if field not in source_fields]
+        if missing: raise ValueError("Missing physical-slot fields: " + ", ".join(missing))
+        for item in reader:
+            total += 1
+            group = groups.setdefault(tuple(item.get(field, "").strip() for field in PHYSICAL_KEY), {"first": item, "rows": 0, **{field: set() for field in COUNTED}})
+            group["rows"] += 1
+            for field in COUNTED:
+                if item.get(field, "").strip(): group[field].add(item.get(field, "").strip())
     unique = []
-    for key, matches in groups.items():
-        row = {field: value.strip() for field, value in matches[0].items()}
+    for key, group in groups.items():
+        row = {field: value.strip() for field, value in group["first"].items()}
         row["physical_slot_id"] = slot_id(row)
-        row["matching_row_count"] = str(len(matches))
+        row["matching_row_count"] = str(group["rows"])
         for field, target in (("flow_id", "matching_flow_count"), ("questionnaire_path", "matching_questionnaire_path_count"),
                               ("reason_for_visit", "matching_reason_count"), ("visit_type", "matching_visit_type_count")):
-            row[target] = str(len({item.get(field, "").strip() for item in matches if item.get(field, "").strip()}))
-        row["matching_reasons"] = "|".join(sorted({item.get("reason_for_visit", "").strip() for item in matches if item.get("reason_for_visit", "").strip()}))
-        row["matching_visit_types"] = "|".join(sorted({item.get("visit_type", "").strip() for item in matches if item.get("visit_type", "").strip()}))
+            row[target] = str(len(group[field]))
+        row["matching_reasons"] = "|".join(sorted(group["reason_for_visit"]))
+        row["matching_visit_types"] = "|".join(sorted(group["visit_type"]))
         for field in FLOW_FIELDS: row.pop(field, None)
         unique.append(row)
     unique.sort(key=lambda row: (row.get("display_datetime_utc", ""), row.get("provider_name", ""), row.get("department_id", "")))
@@ -41,7 +52,7 @@ def deduplicate(source: Path, output: Path) -> tuple[int, int]:
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields); writer.writeheader(); writer.writerows(unique)
-    return len(rows), len(unique)
+    return total, len(unique)
 
 
 def main() -> None:
