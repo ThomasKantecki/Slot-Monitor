@@ -188,6 +188,8 @@ def fallback_answer(question: dict[str, Any]) -> str:
 
 
 def question_answer(question: dict[str, Any], answer: str) -> dict[str, Any]:
+    """A choice is sent by its index; a typed answer (a PCP name) as Answer.Text, the way MyChart's own page sends
+    it. Orlando Health's server fails with a 500 when a typed answer arrives as a bare Answer (seen 2026-09-22)."""
     option = next((item for item in question.get("Choices", []) if norm(item.get("Text")) == norm(answer)), None)
     return {
         "ID": question.get("ID"), "DAT": question.get("DAT"),
@@ -195,7 +197,7 @@ def question_answer(question: dict[str, Any], answer: str) -> dict[str, Any]:
         "IsRequired": question.get("IsRequired"), "IsMultiResponse": question.get("IsMultiResponse"),
         "IsTrigger": question.get("IsTrigger"), "IsEnabled": question.get("IsEnabled"),
         "DisplayStyle": question.get("DisplayStyle"), "DisplayStyleVal": question.get("DisplayStyleVal"),
-        "Answer": {"Choices": [{"Index": option.get("Index")}]} if option else answer,
+        "Answer": {"Choices": [{"Index": option.get("Index")}]} if option else {"Text": answer},
     }
 
 

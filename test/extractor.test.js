@@ -131,6 +131,18 @@ test("the extractor matches several catalog names, ignoring case and spacing, an
   assert.deepEqual(output.ids, SPECIALTIES.map((entry) => entry.id));
 });
 
+test("a typed questionnaire answer goes out as Answer.Text and a choice by its index", () => {
+  const script = [
+    "import json, sys; sys.path.insert(0, 'extractor'); import epic_public as ep",
+    "typed = {'ID': 'q1', 'ResponseType': 1, 'Choices': [], 'Prompt': 'Please provide the name of your PCP. If you do not have a PCP, please put None.'}",
+    "picked = {'ID': 'q2', 'ResponseType': 6, 'Choices': [{'Text': 'None', 'Index': 0}, {'Text': 'Abdominal Pain', 'Index': 7}]}",
+    "print(json.dumps({'typed': ep.question_answer(typed, ep.fallback_answer(typed))['Answer'], 'picked': ep.question_answer(picked, 'abdominal  pain')['Answer']}))",
+  ].join("; ");
+  const output = JSON.parse(run(["-c", script]));
+  assert.deepEqual(output.typed, { Text: "None" });
+  assert.deepEqual(output.picked, { Choices: [{ Index: 7 }] });
+});
+
 test("the catalog probe and the refresh orchestrator accept --specialty", () => {
   run(["-m", "py_compile", "extractor/catalog_probe.py"]);
   const plan = run(["extractor/refresh.py", "--specialty", "orthopedics", "--run-id", "test-run", "--dry-run"]);
