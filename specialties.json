@@ -85,5 +85,38 @@
         "DPM"
       ]
     }
+  },
+  {
+    "id": "gastroenterology",
+    "label": "Gastroenterology",
+    "folder": "gastroenterology/",
+    "emblem": "stomach",
+    "catalog": {
+      "ah": [
+        "Gastroenterology"
+      ],
+      "oh": [
+        "Gastroenterology"
+      ]
+    },
+    "roster": {
+      "group": "Gastroenterology (GI)",
+      "members": [
+        "Gastroenterology (GI)",
+        "Hepatology (Liver)",
+        "Transplant Hepatology",
+        "Advanced Endoscopy",
+        "Interventional Endoscopy",
+        "Bariatric Endoscopy",
+        "Inflammatory Bowel Disease (IBD)",
+        "Motility",
+        "Pancreatology"
+      ],
+      "weak": [],
+      "exclude": [
+        "Pediatric Gastroenterology (GI)"
+      ],
+      "excludeCredentials": []
+    }
   }
 ]

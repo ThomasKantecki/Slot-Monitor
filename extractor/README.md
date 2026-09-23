@@ -295,6 +295,20 @@ litigation, HMO and Medicaid all stop scheduling. The limit of the approach is
 that a difference which only appears between two re-checks is not seen;
 `walk_check.py` shows both the saving and that limit on a simulated tree.
 
+Orlando Health's gastroenterology questionnaire is small but has a typed
+question. Mapped on 2026-09-22: it asks the patient's age, whether they have
+seen a Digestive Health Institute provider in the past three years, their
+coverage, a diagnosis from a list of 134, and the name of their primary care
+doctor. Under 18, a returning patient, four named plans (Care Plus, Devoted,
+Humana Gold Plus, VA Admin) and the diagnoses None, Other and Not Sure all
+stop scheduling; the other 131 diagnoses lead to one search (New Patient
+Appointment with every provider), so 140 paths cost one openings search. The
+primary care question has no choices: the walker answers "None", as the
+question asks, and sends it as `Answer.Text`, the way MyChart's own page does
+(a bare `Answer` makes Orlando Health's server fail with a 500). Every path
+lists each opening again, 668,755 rows for 5,105 openings, which is why
+`deduplicate.py` reads its input in one streaming pass.
+
 ## Specialties
 
 The same extractor serves every specialty. `specialties.json` names,

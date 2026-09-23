@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { ADULT_CARDIOLOGY, buildProviderIndex, CARDIOLOGY_GROUP, peopleFromRoster, regroupSpecialties, schedulingClinicians } from "../rosters/people.js";
 import { CARDIOLOGY_CHECK, providerDataChecks } from "../pages/shared/dataset-facts.js";
 import { COPY, specialtyOf } from "../pages/shared/specialties.js";
+import { canonicalSpecialty } from "../rosters/labels.js";
 
 // ---- provider-index-people ----
 const office = (n, a, c, z) => ({ n, a, c, z });
@@ -128,6 +129,15 @@ test("orthopedic sub-specialties count under Orthopedics and keep their label; p
   assert.deepEqual(people.map((p) => [p.specialty, p.label ?? ""]), [["Orthopedics", "Orthopedic Surgery - Spine"], ["Orthopedics", "Orthopedics - General"], ["Pediatric Orthopedics", ""], ["Podiatry", ""], ["Orthopedics", "Orthopedics - Sports Medicine"]]);
   assert.equal(CARDIOLOGY_GROUP.group, "Cardiology");
   assert.deepEqual(regroupSpecialties([person("F", "Cardiology - Interventional")]).map((p) => p.specialty), ["Cardiology"], "cardiology stays the default");
+});
+
+test("gastroenterology sub-specialties count under the GI group; pediatric GI, colorectal surgery and GI cancer stay apart", () => {
+  const gi = specialtyOf("gastroenterology").roster;
+  // AdventHealth's plain "Gastroenterology" and "Hepatology" are Orlando Health's "(GI)" and "(Liver)" labels
+  assert.equal(canonicalSpecialty("Gastroenterology"), gi.group);
+  assert.equal(canonicalSpecialty("Hepatology"), "Hepatology (Liver)");
+  const people = regroupSpecialties([person("A", "Gastroenterology (GI)"), person("B", "Hepatology (Liver)", "ah"), person("C", "Advanced Endoscopy"), person("D", "Pediatric Gastroenterology (GI)"), person("E", "Colon and Rectal Surgery", "ah"), person("F", "Cancer - GI (Gastrointestinal)")], gi);
+  assert.deepEqual(people.map((p) => [p.specialty, p.label ?? ""]), [["Gastroenterology (GI)", "Gastroenterology (GI) - General"], ["Gastroenterology (GI)", "Hepatology (Liver)"], ["Gastroenterology (GI)", "Advanced Endoscopy"], ["Pediatric Gastroenterology (GI)", ""], ["Colon and Rectal Surgery", ""], ["Cancer - GI (Gastrointestinal)", ""]]);
 });
 
 test("clinicians who only book in MyChart are stamped with the page's group", () => {

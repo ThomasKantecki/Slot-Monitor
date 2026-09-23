@@ -11,8 +11,8 @@ import { renderSpecialtyPlaceholder } from "../pages/shared/specialty-placeholde
 // ---- specialties ----
 const registry = JSON.parse(readFileSync(new URL("../specialties.json", import.meta.url), "utf8"));
 
-test("the registry names both specialties, their Epic catalog entries and their roster groups", () => {
-  assert.deepEqual(registry.map((entry) => entry.id), ["cardiology", "orthopedics"]);
+test("the registry names every specialty, its Epic catalog entries and its roster group", () => {
+  assert.deepEqual(registry.map((entry) => entry.id), ["cardiology", "orthopedics", "gastroenterology"]);
   assert.deepEqual(SPECIALTIES.map((entry) => entry.id), registry.map((entry) => entry.id));
   for (const entry of registry) {
     assert.deepEqual(Object.keys(entry.catalog).sort(), ["ah", "oh"], `${entry.id} lists a catalog per system`);
@@ -22,6 +22,8 @@ test("the registry names both specialties, their Epic catalog entries and their 
   }
   assert.deepEqual(registry[0].catalog, { ah: ["Cardiology"], oh: ["Cardiology"] });
   assert.equal(specialtyOf("orthopedics").dataDir, "data/orthopedics");
+  assert.deepEqual(specialtyOf("gastroenterology").catalog, { ah: ["Gastroenterology"], oh: ["Gastroenterology"] });
+  assert.equal(specialtyPaths(specialtyOf("gastroenterology")).partitionBase, "../data/gastroenterology/slots");
   assert.equal(copyOf(specialtyOf("cardiology")).newPatientTip.slice(0, 44), "Keeps only the visit types a new patient can");
 });
 
@@ -48,17 +50,21 @@ test("npm run build goes through the per-specialty orchestrator and ends with th
   assert.match(pkg.scripts.build, /^node slots\/build-specialties\.mjs && node pages\/shared\/specialty-placeholders\.js$/);
   assert.match(pkg.scripts.all, /build-specialties\.mjs && node pages\/shared\/specialty-placeholders\.js$/);
   assert.match(pkg.scripts["refresh:orthopedics"], /refresh\.py --specialty orthopedics$/);
+  for (const specialty of SPECIALTIES.filter((entry) => entry.id !== "cardiology")) {
+    assert.match(pkg.scripts[`refresh:${specialty.id}`], new RegExp(`refresh\\.py --specialty ${specialty.id}$`), `${specialty.id} has a refresh script`);
+  }
   assert.match(pkg.scripts["probe:catalog"], /catalog_probe\.py$/);
   assert.equal(isPublished(specialtyOf("cardiology")), true, "cardiology has published data in this checkout");
 });
 
 // ---- specialty-switch ----
 test("the title box offers every specialty and links each one to the same view", () => {
-  assert.deepEqual(SPECIALTIES.map((specialty) => specialty.id), ["cardiology", "orthopedics"]);
+  assert.deepEqual(SPECIALTIES.map((specialty) => specialty.id), ["cardiology", "orthopedics", "gastroenterology"]);
   const cardio = suiteTitle("slot-times");
   assert.match(cardio, /<select class="specialty-select" aria-label="Specialty">/);
   assert.match(cardio, /<option value="cardiology" data-href="\.\/index\.html" selected>Cardiology<\/option>/);
   assert.match(cardio, /<option value="orthopedics" data-href="\.\/orthopedics\/index\.html">Orthopedics<\/option>/);
+  assert.match(cardio, /<option value="gastroenterology" data-href="\.\/gastroenterology\/index\.html">Gastroenterology<\/option>/);
   assert.match(cardio, /class="pixel-heart"/);
   assert.doesNotMatch(cardio, /pixel-bone/);
   const ortho = suiteTitle("provider-map", "orthopedics");
@@ -67,6 +73,9 @@ test("the title box offers every specialty and links each one to the same view",
   assert.match(ortho, /<option value="orthopedics" data-href="\.\/provider-map\.html" selected>Orthopedics<\/option>/);
   assert.match(ortho, /<b>Provider Index<\/b><\/span><span class="pixel-bone" aria-hidden="true">/);
   assert.doesNotMatch(ortho, /pixel-heart/);
+  const gi = suiteTitle("opportunities", "gastroenterology");
+  assert.match(gi, /<option value="orthopedics" data-href="\.\.\/orthopedics\/market-opportunities\.html">Orthopedics<\/option>/);
+  assert.match(gi, /<b>AH Market Opportunities<\/b><\/span><span class="pixel-stomach" aria-hidden="true">/);
   assert.throws(() => suiteTitle("slot-times", "dermatology"), /Unknown specialty/);
   assert.equal(specialtyHref(specialtyOf("orthopedics"), specialtyOf("cardiology"), "index.html"), "../index.html");
 });

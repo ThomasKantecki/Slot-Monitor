@@ -24,6 +24,8 @@
     "refresh:cardiology:dry-run": "node tooling/run-python.mjs extractor/refresh.py --dry-run",
     "refresh:orthopedics": "node tooling/run-python.mjs extractor/refresh.py --specialty orthopedics",
     "refresh:orthopedics:dry-run": "node tooling/run-python.mjs extractor/refresh.py --specialty orthopedics --dry-run",
+    "refresh:gastroenterology": "node tooling/run-python.mjs extractor/refresh.py --specialty gastroenterology",
+    "refresh:gastroenterology:dry-run": "node tooling/run-python.mjs extractor/refresh.py --specialty gastroenterology --dry-run",
     "probe:catalog": "node tooling/run-python.mjs extractor/catalog_probe.py",
     "all": "node directories/orlando-health.js && node rosters/build-rosters.mjs && node slots/build-specialties.mjs && node pages/shared/specialty-placeholders.js",
     "geometry": "bash tooling/build-geometry.sh",

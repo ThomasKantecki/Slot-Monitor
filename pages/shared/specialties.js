@@ -67,5 +67,9 @@ export const COPY = {
     newPatientTip: "Keeps only the visit types a new patient can book. Both systems also publish visits for existing patients, so use this to compare new-patient access.",
     rosterNote: "counting orthopedic surgery and its spine, hand, foot and joint sub-specialties, non-surgical orthopedics and sports medicine together. Pediatric orthopedics, podiatry, neurosurgery, pain management and physical medicine are not shown unless the directory also lists the clinician under an orthopedic label.",
   },
+  gastroenterology: {
+    newPatientTip: "Keeps only the visit types a new patient can book: New Patient visits, in person or by video. Orlando Health books only new patients online, while AdventHealth also publishes visits for existing patients, so use this to compare new-patient access.",
+    rosterNote: "counting general gastroenterology, hepatology, transplant hepatology, advanced, interventional and bariatric endoscopy, inflammatory bowel disease, motility and pancreatology together. Pediatric gastroenterology, colorectal surgery and GI cancer specialists are not shown unless the directory also lists the clinician under a gastroenterology label.",
+  },
 };
 export const copyOf = (specialty) => COPY[specialty.id] ?? COPY.cardiology;

@@ -700,6 +700,12 @@ test("slot checks pass on a consistent model and name the pull for live freshnes
   const last = slotDataChecks(mixed, zipCounty).checks.at(-1);
   assert.equal(last.ok, true, "the mix is information, not a failure");
   assert.match(last.text, /^Other clinicians: 1 AdventHealth and 0 Orlando Health slots/);
+  assert.match(last.text, /Orlando Health publishes physicians only; the Physicians filter leaves them out\.$/);
+  // Orlando Health's orthopedics and gastroenterology catalogs open nurse practitioners too: no physicians-only claim then
+  const ohMixed = { ...model, providers: [{ c: "Physician" }, { c: "Nurse Practitioner" }], slots: [{ y: "ah", p: 0 }, { y: "oh", p: 1 }] };
+  const ohLast = slotDataChecks(ohMixed, zipCounty).checks.at(-1).text;
+  assert.match(ohLast, /^Other clinicians: 0 AdventHealth and 1 Orlando Health slots belong to .*\. The Physicians filter leaves them out\.$/);
+  assert.doesNotMatch(ohLast, /physicians only/);
 });
 
 test("slot checks fail when runs differ, totals drift, or a facility has no map location", () => {

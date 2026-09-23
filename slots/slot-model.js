@@ -16,8 +16,9 @@ export const isTelemedicineSlot = (categories) => categories.length > 0 && categ
 // Visit types a new patient can book. AdventHealth: "New Patient", "New patient telemedicine visit".
 // Orlando Health (the questionnaire remaps its two catalog types): "New Patient", "Orlando Health New
 // Cardiology Patient", "Florida Medical Clinic Orlando Health New Cardiology Patient", "ED Cardiology
-// Follow Up New". Existing-patient types on both sides carry no "new": "Specialists Office Visit",
-// "Established Cardiology Patient", "Patient Telemedicine Visit", "Telemedicine Established".
+// Follow Up New"; in gastroenterology its one type, "New Patient Appointment". Existing-patient types on
+// both sides carry no "new": "Specialists Office Visit", "Established Cardiology Patient", "Patient
+// Telemedicine Visit", "Telemedicine Established".
 const NEW_PATIENT_PATTERN = /\bnew\b/i;
 export const isNewPatientType = (name) => NEW_PATIENT_PATTERN.test(text(name));
 const firstText = (...values) => values.map(text).find(Boolean) ?? "";

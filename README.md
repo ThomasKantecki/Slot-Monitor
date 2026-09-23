@@ -5,7 +5,8 @@ at a time, built only from public information both systems publish: the open app
 browse on their scheduling sites without logging in, and their public doctor directories. Nothing here logs
 in, books anything, or touches patient information.
 
-Live site: https://thomaskantecki.github.io/Slot-Monitor/ (Cardiology; Orthopedics under `/orthopedics/`)
+Live site: https://thomaskantecki.github.io/Slot-Monitor/ (Cardiology; Orthopedics under `/orthopedics/`;
+Gastroenterology under `/gastroenterology/`)
 
 ## The three pages
 
@@ -88,7 +89,7 @@ Needs Node 20+ and Python 3.9+. Nothing to install: no npm packages, the Python 
 |---|---|
 | `npm test` | Runs the 106 tests. |
 | `npm run build` | Rebuilds every published specialty's pages and day files from the current data. |
-| `npm run refresh:cardiology` / `refresh:orthopedics` | Pulls fresh slots from both systems (AdventHealth takes most of a day), promotes the run, rebuilds, and runs the verification. Add `:dry-run` to print the plan instead. |
+| `npm run refresh:cardiology` / `refresh:orthopedics` / `refresh:gastroenterology` | Pulls fresh slots from both systems (AdventHealth takes most of a day), promotes the run, rebuilds, and runs the verification. Add `:dry-run` to print the plan instead. |
 | `npm run extract:ah` / `extract:oh` | One system's extraction alone (`-- --specialty <id> --run-id <id> --resume` continues an interrupted run). |
 | `npm run probe:catalog -- --system ah` | Lists what a system's scheduling catalog offers (to fill `specialties.json`). |
 | `npm run directory` | Re-pulls the Orlando Health directory. |

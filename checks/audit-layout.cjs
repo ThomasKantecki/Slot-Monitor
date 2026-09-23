@@ -10,7 +10,9 @@ catch { console.log('audit-layout: skipped (playwright-core not found; set PLAYW
 const ROOT = join(__dirname, '..');
 const WIDTHS = [320, 375, 414, 480, 560, 640, 700, 768, 820, 900, 1000, 1100, 1200, 1280, 1366, 1440, 1600, 1920, 2200, 2560];
 const HEIGHTS = [600, 1000];
-const PAGES = ['index.html', 'market-opportunities.html', 'provider-map.html', 'orthopedics/index.html', 'orthopedics/market-opportunities.html', 'orthopedics/provider-map.html'];
+// the three pages of every specialty in the registry (cardiology at the root, the rest in their folders)
+const PAGES = JSON.parse(require('node:fs').readFileSync(join(ROOT, 'specialties.json'), 'utf8'))
+  .flatMap(({ folder }) => ['index.html', 'market-opportunities.html', 'provider-map.html'].map((file) => folder + file));
 const only = process.argv[2];
 const SCAN = () => {
   const out = [];

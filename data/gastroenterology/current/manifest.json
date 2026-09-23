@@ -1,0 +1,25 @@
+{
+  "status": "completed_with_warnings",
+  "scope": "Florida Gastroenterology public appointment availability",
+  "rule": "all published slots are kept and shown by default; the pages offer physicians-only, in-person-only and new-patient filters (slots/slot-rules.js)",
+  "ah": {
+    "runId": "2026-09-22T213240-0400",
+    "source": "data/gastroenterology/runs/2026-09-22T213240-0400/ah/ah-gastroenterology-physical-slots.json",
+    "physicalSlots": 377884,
+    "nonPhysicianSlots": 254464,
+    "telemedicineOnlySlots": 10443,
+    "newPatientSlots": 283053,
+    "bookingCategoriesRetained": true
+  },
+  "oh": {
+    "runId": "2026-09-22T213240-0400",
+    "source": "data/gastroenterology/runs/2026-09-22T213240-0400/oh/source-oh-unique-physical-slots.csv",
+    "physicalSlots": 5105,
+    "nonPhysicianSlots": 1065,
+    "telemedicineOnlySlots": 0,
+    "newPatientSlots": 5105,
+    "bookingCategoriesRetained": false
+  },
+  "totalPhysicalSlots": 382989,
+  "generatedAt": "2026-09-23T05:45:14.585Z"
+}

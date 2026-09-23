@@ -387,6 +387,7 @@ a{color:var(--accent-deep)}
  .control-section{width:100%;min-width:0}.control-section-body{align-items:stretch}.comparison-controls .control-section-body,.geography-controls .control-section-body{flex-wrap:wrap}.pill-group{flex:0 1 auto;flex-wrap:wrap}
  .filter-pill{padding:6px 10px;font-size:10.5px}.logo-pill{padding:3px 9px}.pill-logo{width:70px;height:19px}
  .fgroup{width:100%;justify-content:space-between}.fgroup select.control,.subspecialty-controls select.control{flex:1;width:auto;max-width:100%;min-width:0}
+ .band-meta{white-space:normal;min-width:0}
 }
 @media (max-width:340px){
  .tpanel .panel-band{padding-inline:7px;gap:3px}

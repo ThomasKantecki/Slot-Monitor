@@ -35,7 +35,9 @@ export function slotDataChecks(model, zipCounty = {}) {
       { ok: Boolean(window), text: window ? `Comparison window runs ${day(model.minDate)} to ${day(model.commonMaxDate)} with slots on both sides.` : "One system has no slots in the comparison window." },
       ...catalogLine,
       { ok: true, text: `Video-only slots: ${n(videoOnly.ah)} AdventHealth, ${n(videoOnly.oh)} Orlando Health. Orlando Health publishes no video visits online; the In person filter leaves them out.` },
-      { ok: true, text: `Other clinicians: ${n(otherClinicians.ah)} AdventHealth and ${n(otherClinicians.oh)} Orlando Health slots belong to nurse practitioners, physician assistants or nurse schedules. Orlando Health publishes physicians only; the Physicians filter leaves them out.` },
+      // Orlando Health opens only physicians to online booking in cardiology; its orthopedics and gastroenterology
+      // catalogs also open nurse practitioners and physician assistants, so the claim follows the count
+      { ok: true, text: `Other clinicians: ${n(otherClinicians.ah)} AdventHealth and ${n(otherClinicians.oh)} Orlando Health slots belong to nurse practitioners, physician assistants or nurse schedules. ${otherClinicians.oh ? "The" : "Orlando Health publishes physicians only; the"} Physicians filter leaves them out.` },
     ],
   };
 }
