@@ -1,0 +1,220 @@
+# Save as .github/workflows/refresh-gastroenterology.yml.
+# Manual default: preflight only. Set repository variable GASTRO_NIGHTLY_ENABLED=true
+# after a successful full manual test to activate the 1 AM Eastern schedule.
+name: Refresh Gastroenterology availability
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "preflight checks only, or full extraction/build/deploy"
+        required: true
+        type: choice
+        default: preflight
+        options:
+          - preflight
+          - full
+  schedule:
+    - cron: "0 1 * * *"
+      timezone: "America/New_York"
+
+concurrency:
+  group: gastroenterology-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    if: github.event_name == 'workflow_dispatch' || vars.GASTRO_NIGHTLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Python dependencies on the GitHub runner
+        run: python -m pip install pandas openpyxl
+      - name: Verify checked-in scripts, engine imports, and CLI without scraping
+        shell: bash
+        run: |
+          python - <<'PY'
+          import importlib
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import pandas
+          import openpyxl
+          folder = pathlib.Path('extractors')
+          names = (
+              'Gastro_Combined_Pipeline.py',
+              'AH_Gastroenterology_Slot_Extractor.py',
+              'OH_Gastro_Slot_Extractor.py',
+              'AH_Gastro_Deduplicate_Slots.py',
+              'OH_Gastro_Deduplicate_Slots.py',
+              'epic_scheduling_extractor_AH.py',
+              'epic_scheduling_extractor_OH.py',
+          )
+          for name in names:
+              path = folder / name
+              if not path.is_file():
+                  raise SystemExit(f'Missing tracked script: {path}')
+              compile(path.read_text(encoding='utf-8-sig'), str(path), 'exec')
+          sys.path.insert(0, str(folder.resolve()))
+          importlib.import_module('epic_scheduling_extractor_OH')
+          importlib.import_module('epic_scheduling_extractor_AH')
+          subprocess.run([sys.executable, str(folder / names[0]), '--help'], check=True)
+          print('PASS: Python', sys.version.split()[0], 'pandas', pandas.__version__,
+                'openpyxl', openpyxl.__version__, 'Node check follows')
+          PY
+          node --version
+          git status --short
+      - name: Show source host DNS resolution only (no scraping)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import socket
+          for host in ('www.adventhealth.com', 'www.orlandohealth.com'):
+              try:
+                  print(host, socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)[0][4][0])
+              except OSError as exc:
+                  raise SystemExit(f'DNS check failed for {host}: {exc}')
+          PY
+
+  refresh:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'full') ||
+      (github.event_name == 'schedule' && vars.GASTRO_NIGHTLY_ENABLED == 'true')
+    needs: preflight
+    # Requires an approved, registered Linux x64 self-hosted runner.
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 2880
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install extraction dependencies on the self-hosted runner
+        run: python -m pip install pandas openpyxl
+      - name: Check exact runner environment and required scripts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib
+          import pandas
+          import openpyxl
+          for name in ('Gastro_Combined_Pipeline.py', 'AH_Gastroenterology_Slot_Extractor.py',
+                       'OH_Gastro_Slot_Extractor.py', 'AH_Gastro_Deduplicate_Slots.py',
+                       'OH_Gastro_Deduplicate_Slots.py', 'epic_scheduling_extractor_AH.py',
+                       'epic_scheduling_extractor_OH.py'):
+              path = pathlib.Path('extractors') / name
+              if not path.is_file():
+                  raise SystemExit(f'Missing: {path}')
+              compile(path.read_text(encoding='utf-8-sig'), str(path), 'exec')
+          print('Runner dependencies:', pandas.__version__, openpyxl.__version__)
+          PY
+          node --version
+      - name: Extract AH and OH, deduplicate, build and audit Gastro only
+        shell: bash
+        run: python extractors/Gastro_Combined_Pipeline.py --extract --publish --run-id "gastro-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Verify website outputs exist before handing off
+        shell: bash
+        run: |
+          test -s public/data/gastroenterology/slot-times-summary.json
+          test -s public/gastroenterology/index.html
+          test -s public/gastroenterology/provider-map.html
+          test -s public/gastroenterology/market-opportunities.html
+          test -s data/gastroenterology/current/manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('public/data/gastroenterology')
+          summary = json.loads((root / 'slot-times-summary.json').read_text())
+          manifest = json.loads(Path('data/gastroenterology/current/manifest.json').read_text())
+          run = manifest['ah']['runId']
+          assert run == manifest['oh']['runId']
+          assert summary['totalPhysicalSlots'] == manifest['totalPhysicalSlots'] > 0
+          assert summary['partitionDates']
+          assert all((root / 'slots' / (day + '.json')).is_file() for day in summary['partitionDates'])
+          print('PASS: same-run AH/OH, counts and daily JSON present:', run)
+          PY
+      - name: Transfer only publishable Gastro outputs to a fresh-token job
+        uses: actions/upload-artifact@v4
+        with:
+          name: gastro-publish-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            public/gastroenterology/
+            public/data/gastroenterology/
+            data/gastroenterology/current/manifest.json
+          if-no-files-found: error
+          retention-days: 2
+
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'full') ||
+      (github.event_name == 'schedule' && vars.GASTRO_NIGHTLY_ENABLED == 'true')
+    needs: refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: gastro-publish-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .
+      - name: Confirm only intended Gastro files changed
+        shell: bash
+        run: |
+          git status --short
+          git diff --check
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('public/data/gastroenterology/slot-times-summary.json').read_text())
+          manifest = json.loads(Path('data/gastroenterology/current/manifest.json').read_text())
+          assert manifest['ah']['runId'] == manifest['oh']['runId']
+          assert summary['totalPhysicalSlots'] == manifest['totalPhysicalSlots'] > 0
+          PY
+      - name: Commit and push Gastro site files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- public/gastroenterology public/data/gastroenterology data/gastroenterology/current/manifest.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No changed Gastro files to commit"
+          else
+            git commit -m "Refresh Gastroenterology availability"
+            git push origin HEAD:main
+          fi
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload full public site including other specialties
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy explicitly (workflow-token pushes do not trigger deploy-pages.yml)
+        id: deployment
+        uses: actions/deploy-pages@v4
