@@ -92,9 +92,9 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'full') ||
       (github.event_name == 'schedule' && vars.GASTRO_NIGHTLY_ENABLED == 'true')
     needs: preflight
-    # Requires an approved, registered Linux x64 self-hosted runner.
-    runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 2880
+    # Uses a GitHub-hosted Ubuntu runner; extraction must finish within the job timeout.
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
     permissions:
       contents: read
     steps:
