@@ -1,0 +1,24 @@
+name: Test Gastro checkpoint prototype
+
+on:
+  push:
+    branches:
+      - offline/gastro-checkpoint-prototype
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out prototype branch
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Run checkpoint prototype tests
+        run: node --test test/gastro-checkpoint-prototype.test.js
